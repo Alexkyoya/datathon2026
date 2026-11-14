@@ -25,6 +25,7 @@ ok = all([
     check("robert", "NVDA", 24000, "red"),
     check("mateo", "XOM", 3000, "red"),
     check("amira", "ETH-USD", 3000, "red"),
+    check("amira", "QQQ", 5000, "green"),
 ])
 
 r = L.lambda_handler({"action": "rule_check", "client_id": "robert", "ticker": "NVDA", "amount_cad": 100000})

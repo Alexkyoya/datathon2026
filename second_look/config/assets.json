@@ -308,9 +308,25 @@
     "sector": null,
     "is_single_stock": false,
     "is_crypto": false,
-    "sector_weights": null,
+    "sector_weights": {
+      "Financials": 0.39299999999999996,
+      "Energy": 0.18600000000000003,
+      "Materials": 0.135,
+      "Information Technology": 0.08800000000000001,
+      "Industrials": 0.079,
+      "Consumer Staples": 0.036000000000000004,
+      "Consumer Discretionary": 0.034,
+      "Other (not broken out by issuer)": 0.049
+    },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "esg_tags": null,
+    "sector_weights_source": {
+      "source": "BlackRock Canada, Apercu du FNB / ETF Facts, iShares S&P/TSX 60 Index ETF (XIU)",
+      "url": "https://blackrock.com/ca/investisseurs/fr/literature/etf-summary/xiu-facts-fr-ca.pdf",
+      "as_of": "2026-04-30",
+      "classification": "Issuer sector names (French), mapped to GICS names",
+      "note": "'Autres' (4.8%) and cash (0.1%) kept as one 'Other' bucket. Document dated 2026-06-19."
+    }
   },
   "SPY": {
     "name": "SPDR S&P 500 ETF Trust",
@@ -321,9 +337,28 @@
     "sector": null,
     "is_single_stock": false,
     "is_crypto": false,
-    "sector_weights": null,
+    "sector_weights": {
+      "Information Technology": 0.39702059588082383,
+      "Financials": 0.11397720455908819,
+      "Communication Services": 0.09948010397920416,
+      "Health Care": 0.09258148370325935,
+      "Consumer Discretionary": 0.08598280343931214,
+      "Industrials": 0.08048390321935614,
+      "Consumer Staples": 0.04369126174765047,
+      "Energy": 0.033993201359728054,
+      "Utilities": 0.01879624075184963,
+      "Real Estate": 0.016996600679864027,
+      "Materials": 0.016996600679864027
+    },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "esg_tags": null,
+    "sector_weights_source": {
+      "source": "State Street SPDR S&P 500 ETF Trust fact sheet",
+      "url": "https://www.ssga.com/library-content/products/factsheets/etfs/us/factsheet-us-en-spy.pdf",
+      "as_of": "2026-09-30",
+      "classification": "GICS",
+      "note": "Weights normalized to sum to 1."
+    }
   },
   "QQQ": {
     "name": "Invesco QQQ Trust (Nasdaq-100)",
@@ -334,9 +369,26 @@
     "sector": null,
     "is_single_stock": false,
     "is_crypto": false,
-    "sector_weights": null,
+    "sector_weights": {
+      "Information Technology": 0.6801,
+      "Consumer Discretionary": 0.1514,
+      "Communication Services": 0.0591,
+      "Health Care": 0.0378,
+      "Industrials": 0.0282,
+      "Consumer Staples": 0.0173,
+      "Materials": 0.0116,
+      "Utilities": 0.0101,
+      "Energy": 0.0044
+    },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "esg_tags": null,
+    "sector_weights_source": {
+      "source": "Invesco QQQ fact sheet",
+      "url": "https://www.invesco.com/content/dam/invesco/hk/en/pdf/factsheet/Invesco_QQQ_factsheet_EN.pdf",
+      "as_of": "2026-09-30",
+      "classification": "ICB (Invesco), mapped to GICS names",
+      "note": "ICB Technology -> Information Technology, Telecommunications -> Communication Services, Basic Materials -> Materials. ICB puts Alphabet and Meta in Technology, so the technology share is higher than under GICS (conservative for a sector cap)."
+    }
   },
   "ESGV": {
     "name": "Vanguard ESG U.S. Stock ETF",
@@ -347,9 +399,28 @@
     "sector": null,
     "is_single_stock": false,
     "is_crypto": false,
-    "sector_weights": null,
+    "sector_weights": {
+      "Information Technology": 0.506,
+      "Consumer Discretionary": 0.129,
+      "Health Care": 0.1,
+      "Financials": 0.09300000000000001,
+      "Industrials": 0.073,
+      "Consumer Staples": 0.032,
+      "Communication Services": 0.025,
+      "Real Estate": 0.024,
+      "Materials": 0.013999999999999999,
+      "Utilities": 0.003,
+      "Energy": 0.001
+    },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "esg_tags": null,
+    "sector_weights_source": {
+      "source": "Vanguard ESG U.S. Stock ETF fact sheet",
+      "url": "https://workplace.vanguard.com/iippdf/pdfs/FS4393R.pdf",
+      "as_of": "2026-09-30",
+      "classification": "FTSE/ICB-style sector names, mapped to GICS names",
+      "note": "Technology -> Information Technology, Telecommunications -> Communication Services, Basic Materials -> Materials; technology share likely higher than under GICS."
+    }
   },
   "XBB.TO": {
     "name": "iShares Core Canadian Universe Bond Index ETF",
@@ -483,6 +554,10 @@
     "is_crypto": false,
     "sector_weights": null,
     "mapping_source": "scripts/add_assets.py (same yfinance method as starter build_dataset.py) + team mapping assumption",
-    "esg_tags": null
+    "esg_tags": null,
+    "sector_weights_source": {
+      "source": null,
+      "note": "No issuer sector breakdown retrieved; left unknown, so a sector-capped profile gets a manual review if it buys XEF.TO."
+    }
   }
 }

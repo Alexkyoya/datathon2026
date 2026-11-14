@@ -8,7 +8,7 @@ function friendly(msg){
   return msg;
 }
 // Demo trades per stored client (team personas; purchases are paid from cash).
-const DEMOS={robert:[['green','SPY',2000],['red','NVDA',24000]],mateo:[['yellow','ESGV',12000],['red','XOM',3000]],amira:[['red','ETH-USD',3000]],demo_balanced:[['green','SPY',4000],['yellow','GLD',14000],['red','TSLA',12000]]};
+const DEMOS={robert:[['green','SPY',2000],['red','NVDA',24000]],mateo:[['yellow','ESGV',12000],['red','XOM',3000]],amira:[['green','QQQ',5000],['red','ETH-USD',3000],['red','NVDA',5000]],demo_balanced:[['green','SPY',4000],['yellow','GLD',14000],['red','TSLA',12000]]};
 const clientId=()=>new URLSearchParams(location.search).get('client')||'robert';
 const $ = id => document.getElementById(id);
 const pct = value => `${(value * 100).toFixed(1)}%`;

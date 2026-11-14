@@ -216,12 +216,14 @@
       "excluded_tickers": [],
       "holdings_cad": {
         "CASH": 5000,
-        "SPY": 12500,
-        "QQQ": 7500,
+        "SPY": 8000,
+        "QQQ": 5000,
         "XIU.TO": 5000,
+        "ESGV": 4000,
         "SHOP.TO": 2000,
         "NVDA": 2000,
-        "XBB.TO": 12500,
+        "XBB.TO": 9000,
+        "AGG": 6000,
         "GLD": 2500,
         "BTC-USD": 1500
       },
@@ -229,7 +231,7 @@
       "objectives": [
         "long_term_growth"
       ],
-      "portfolio_value_cad": 50500
+      "portfolio_value_cad": 50000
     }
   }
 }

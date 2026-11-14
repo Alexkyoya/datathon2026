@@ -108,7 +108,7 @@ A pre-trade check for self-directed investors. Simulation only, not investment a
 - Agents with local tools: `uv run python agents/second_look.py --client robert --ticker NVDA --amount 24000 --local`
 - Agents with the Lambda: the same command without `--local`
 
-Demo cases (purchases are paid from cash): `robert SPY 2000` (green), `mateo ESGV 12000` (yellow, concentration watch), `amira ETH-USD 3000` (red, crypto cap), `robert NVDA 24000` (red, all his cash into one stock), `mateo XOM 3000` (red, exclusion list).
+Demo cases (purchases are paid from cash): `robert SPY 2000` (green), `mateo ESGV 12000` (yellow, concentration watch), `amira QQQ 5000` (green), `amira ETH-USD 3000` (red, crypto cap), `robert NVDA 24000` (red, all his cash into one stock), `mateo XOM 3000` (red, exclusion list).
 
 ## Lambda
 

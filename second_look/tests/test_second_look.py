@@ -80,7 +80,9 @@ class RuleTests(unittest.TestCase):
 
     def test_incomplete_sector_and_esg_not_green(self):
         self.client['profile']='Growth'
-        r=self.run_trade()
+        # SPY/XIU/ESGV/QQQ now carry sourced sector weights; XEF.TO still has no look-through.
+        self.assertEqual(self.run_trade()['verdict'],'green')
+        r=self.run_trade('XEF.TO',4000)
         self.assertIsNone(r['verdict'])
         self.assertEqual(r['evaluation_status'],'partial')
         self.client['profile']='Balanced'
