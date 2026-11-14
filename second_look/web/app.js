@@ -136,17 +136,24 @@ function demoButtons(){
 }
 function agentPanel(record){
   const a=record.agent_result;if(!a)return null;
-  const panel=text('div','','agent-review');panel.append(text('p','Agent review · explains the fixed verdict','eyebrow'));
+  const panel=text('div','','agent-review');panel.append(text('p','Second Look review','eyebrow'));
   if(a.headline)panel.append(text('h3',a.headline));
-  const list=(title,items,fmt)=>{if(!items||!items.length)return;panel.append(text('p',title,'eyebrow'));const ul=text('ul','');items.forEach(i=>ul.append(text('li',fmt(i))));panel.append(ul);};
-  list('Why',a.reasons,r=>r);
-  if(a.client_reason_response){panel.append(text('p','Your reason','eyebrow'),text('p',a.client_reason_response));}
-  list('Checking your reason',a.news_check,c=>`${c.claim} → ${c.type}. ${c.evidence||''}${c.source&&c.source.name?' ('+c.source.name+(c.date?', '+c.date:'')+')':''}`);
-  list('Stress tests (hypothetical, not forecasts)',(a.risk&&a.risk.scenarios)||[],s=>`${s.name}: ${typeof s.portfolio_return==='number'?pct(s.portfolio_return):s.portfolio_return}`);
-  if(a.macro_context){panel.append(text('p','Rates and inflation','eyebrow'),text('p',a.macro_context));}
-  list('Alternatives that keep your idea',a.alternatives,x=>`${x.description}${x.rule_check_verdict?' — rule check: '+x.rule_check_verdict:''}`);
-  list('Assumptions',a.assumptions,x=>x);
-  if(a.timing_seconds)panel.append(text('p',`Agents: ${a.timing_seconds.specialists_parallel}s (profile, news and data in parallel) + ${a.timing_seconds.coordinator}s (coordinator).`,'muted'));
+  const list=(parent,title,items,fmt)=>{if(!items||!items.length)return;if(title)parent.append(text('p',title,'eyebrow'));const ul=text('ul','');items.forEach(i=>ul.append(text('li',fmt(i))));parent.append(ul);};
+  list(panel,'Why we paused',(a.reasons||[]).slice(0,3),r=>r);
+  if(a.client_reason_response)panel.append(text('p','About your reason','eyebrow'),text('p',a.client_reason_response));
+  if(a.bad_year)panel.append(text('p','In a bad year','eyebrow'),text('p',a.bad_year));
+  const alts=(a.alternatives||[]).filter(x=>x.rule_check_verdict!=='red');
+  if(alts.length){panel.append(text('p','You could instead','eyebrow'));const ul=text('ul','','alt-list');alts.forEach(x=>ul.append(text('li',(x.rule_check_verdict==='green'?'✓ ':'• ')+x.description)));panel.append(ul);}
+  // Everything technical stays one click away for judges and reviewers.
+  const more=document.createElement('details');more.className='agent-details';more.append(text('summary','Details, sources and assumptions'));
+  list(more,'Details',a.details||a.reasons,x=>x);
+  list(more,'News check',a.news_check,c=>`${c.claim} → ${c.type}. ${c.evidence||''}${c.source&&c.source.name?' ('+c.source.name+(c.date?', '+c.date:'')+')':''}`);
+  list(more,'Stress tests (hypothetical, not forecasts)',(a.risk&&a.risk.scenarios)||[],s=>`${s.name}: ${typeof s.portfolio_return==='number'?pct(s.portfolio_return):s.portfolio_return}`);
+  if(a.macro_context)more.append(text('p','Rates and inflation','eyebrow'),text('p',a.macro_context));
+  list(more,'Assumptions',a.assumptions,x=>x);
+  list(more,'Sources',a.sources,x=>typeof x==='string'?x:JSON.stringify(x));
+  if(a.timing_seconds)more.append(text('p',`Agents: ${a.timing_seconds.specialists_parallel}s (profile, news and data in parallel) + ${a.timing_seconds.coordinator}s (coordinator).`,'muted'));
+  panel.append(more);
   panel.append(text('p',a.disclaimer||'Simulation only. Not investment advice.','muted'));
   return panel;
 }

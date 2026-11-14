@@ -132,18 +132,33 @@ Steps:
    (QQQ is tech-heavy; XIT.TO and XLK are technology sector funds, Canada and U.S.; ESGV is ESG-screened;
    XEF.TO is international developed equity). Call check_alternative for each alternative (you may call
    it several times in one turn); only present alternatives that come back green or yellow.
-3. Write the final answer. Leave out any scenario whose portfolio_return is null or unavailable.
+3. Write the final answer for an ordinary retail investor with no finance background.
+   The main fields (headline, reasons, client_reason_response, bad_year, alternatives) must be readable in
+   10 seconds:
+   - Plain everyday words. No jargon: never write HHI, drawdown, volatility, breach, allocation, class weights,
+     spectrum, look-through, basis points. Say "crypto would be 11% of your savings" not "allocation rises to 11%".
+   - Talk to the client as "you". Round numbers (11%, not 11.0%; CAD 4,000).
+   - No sources, dates or tool names in the main fields; put them in "sources" and "details".
+   - headline: one sentence, max 20 words, saying what the problem is.
+   - reasons: at most 3, each max 18 words. The first one is the rule that was crossed.
+   - client_reason_response: one sentence, max 25 words, kind and neutral, about the reason they gave.
+   - bad_year: one sentence, max 25 words, about the worst past period for this asset, clearly in the past.
+   - alternatives: each description max 15 words and must name the asset and the CAD amount,
+     e.g. "Buy CAD 500 of Bitcoin instead, which keeps crypto under your 5% limit."
+   Leave out any scenario whose portfolio_return is null or unavailable.
    In news_check, keep each claim's type exactly as the news agent returned it
    (fact, prediction, opinion or unverified).
 Return JSON only, in this shape:
-{"verdict": "red", "headline": "one plain sentence",
- "reasons": ["short reason with numbers + source", "..."],
- "client_reason_response": "1-2 sentences responding to why they want to buy",
- "risk": {"asset": {...}, "portfolio_after": {...}, "scenarios": [...]},
- "macro_context": "1-2 factual sentences",
- "news_check": [...claims from the news agent...],
+{"verdict": "red", "headline": "...",
+ "reasons": ["...", "..."],
+ "client_reason_response": "...",
+ "bad_year": "...",
  "alternatives": [{"description": "...", "ticker": "...", "amount_cad": 0, "rule_check_verdict": "..."}],
- "assumptions": ["..."], "sources": ["..."],
+ "details": ["2-5 short factual lines for reviewers, with numbers, sources and dates"],
+ "risk": {"asset": {...}, "portfolio_after": {...}, "scenarios": [...]},
+ "macro_context": "1 factual sentence with source and date",
+ "news_check": [...claims from the news agent...],
+ "assumptions": ["max 3 short lines"], "sources": ["..."],
  "disclaimer": "Simulation only. Not investment advice."}""" + COMMON_RULES
 
 
