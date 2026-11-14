@@ -177,6 +177,20 @@ def _run_agents(record):
     return record
 
 
+def _with_liquidity(record):
+    """Attach the cash-cushion check (informational; the rule engine verdict is unchanged)."""
+    try:
+        req = record.get("request") or {}
+        if req.get("client_id") and "liquidity" not in record:
+            liq = T.call_tool("liquidity_check", client_id=req["client_id"], ticker=req.get("ticker"),
+                              side=req.get("side", "buy"), amount_cad=float(req.get("amount_cad", 0)))
+            if "error" not in liq:
+                record["liquidity"] = liq
+    except Exception as e:  # never block the verdict on this
+        print(f"[second-look] liquidity check skipped: {e}")
+    return record
+
+
 def _legacy(req):
     if req.get("action"):
         if req["action"] not in TOOL_ACTIONS:
@@ -222,7 +236,7 @@ def handler(event, context=None):
         application, _ = _engine()
         app = application.SecondLookApplication(STORE)
         if path == "/api/evaluate":
-            return _resp(200, app.evaluate(payload, getattr(context, "aws_request_id", None)))
+            return _resp(200, _with_liquidity(app.evaluate(payload, getattr(context, "aws_request_id", None))))
         m = re.fullmatch(r"/api/simulations/([A-Za-z0-9_-]{1,128})/decision", path)
         if m:
             if set(payload) - {"decision", "reason"} or "decision" not in payload:
@@ -231,7 +245,7 @@ def handler(event, context=None):
             if payload["decision"] == "explain":
                 record = _run_agents(record)
                 STORE.save(f"results/{record['simulation_id']}.json", record)
-            return _resp(200, record)
+            return _resp(200, _with_liquidity(record))
         if path in ("/", "/api/check"):
             return _legacy(payload)
         return _resp(404, {"error": "Not found"})

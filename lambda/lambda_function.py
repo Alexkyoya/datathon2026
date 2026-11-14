@@ -168,9 +168,45 @@ def get_profile(ev):
         "ranges": prof["ranges"], "assumptions": prof["assumptions"],
         "current_class_weights": {k: _f(v) for k, v in class_weights(w).items()},
         "portfolio_value_cad": _f(sum(c["holdings_cad"].values()), 2),
+        "liquidity": c.get("liquidity"),
         "sources": {"ranges": "National Bank Financial, Investment Strategy, Fall 2026 (model portfolios)",
                     "assumptions": "Second Look team assumptions", "client": "fictional persona"},
     }
+
+
+def liquidity_check(ev):
+    """Cash cushion after the trade vs. what the client needs soon (emergency fund + planned spending).
+    Team assumption, informational: it does not change the rule engine's verdict."""
+    data, c, _ = get_client(ev["client_id"])
+    L = c.get("liquidity")
+    if not L:
+        return {"status": "not_available", "note": "no liquidity data for this client"}
+    rule = data.get("liquidity_rule", {"horizon_months": 12, "near_term_months": 6})
+    h = c["holdings_cad"]
+    amt = float(ev.get("amount_cad", 0))
+    side = ev.get("side", "buy")
+    liquid_before = float(h.get("CASH", 0)) + float(h.get("ZST.TO", 0))
+    if side == "sell":
+        liquid_after = liquid_before + amt
+    elif ev.get("ticker") == "ZST.TO":
+        liquid_after = liquid_before
+    else:
+        liquid_after = liquid_before - amt
+    emergency = max(0.0, L["emergency_months"] * L["monthly_expenses_cad"] - L.get("emergency_fund_outside_cad", 0))
+    planned = [w for w in L.get("planned_withdrawals", []) if w["months_ahead"] <= rule["horizon_months"]]
+    near = sum(w["amount_cad"] for w in planned if w["months_ahead"] <= rule["near_term_months"])
+    needed = emergency + sum(w["amount_cad"] for w in planned)
+    if liquid_after >= needed:
+        status = "ok"
+    elif liquid_after >= near:
+        status = "below_cushion"
+    else:
+        status = "short_for_planned_spending"
+    return {"status": status, "liquid_before_cad": _f(liquid_before, 2), "liquid_after_cad": _f(liquid_after, 2),
+            "needed_cad": _f(needed, 2), "emergency_part_cad": _f(emergency, 2),
+            "planned_withdrawals": planned, "shortfall_cad": _f(max(0.0, needed - liquid_after), 2),
+            "source": "Second Look team assumption; client figures are a fictional persona",
+            "affects_verdict": False}
 
 
 # ---------------------------------------------------------------- team rule engine (second_look/)
@@ -239,6 +275,7 @@ def rule_check(ev):
         "portfolio_value_cad": _f(r["portfolio_value_cad"], 2),
         "engine": f"team rule engine, policy {r['policy_version']}, references {r['reference_portfolio_version']}",
         "assumptions": r["assumptions"],
+        "liquidity": liquidity_check(ev),
     }
 
 
@@ -386,7 +423,8 @@ def news_check(ev):
 
 
 ACTIONS = {"get_profile": get_profile, "rule_check": rule_check, "risk_metrics": risk_metrics,
-           "macro_snapshot": macro_snapshot, "news_check": news_check}
+           "macro_snapshot": macro_snapshot, "news_check": news_check,
+           "liquidity_check": liquidity_check}
 
 
 def lambda_handler(event, context=None):

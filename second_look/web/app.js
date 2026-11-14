@@ -49,8 +49,9 @@ function render(record) {
   r.coverage.unresolved.forEach(reason=>reasons.append(text('li',reason)));
   if(!reasons.children.length) reasons.append(text('li','All evaluated limits are respected, with no near-limit warning.'));
   outcome.append(reasons);
-  const stageLabels={simulation_continued:'Simulation continued. No real order was placed.',awaiting_confirmation:'Confirmation is required to continue this simulation.',awaiting_reason:'Explain your reason to request an agent review.',awaiting_agents:({completed:'Agent review complete. The numerical verdict above is unchanged.',failed:'Agent review failed: '+(record.agent_error||'unknown error')+'. The simulation stays paused.',dispatched:'Agent review requested from the configured service.',not_configured:'Agent handoff saved. No agent service is configured locally; review remains pending.',dispatch_failed:'Agent service could not be reached. Review remains pending.'})[record.agent_status],cancelled:'Simulation cancelled.',manual_review:'Manual review is required. This result cannot continue automatically.'};
-  outcome.append(text('p',stageLabels[record.stage] || record.stage));
+  const stageLabels={simulation_continued:'Simulation continued. No real order was placed.',awaiting_confirmation:'Confirmation is required to continue this simulation.',awaiting_reason:'Explain your reason to request an agent review.',awaiting_agents:({completed:'',failed:'Agent review failed: '+(record.agent_error||'unknown error')+'. The simulation stays paused.',dispatched:'Agent review requested from the configured service.',not_configured:'Agent handoff saved. No agent service is configured locally; review remains pending.',dispatch_failed:'Agent service could not be reached. Review remains pending.'})[record.agent_status],cancelled:'Simulation cancelled.',manual_review:'Manual review is required. This result cannot continue automatically.'};
+  {const lbl=stageLabels[record.stage];if(lbl!=='')outcome.append(text('p',lbl || record.stage));}
+  const liq=liquidityNote(record);if(liq)outcome.append(liq);
   const review=agentPanel(record);if(review)outcome.append(review);
   if(record.stage==='awaiting_reason') {
     const form=document.createElement('form');const label=text('label','Why do you want to make this trade?');label.htmlFor='reason';const input=document.createElement('textarea');input.id='reason';input.required=true;input.maxLength=5000;const button=text('button','Request agent review');button.type='submit';form.append(label,input,button);form.addEventListener('submit',event=>{event.preventDefault();decide('explain',input.value);});outcome.append(form);
@@ -134,25 +135,32 @@ function demoButtons(){
     const b=text('button',`${ticker} · $${amount.toLocaleString('en-CA')}`);b.type='button';b.dataset.demo=color;
     b.addEventListener('click',()=>{selectTicker(ticker);$('amount').value=amount;$('side').value='buy';evaluate();});return b;}));
 }
+function liquidityNote(record){
+  const L=record.liquidity;if(!L||!L.status||L.status==='ok'||L.status==='not_available')return null;
+  const soon=(L.planned_withdrawals||[]).map(w=>`${money(w.amount_cad)} for ${w.purpose} in ${w.months_ahead} months`).join(', ');
+  const box=text('div','','liquidity-note');
+  box.append(text('p','Cash cushion','eyebrow'),text('p',`After this trade you would have ${money(L.liquid_after_cad)} in cash. You need about ${money(L.needed_cad)} soon (emergency fund${soon?' and '+soon:''}).`));
+  return box;
+}
 function agentPanel(record){
   const a=record.agent_result;if(!a)return null;
   const panel=text('div','','agent-review');panel.append(text('p','Second Look review','eyebrow'));
-  if(a.headline)panel.append(text('h3',a.headline));
+  const line=(title,body)=>{if(body)panel.append(text('p',title,'eyebrow'),text('p',body));};
+  line('Why it matters',a.why_it_matters||a.bad_year);
+  line('About your reason',a.your_reason||a.client_reason_response);
+  if(!record.liquidity||record.liquidity.status==='ok')line('Cash cushion',a.cash_cushion);
   const list=(parent,title,items,fmt)=>{if(!items||!items.length)return;if(title)parent.append(text('p',title,'eyebrow'));const ul=text('ul','');items.forEach(i=>ul.append(text('li',fmt(i))));parent.append(ul);};
-  list(panel,'Why we paused',(a.reasons||[]).slice(0,3),r=>r);
-  if(a.client_reason_response)panel.append(text('p','About your reason','eyebrow'),text('p',a.client_reason_response));
-  if(a.bad_year)panel.append(text('p','In a bad year','eyebrow'),text('p',a.bad_year));
   const alts=(a.alternatives||[]).filter(x=>x.rule_check_verdict!=='red');
   if(alts.length){panel.append(text('p','You could instead','eyebrow'));const ul=text('ul','','alt-list');alts.forEach(x=>ul.append(text('li',(x.rule_check_verdict==='green'?'✓ ':'• ')+x.description)));panel.append(ul);}
   // Everything technical stays one click away for judges and reviewers.
   const more=document.createElement('details');more.className='agent-details';more.append(text('summary','Details, sources and assumptions'));
-  list(more,'Details',a.details||a.reasons,x=>x);
-  list(more,'News check',a.news_check,c=>`${c.claim} → ${c.type}. ${c.evidence||''}${c.source&&c.source.name?' ('+c.source.name+(c.date?', '+c.date:'')+')':''}`);
+  list(more,'',a.details,x=>x);
+  list(more,'News check',a.news_check,c=>`${c.claim} → ${c.type}${c.source&&c.source.name?' ('+c.source.name+(c.date?', '+c.date:'')+')':''}`);
   list(more,'Stress tests (hypothetical, not forecasts)',(a.risk&&a.risk.scenarios)||[],s=>`${s.name}: ${typeof s.portfolio_return==='number'?pct(s.portfolio_return):s.portfolio_return}`);
   if(a.macro_context)more.append(text('p','Rates and inflation','eyebrow'),text('p',a.macro_context));
   list(more,'Assumptions',a.assumptions,x=>x);
   list(more,'Sources',a.sources,x=>typeof x==='string'?x:JSON.stringify(x));
-  if(a.timing_seconds)more.append(text('p',`Agents: ${a.timing_seconds.specialists_parallel}s (profile, news and data in parallel) + ${a.timing_seconds.coordinator}s (coordinator).`,'muted'));
+  if(a.timing_seconds)more.append(text('p',`Agents: ${a.timing_seconds.specialists_parallel}s + ${a.timing_seconds.coordinator}s`,'muted'));
   panel.append(more);
   panel.append(text('p',a.disclaimer||'Simulation only. Not investment advice.','muted'));
   return panel;

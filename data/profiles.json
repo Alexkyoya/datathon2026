@@ -167,7 +167,20 @@
         "capital_preservation",
         "some_growth"
       ],
-      "portfolio_value_cad": 200000
+      "portfolio_value_cad": 200000,
+      "liquidity": {
+        "monthly_expenses_cad": 4000,
+        "emergency_months": 3,
+        "emergency_fund_outside_cad": 0,
+        "planned_withdrawals": [
+          {
+            "amount_cad": 6000,
+            "months_ahead": 5,
+            "purpose": "roof repair"
+          }
+        ],
+        "source": "fictional persona (team assumption)"
+      }
     },
     "mateo": {
       "name": "Mateo",
@@ -201,7 +214,20 @@
       "objectives": [
         "balanced_growth"
       ],
-      "portfolio_value_cad": 140000
+      "portfolio_value_cad": 140000,
+      "liquidity": {
+        "monthly_expenses_cad": 3000,
+        "emergency_months": 3,
+        "emergency_fund_outside_cad": 3000,
+        "planned_withdrawals": [
+          {
+            "amount_cad": 4000,
+            "months_ahead": 8,
+            "purpose": "car down payment"
+          }
+        ],
+        "source": "fictional persona (team assumption)"
+      }
     },
     "amira": {
       "name": "Amira",
@@ -231,7 +257,19 @@
       "objectives": [
         "long_term_growth"
       ],
-      "portfolio_value_cad": 50000
+      "portfolio_value_cad": 50000,
+      "liquidity": {
+        "monthly_expenses_cad": 2500,
+        "emergency_months": 3,
+        "emergency_fund_outside_cad": 7500,
+        "planned_withdrawals": [],
+        "source": "fictional persona (team assumption)"
+      }
     }
+  },
+  "liquidity_rule": {
+    "_note": "Team assumption, not from NBF. Cash needed in the portfolio = emergency_months x monthly_expenses - emergency_fund_outside + planned withdrawals within 12 months. Liquid = CASH + ZST.TO.",
+    "horizon_months": 12,
+    "near_term_months": 6
   }
 }

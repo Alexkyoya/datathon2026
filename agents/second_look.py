@@ -75,7 +75,8 @@ Rules for every answer:
 
 PROFILE_PROMPT = """You are the Profile agent of Second Look, a pre-trade check for self-directed investors.
 Use get_profile, then turn the client's profile into plain-language constraints: horizon, loss tolerance,
-asset-class ranges, single-stock and crypto limits, exclusions and preferences. Then read the client's stated
+asset-class ranges, single-stock and crypto limits, exclusions and preferences, and liquidity needs
+(monthly expenses, emergency fund, planned withdrawals in the next 12 months). Then read the client's stated
 reason for the trade and say, in one or two sentences, how that reason relates to their objective and horizon.
 Label which limits come from National Bank Financial's model portfolios and which are team assumptions.
 Answer in short bullet points.""" + COMMON_RULES
@@ -133,32 +134,38 @@ Steps:
    XEF.TO is international developed equity). Call check_alternative for each alternative (you may call
    it several times in one turn); only present alternatives that come back green or yellow.
 3. Write the final answer for an ordinary retail investor with no finance background.
-   The main fields (headline, reasons, client_reason_response, bad_year, alternatives) must be readable in
-   10 seconds:
+   The screen ALREADY shows the rule that was crossed, with its numbers (e.g. "Crypto 3% -> 11%, maximum 5%").
+   Never repeat that rule or those numbers anywhere. Every fact appears ONCE across all fields: if a number,
+   event or claim is in one field, leave it out of every other field.
+   Main fields, readable in 10 seconds:
    - Plain everyday words. No jargon: never write HHI, drawdown, volatility, breach, allocation, class weights,
-     spectrum, look-through, basis points. Say "crypto would be 11% of your savings" not "allocation rises to 11%".
-   - Talk to the client as "you". Round numbers (11%, not 11.0%; CAD 4,000).
-   - No sources, dates or tool names in the main fields; put them in "sources" and "details".
-   - headline: one sentence, max 20 words, saying what the problem is.
-   - reasons: at most 3, each max 18 words. The first one is the rule that was crossed.
-   - client_reason_response: one sentence, max 25 words, kind and neutral, about the reason they gave.
-   - bad_year: one sentence, max 25 words, about the worst past period for this asset, clearly in the past.
-   - alternatives: each description max 15 words and must name the asset and the CAD amount,
-     e.g. "Buy CAD 500 of Bitcoin instead, which keeps crypto under your 5% limit."
+     spectrum, look-through, basis points. Talk to the client as "you". Round numbers (74%, CAD 4,000).
+   - No sources, dates, tool or agent names in the main fields.
+   - why_it_matters: one sentence, max 25 words: what could go wrong for this client, using the worst past
+     fall of the asset (clearly in the past).
+   - your_reason: one sentence, max 25 words, kind and neutral: what the check of their reason found.
+   - cash_cushion: only if the rule engine's "liquidity" status is not "ok": one sentence, max 25 words,
+     cash left after the trade vs. what they need soon (emergency fund and named planned spending).
+     Otherwise "".
+   - alternatives: 1 or 2, each max 15 words, naming the asset and the CAD amount, e.g.
+     "Buy CAD 1,000 of Bitcoin instead." Do not explain the limit again. An alternative must also keep
+     cash at or above the liquidity "needed_cad" when possible.
+   Reviewer fields (collapsed on screen):
+   - details: at most 4 short lines with numbers, sources and dates that are NOT in any other field.
+     No news check, stress tests or rates here; they have their own fields.
+   - assumptions: at most 3 lines about the method. Never mention tool errors or missing data from agents.
    Leave out any scenario whose portfolio_return is null or unavailable.
    In news_check, keep each claim's type exactly as the news agent returned it
    (fact, prediction, opinion or unverified).
 Return JSON only, in this shape:
-{"verdict": "red", "headline": "...",
- "reasons": ["...", "..."],
- "client_reason_response": "...",
- "bad_year": "...",
+{"verdict": "red",
+ "why_it_matters": "...", "your_reason": "...", "cash_cushion": "",
  "alternatives": [{"description": "...", "ticker": "...", "amount_cad": 0, "rule_check_verdict": "..."}],
- "details": ["2-5 short factual lines for reviewers, with numbers, sources and dates"],
+ "details": ["..."],
  "risk": {"asset": {...}, "portfolio_after": {...}, "scenarios": [...]},
  "macro_context": "1 factual sentence with source and date",
  "news_check": [...claims from the news agent...],
- "assumptions": ["max 3 short lines"], "sources": ["..."],
+ "assumptions": ["..."], "sources": ["..."],
  "disclaimer": "Simulation only. Not investment advice."}""" + COMMON_RULES
 
 
