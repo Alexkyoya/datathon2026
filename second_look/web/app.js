@@ -1,5 +1,12 @@
 'use strict';
 let context, current;
+const money=v=>Number(v).toLocaleString('en-CA',{style:'currency',currency:'CAD'});
+function friendly(msg){
+  if(/Insufficient cash/i.test(msg))return 'Not enough cash: purchases are paid from cash only, and nothing else is sold automatically.';
+  if(/Insufficient holdings/i.test(msg))return 'You can only sell up to what you hold. Short sales are not supported.';
+  if(/Missing asset or price/i.test(msg))return 'No price is available for this asset on the decision date, so it can\'t be checked.';
+  return msg;
+}
 // Demo trades per stored client (team personas; purchases are paid from cash).
 const DEMOS={robert:[['green','SPY',2000],['red','NVDA',24000]],mateo:[['yellow','ESGV',12000],['red','XOM',3000]],amira:[['red','ETH-USD',3000]],demo_balanced:[['green','SPY',4000],['yellow','GLD',14000],['red','TSLA',12000]]};
 const clientId=()=>new URLSearchParams(location.search).get('client')||'robert';
@@ -61,8 +68,10 @@ async function evaluate() {
   $('error').hidden=true;$('evaluate').disabled=true;
   // An invalid new proposal must not leave an old green outcome visible.
   drawSpectrum();$('positions').replaceChildren(text('p','Waiting for the current proposal.','muted'));$('outcome').className='panel';$('outcome').replaceChildren(text('h2','Checking this proposal…'));$('mismatch').hidden=true;$('audit').hidden=true;current=null;
+  const amt=Number($('amount').value), cash=context.client.cash_cad;
+  if($('side').value==='buy' && amt>cash){$('outcome').replaceChildren(text('h2','Not enough cash for this trade.'),text('p',`You have ${money(cash)} in cash and the trade costs ${money(amt)}. Purchases are paid from cash only; nothing else is sold automatically. Try ${money(cash)} or less.`));$('evaluate').disabled=false;return;}
   try {render(await api('/api/evaluate',{client_id:context.client.client_id,decision_date:context.client.holdings_as_of,ticker:$('ticker').value,side:$('side').value,amount_cad:Number($('amount').value)}));}
-  catch(err){$('outcome').replaceChildren(text('h2','Proposal could not be evaluated.'),text('p','No verdict was produced. Correct the issue before continuing.'));error(err);}
+  catch(err){$('outcome').replaceChildren(text('h2','Proposal could not be evaluated.'),text('p',friendly(err.message)),text('p','No verdict was produced. Change the trade and check again.','muted'));}
   finally {$('evaluate').disabled=false;}
 }
 async function decide(decision,reason) { try { $('error').hidden=true;if(decision==='explain'){$('outcome').append(text('p','The agents are reviewing your reason, the data and stress tests. The verdict above is final; this adds the explanation (about 20–40 seconds)…','muted'));document.querySelectorAll('#outcome button').forEach(b=>b.disabled=true);}render(await api(`/api/simulations/${current.simulation_id}/decision`,{decision,...(reason!==undefined?{reason}:{})})); }catch(err){error(err);} }
