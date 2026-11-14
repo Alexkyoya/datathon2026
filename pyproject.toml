@@ -1,0 +1,13 @@
+[project]
+name = "datathon2026"
+version = "0.1.0"
+description = "Datathon analysis and notebooks"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "ipykernel>=7.4.0",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.4",
+    "pandas>=3.1.1",
+    "scikit-learn>=1.9.1",
+    "scipy>=1.18.1",
+]
