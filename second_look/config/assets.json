@@ -1,0 +1,445 @@
+{
+  "RY.TO": {
+    "name": "Royal Bank of Canada",
+    "currency": "CAD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "TSX",
+    "sector": "Financials",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Financials": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "TD.TO": {
+    "name": "Toronto-Dominion Bank",
+    "currency": "CAD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "TSX",
+    "sector": "Financials",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Financials": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "MFC.TO": {
+    "name": "Manulife Financial",
+    "currency": "CAD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "TSX",
+    "sector": "Financials",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Financials": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "ENB.TO": {
+    "name": "Enbridge",
+    "currency": "CAD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "TSX",
+    "sector": "Energy",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Energy": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "CNQ.TO": {
+    "name": "Canadian Natural Resources",
+    "currency": "CAD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "TSX",
+    "sector": "Energy",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Energy": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "CNR.TO": {
+    "name": "Canadian National Railway",
+    "currency": "CAD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "TSX",
+    "sector": "Industrials",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Industrials": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "FTS.TO": {
+    "name": "Fortis",
+    "currency": "CAD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "TSX",
+    "sector": "Utilities",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Utilities": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "ATD.TO": {
+    "name": "Alimentation Couche-Tard",
+    "currency": "CAD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "TSX",
+    "sector": "Consumer Staples",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Consumer Staples": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "SHOP.TO": {
+    "name": "Shopify",
+    "currency": "CAD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "TSX",
+    "sector": "Information Technology",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Information Technology": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "CSU.TO": {
+    "name": "Constellation Software",
+    "currency": "CAD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "TSX",
+    "sector": "Information Technology",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Information Technology": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "AAPL": {
+    "name": "Apple",
+    "currency": "USD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "NASDAQ",
+    "sector": "Information Technology",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Information Technology": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "MSFT": {
+    "name": "Microsoft",
+    "currency": "USD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "NASDAQ",
+    "sector": "Information Technology",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Information Technology": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "NVDA": {
+    "name": "NVIDIA",
+    "currency": "USD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "NASDAQ",
+    "sector": "Information Technology",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Information Technology": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "GOOGL": {
+    "name": "Alphabet (Class A)",
+    "currency": "USD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "NASDAQ",
+    "sector": "Communication Services",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Communication Services": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "AMZN": {
+    "name": "Amazon",
+    "currency": "USD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "NASDAQ",
+    "sector": "Consumer Discretionary",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Consumer Discretionary": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "TSLA": {
+    "name": "Tesla",
+    "currency": "USD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "NASDAQ",
+    "sector": "Consumer Discretionary",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Consumer Discretionary": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "JPM": {
+    "name": "JPMorgan Chase",
+    "currency": "USD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "NYSE",
+    "sector": "Financials",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Financials": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "JNJ": {
+    "name": "Johnson & Johnson",
+    "currency": "USD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "NYSE",
+    "sector": "Health Care",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Health Care": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "PG": {
+    "name": "Procter & Gamble",
+    "currency": "USD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "NYSE",
+    "sector": "Consumer Staples",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Consumer Staples": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "XOM": {
+    "name": "Exxon Mobil",
+    "currency": "USD",
+    "asset_class": "equities",
+    "instrument_type": "equity",
+    "market": "NYSE",
+    "sector": "Energy",
+    "is_single_stock": true,
+    "is_crypto": false,
+    "sector_weights": {
+      "Energy": 1.0
+    },
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "XIU.TO": {
+    "name": "iShares S&P/TSX 60 Index ETF",
+    "currency": "CAD",
+    "asset_class": "equities",
+    "instrument_type": "etf_equity",
+    "market": "TSX",
+    "sector": null,
+    "is_single_stock": false,
+    "is_crypto": false,
+    "sector_weights": null,
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "SPY": {
+    "name": "SPDR S&P 500 ETF Trust",
+    "currency": "USD",
+    "asset_class": "equities",
+    "instrument_type": "etf_equity",
+    "market": "NYSE Arca",
+    "sector": null,
+    "is_single_stock": false,
+    "is_crypto": false,
+    "sector_weights": null,
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "QQQ": {
+    "name": "Invesco QQQ Trust (Nasdaq-100)",
+    "currency": "USD",
+    "asset_class": "equities",
+    "instrument_type": "etf_equity",
+    "market": "NASDAQ",
+    "sector": null,
+    "is_single_stock": false,
+    "is_crypto": false,
+    "sector_weights": null,
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "ESGV": {
+    "name": "Vanguard ESG U.S. Stock ETF",
+    "currency": "USD",
+    "asset_class": "equities",
+    "instrument_type": "etf_equity",
+    "market": "Cboe BZX",
+    "sector": null,
+    "is_single_stock": false,
+    "is_crypto": false,
+    "sector_weights": null,
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "XBB.TO": {
+    "name": "iShares Core Canadian Universe Bond Index ETF",
+    "currency": "CAD",
+    "asset_class": "fixed_income",
+    "instrument_type": "etf_bond",
+    "market": "TSX",
+    "sector": null,
+    "is_single_stock": false,
+    "is_crypto": false,
+    "sector_weights": {},
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "ZST.TO": {
+    "name": "BMO Ultra Short-Term Bond ETF",
+    "currency": "CAD",
+    "asset_class": "cash",
+    "instrument_type": "etf_bond",
+    "market": "TSX",
+    "sector": null,
+    "is_single_stock": false,
+    "is_crypto": false,
+    "sector_weights": {},
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "AGG": {
+    "name": "iShares Core U.S. Aggregate Bond ETF",
+    "currency": "USD",
+    "asset_class": "fixed_income",
+    "instrument_type": "etf_bond",
+    "market": "NYSE Arca",
+    "sector": null,
+    "is_single_stock": false,
+    "is_crypto": false,
+    "sector_weights": {},
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "TLT": {
+    "name": "iShares 20+ Year Treasury Bond ETF",
+    "currency": "USD",
+    "asset_class": "fixed_income",
+    "instrument_type": "etf_bond",
+    "market": "NASDAQ",
+    "sector": null,
+    "is_single_stock": false,
+    "is_crypto": false,
+    "sector_weights": {},
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "GLD": {
+    "name": "SPDR Gold Shares",
+    "currency": "USD",
+    "asset_class": "alternatives",
+    "instrument_type": "etf_commodity",
+    "market": "NYSE Arca",
+    "sector": null,
+    "is_single_stock": false,
+    "is_crypto": false,
+    "sector_weights": {},
+    "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
+    "esg_tags": null
+  },
+  "BTC-USD": {
+    "name": "Bitcoin",
+    "currency": "USD",
+    "asset_class": "alternatives",
+    "instrument_type": "crypto",
+    "market": "Crypto (24/7)",
+    "sector": null,
+    "is_single_stock": false,
+    "is_crypto": true,
+    "sector_weights": {},
+    "mapping_source": "Starter build_dataset.py; crypto is an alternative asset per project requirement; separate crypto cap still applies.",
+    "esg_tags": null
+  },
+  "ETH-USD": {
+    "name": "Ether",
+    "currency": "USD",
+    "asset_class": "alternatives",
+    "instrument_type": "crypto",
+    "market": "Crypto (24/7)",
+    "sector": null,
+    "is_single_stock": false,
+    "is_crypto": true,
+    "sector_weights": {},
+    "mapping_source": "Starter build_dataset.py; crypto is an alternative asset per project requirement; separate crypto cap still applies.",
+    "esg_tags": null
+  }
+}

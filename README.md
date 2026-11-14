@@ -34,7 +34,7 @@ macOS ARM64; your teammate should confirm it on their computer.
 ## Everyday use
 
 - After pulling changes: `uv sync --locked`.
-- Run a script: `uv run python path/to/script.py` (once a script exists).
+- Run a script: `uv run python path/to/script.py`.
 - Add a package: `uv add PACKAGE`.
 - Remove a package: `uv remove PACKAGE`.
 - Upgrade one package: `uv lock --upgrade-package PACKAGE`, then `uv sync --locked`.
@@ -57,7 +57,7 @@ recommended Microsoft Python and Jupyter extensions.
    this repository's `.venv`. These UI selections must be made on each computer.
 
 The environment includes ipykernel, so no separate kernel registration is needed
-for VS Code. No project scripts or notebooks have been added yet.
+for VS Code. The Second Look component and its tests are described below.
 
 ## What the files do
 
@@ -74,3 +74,40 @@ repository root. `.env`, `.venv`, and Python caches are already ignored. The
 starter needs no environment variables; keep credentials out of committed files.
 
 More details: [uv project workflow](https://docs.astral.sh/uv/guides/projects/).
+
+## Second Look: reproduce output and integrate with AWS
+
+The component is included in [`second_look/`](second_look/README.md) on `ari.dev`.
+A teammate can update their checkout and run from the repository root:
+
+```sh
+git fetch origin
+git switch ari.dev
+git pull --ff-only origin ari.dev
+uv sync --locked
+uv run --directory second_look python -m second_look demo
+uv run --directory second_look python -m second_look serve
+```
+
+Open http://127.0.0.1:8000 for the dashboard; Ctrl+C stops the server. The demo
+prints green/yellow/red checks and writes results to
+`second_look/data/runtime/demo_results.json`. Generated outputs and `.venv` are
+not committed; raw inputs needed to regenerate them are included.
+
+Run the tests and build an offline AWS handoff bundle from this same directory:
+
+```sh
+uv run --directory second_look python -m unittest discover -s tests -v
+uv run --directory second_look python scripts/package_aws.py
+```
+
+The bundle is generated under `second_look/dist/aws/`. Use its `lambda.zip` for
+an existing rule Lambda and its `s3/` inputs in an existing bucket. Handler:
+`second_look.lambda_handler.handler`. Configure `DATA_BUCKET`, optional
+`DATA_PREFIX` (default `second-look`), and optional `AGENT_FUNCTION_NAME` for the
+existing Lambda that runs the team's AWS agent. No AWS resources are created.
+The [component README](second_look/README.md#existing-aws-adapter) documents the
+JSON contracts, S3 keys and red-reason handoff. An agent explanation cannot
+change the numerical verdict. Crypto counts as alternatives and also has its
+own cap. AWS calls are locally mocked in tests; live deployment/Bedrock execution
+has not been verified.
