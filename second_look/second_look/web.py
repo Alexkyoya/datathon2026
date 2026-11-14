@@ -35,7 +35,9 @@ def make_handler(root):
                     assets = runtime.load('config/assets.json')
                     policy = runtime.load('config/policy.json')
                     refs = runtime.load('config/reference_portfolios.json')
-                    return self.send(200, {'client': client, 'tickers': sorted(assets),
+                    info = {t: {k: a.get(k) for k in ('name', 'asset_class', 'instrument_type', 'currency', 'sector')}
+                            for t, a in assets.items()}
+                    return self.send(200, {'client': client, 'tickers': sorted(assets), 'assets': info,
                                           'references': build_references(refs, assets, policy),
                                           'reference_config': refs})
                 except (OSError, ValueError, KeyError) as exc:

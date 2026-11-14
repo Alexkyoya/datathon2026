@@ -142,7 +142,9 @@ def _context(params):
     policy = STORE.load("config/policy.json")
     refs = STORE.load("config/reference_portfolios.json")
     clients = sorted(p.stem for p in CLIENTS.glob("*.json"))
-    return {"client": client, "clients": clients, "tickers": sorted(assets),
+    info = {t: {k: a.get(k) for k in ("name", "asset_class", "instrument_type", "currency", "sector")}
+            for t, a in assets.items()}
+    return {"client": client, "clients": clients, "tickers": sorted(assets), "assets": info,
             "references": spectrum.build_references(refs, assets, policy), "reference_config": refs}
 
 

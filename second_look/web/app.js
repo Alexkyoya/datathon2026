@@ -70,12 +70,32 @@ async function start() {
   try {
     context=await api('/api/context?client_id='+encodeURIComponent(clientId()));const client=context.client;
     $('profile').textContent=`${client.name?client.name+' · ':''}Target: ${client.profile}`;clientPicker();demoButtons();$('client-context').textContent=`${client.horizon_years}-year horizon · ${client.objectives.join(', ').replaceAll('_',' ')}. Horizon and loss tolerance are context, not a new profile score.`;$('cash').textContent=`Available cash: ${client.cash_cad.toLocaleString('en-CA',{style:'currency',currency:'CAD'})}`;$('asof').textContent=`Holdings / decision date: ${client.holdings_as_of} · 00:00 UTC daily snapshot`;
-    context.tickers.forEach(ticker=>{const option=text('option',ticker);option.value=ticker;$('ticker').append(option);});$('ticker').value='SPY';drawSpectrum();
+    assetPicker();$('ticker').value='SPY';drawSpectrum();
     $('reference-source').textContent=`${context.reference_config.source.title}, page 1, recommended allocations. Version ${context.reference_config.version}.`;
     $('reference-rows').replaceChildren(...context.references.map(ref=>{const row=document.createElement('tr');[ref.category,...['ZST.TO','XBB.TO','XIU.TO','SPY','GLD'].map(t=>pct(ref.ticker_weights[t]))].forEach(v=>row.append(text('td',v)));return row;}));
   }catch(err){error(err);$('evaluate').disabled=true;}
 }
 $('trade-form').addEventListener('submit',event=>{event.preventDefault();evaluate();});
+// Readable asset list: grouped by type, "Name — TICKER (currency)".
+function assetGroup(a){
+  if(!a)return 'Other';
+  if(a.asset_class==='cash')return 'Cash-like';
+  if(a.asset_class==='fixed_income')return 'Bond funds';
+  if(a.instrument_type==='etf_equity')return 'Stock funds (ETFs)';
+  if(a.asset_class==='equities')return a.currency==='CAD'?'Canadian stocks':'U.S. stocks';
+  return a.instrument_type==='crypto'||/USD$/.test(a.name||'')?'Crypto':'Gold & alternatives';
+}
+function assetPicker(){
+  const info=context.assets||{};const order=['Canadian stocks','U.S. stocks','Stock funds (ETFs)','Bond funds','Cash-like','Gold & alternatives','Crypto','Other'];
+  const groups={};context.tickers.forEach(t=>{const g=assetGroup(info[t]);(groups[g]=groups[g]||[]).push(t);});
+  const select=$('ticker');select.replaceChildren();
+  order.filter(g=>groups[g]).forEach(g=>{
+    const og=document.createElement('optgroup');og.label=g;
+    groups[g].sort((x,y)=>((info[x]||{}).name||x).localeCompare((info[y]||{}).name||y)).forEach(t=>{
+      const a=info[t]||{};const extra=a.sector&&!/^Broad|^Sector|^Bonds|^Gold|^Crypto/.test(a.sector)?` · ${a.sector}`:'';
+      const o=text('option',`${a.name||t} — ${t} (${a.currency||''})${extra}`);o.value=t;og.append(o);});
+    select.append(og);});
+}
 function clientPicker(){
   if($('client-picker')||!context.clients)return;
   const select=document.createElement('select');select.id='client-picker';select.setAttribute('aria-label','Stored client');
