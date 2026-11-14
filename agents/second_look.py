@@ -33,7 +33,7 @@ DECISION_DATE = "2026-11-12"
 
 
 def model():
-    return BedrockModel(model_id=config.MODEL_ID, region_name=config.AWS_REGION, temperature=0.2)
+    return BedrockModel(model_id=config.MODEL_ID, region_name=config.AWS_REGION)  # no temperature: deprecated for newer Claude models
 
 
 COMMON_RULES = """
