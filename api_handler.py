@@ -30,8 +30,29 @@ def _resp(code, body):
             "body": json.dumps(body, default=str)}
 
 
+USAGE = {
+    "service": "Second Look - pre-trade check for self-directed investors (PolyFinances Datathon 2026)",
+    "note": "Simulation only. Not investment advice. Clients and holdings are fictional.",
+    "how_to_use": "POST JSON to this URL.",
+    "requests": {
+        "check_a_trade": {"client_id": "robert", "ticker": "NVDA", "amount_cad": 100000},
+        "red_with_reason": {"client_id": "robert", "ticker": "NVDA", "amount_cad": 100000,
+                            "reason": "AI demand is exploding and NVIDIA will double next year"},
+        "profile": {"action": "get_profile", "client_id": "robert"},
+    },
+    "flow": ["green: passes without interruption", "yellow: short warning, client confirms",
+             "red: returns needs_reason; send the client's reason to get the agents' explanation (1-2 min)"],
+    "demo_clients": {"robert": "59, conservative, retiring in 3-5 years",
+                     "mateo": "41, balanced, ESG preferences", "amira": "26, growth, long horizon"},
+    "response": {"result": "verdict + explanation", "trace": "every tool call, for verification"},
+}
+
+
 def handler(event, context=None):
     try:
+        method = (event.get("requestContext", {}).get("http", {}).get("method") or "POST").upper()
+        if method == "GET" or not event.get("body"):
+            return _resp(200, USAGE)
         raw = event.get("body") or "{}"
         if event.get("isBase64Encoded"):
             raw = base64.b64decode(raw).decode()

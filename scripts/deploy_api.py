@@ -110,7 +110,7 @@ def deploy_function(role):
 
 
 def function_url():
-    cors = {"AllowOrigins": ["*"], "AllowMethods": ["POST"], "AllowHeaders": ["content-type"], "MaxAge": 3600}
+    cors = {"AllowOrigins": ["*"], "AllowMethods": ["GET", "POST"], "AllowHeaders": ["content-type"], "MaxAge": 3600}
     try:
         url = lam.get_function_url_config(FunctionName=API_NAME)["FunctionUrl"]
         lam.update_function_url_config(FunctionName=API_NAME, AuthType="NONE", Cors=cors)
