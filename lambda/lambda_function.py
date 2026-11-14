@@ -33,7 +33,8 @@ DATA_WINDOW = "2021-11-12 to 2026-11-12"
 PRICE_SOURCE = "Yahoo Finance via the AlphaForge starter dataset (adj_close), converted to CAD with Bank of Canada USD/CAD"
 
 # Broad, diversified funds: not treated as a single issuer
-BROAD_ETFS = {"XIU.TO", "SPY", "QQQ", "ESGV", "XBB.TO", "ZST.TO", "AGG", "TLT"}
+BROAD_ETFS = {"XIU.TO", "SPY", "QQQ", "ESGV", "XBB.TO", "ZST.TO", "AGG", "TLT",
+              "XIT.TO", "XLK", "XEF.TO"}  # last three added by scripts/add_assets.py
 CRYPTO = {"BTC-USD", "ETH-USD"}
 
 

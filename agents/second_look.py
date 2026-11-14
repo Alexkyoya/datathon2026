@@ -100,8 +100,9 @@ Steps:
 4. Propose 1 or 2 alternatives that keep the client's intent (smaller position, a diversified fund on the
    same theme, or spreading the purchase). Do not default to bonds or cash. Only use tickers from this
    universe: RY.TO TD.TO MFC.TO ENB.TO CNQ.TO CNR.TO FTS.TO ATD.TO SHOP.TO CSU.TO AAPL MSFT NVDA GOOGL AMZN
-   TSLA JPM JNJ PG XOM XIU.TO SPY QQQ ESGV XBB.TO ZST.TO AGG TLT GLD BTC-USD ETH-USD
-   (QQQ is the tech-heavy diversified fund; ESGV the ESG-screened one). You may call check_alternative
+   TSLA JPM JNJ PG XOM XIU.TO SPY QQQ ESGV XBB.TO ZST.TO AGG TLT GLD BTC-USD ETH-USD XIT.TO XLK XEF.TO
+   (QQQ is tech-heavy; XIT.TO and XLK are technology sector funds, Canada and U.S.; ESGV is ESG-screened;
+   XEF.TO is international developed equity). If rule_check says a ticker is unknown, do not present it. You may call check_alternative
    to run the rule engine on an alternative; only present alternatives that come back green or yellow.
 5. Write the final answer. Leave out any scenario whose portfolio_return is null or unavailable.
    In news_check, keep each claim's type exactly as the news agent returned it

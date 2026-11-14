@@ -123,4 +123,4 @@ Demo cases: `robert SPY 2000` (green), `amira QQQ 6000` (yellow), `robert NVDA 1
 - Read data through `load_csv` / `load_json`. No local paths, no keys in code.
 - Placeholders: `rule_check` is a working baseline, to be replaced by the team rule engine (same output). `news_snapshot.json` needs real official items.
 
-Data: AlphaForge starter dataset (Yahoo Finance, Bank of Canada, FRED), 2021-11-12 to 2026-11-12, in CAD. Ranges: National Bank Financial, Investment Strategy, Fall 2026. Everything else in `profiles.json` is a team assumption or fictional.
+Data: AlphaForge starter dataset (Yahoo Finance, Bank of Canada, FRED), 2021-11-12 to 2026-11-12, in CAD. Three extra ETFs (XIT.TO, XLK, XEF.TO) are added with `uv run --with yfinance python scripts/add_assets.py`, using the same method and window as the organizers' `build_dataset.py`. Run it after copying the starter CSVs, then upload to S3. Ranges: National Bank Financial, Investment Strategy, Fall 2026. Everything else in `profiles.json` is a team assumption or fictional.
