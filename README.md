@@ -110,7 +110,11 @@ A pre-trade check for self-directed investors. Simulation only, not investment a
 
 Demo cases: `robert SPY 2000` (green), `amira QQQ 6000` (yellow), `robert NVDA 100000` (red), `mateo XOM 3000` (red, exclusion list).
 
-## Lambda (console)
+## Lambda
+
+One command, safe to re-run after every change to `lambda_function.py`: `uv run python scripts/deploy_lambda.py`. It creates the IAM role, finds the pandas layer, creates or updates the function, and runs a test call.
+
+Manual alternative (console):
 
 1. Create the function `second-look-tools` (Python 3.12) and paste `lambda/lambda_function.py`.
 2. Add the layer `AWSSDKPandas-Python312`. Set memory to 1024 MB and the timeout to 1 min.
