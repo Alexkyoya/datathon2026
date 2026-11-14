@@ -74,3 +74,53 @@ repository root. `.env`, `.venv`, and Python caches are already ignored. The
 starter needs no environment variables; keep credentials out of committed files.
 
 More details: [uv project workflow](https://docs.astral.sh/uv/guides/projects/).
+
+---
+
+# Second Look (agents + AWS)
+
+A pre-trade check for self-directed investors. Simulation only, not investment advice.
+
+**Flow:** the rule engine (`rule_check`, plain code in Lambda) runs first. Green passes and yellow asks for a confirmation. Red asks the client why, then the Strands agents on Bedrock (Coordinator → Profile, Financial Data, News) write a JSON explanation for the dashboard. The verdict always comes from the rule engine. Every tool call is logged in CloudWatch, and every run (result + trace) is saved to `s3://<bucket>/runs/`.
+
+## Files
+
+- `config.py`: region (`us-east-1`), bucket, Lambda name, Bedrock model ID
+- `lambda/lambda_function.py`: all tools: `get_profile`, `rule_check`, `risk_metrics`, `macro_snapshot`, `news_check`
+- `agents/tools.py`: Strands tools that call the Lambda, plus the trace
+- `agents/second_look.py`: agents, prompts and the green/yellow/red flow
+- `data/profiles.json`: NBF ranges, team assumptions and fictional clients
+- `data/news_snapshot.json`: **PLACEHOLDER**, to be replaced with real official items
+- `scripts/test_bedrock.py`, `scripts/upload_to_s3.py`
+- `tests/test_tools_local.py`: runs the tools on real data, no AWS needed
+
+## Setup
+
+1. Copy the starter CSVs (`prices_daily.csv`, `fx_usdcad_daily.csv`, `macro_rates.csv`, `assets_universe.csv`) from the organizers' zip into `data/`. They're git-ignored because of the Yahoo Finance terms.
+2. Add the AWS packages once (this updates `pyproject.toml` and `uv.lock`, so commit both): `uv add boto3 strands-agents`
+3. AWS credentials: `aws configure` (region `us-east-1`). Never commit keys.
+
+## Run
+
+- Local tools test: `uv run python tests/test_tools_local.py` should print `ALL GOOD`.
+- Bedrock check: `uv run python scripts/test_bedrock.py`
+- Upload data to S3: `uv run python scripts/upload_to_s3.py`
+- Agents with local tools: `uv run python agents/second_look.py --client robert --ticker NVDA --amount 100000 --local`
+- Agents with the Lambda: the same command without `--local`
+
+Demo cases: `robert SPY 2000` (green), `amira QQQ 6000` (yellow), `robert NVDA 100000` (red), `mateo XOM 3000` (red, exclusion list).
+
+## Lambda (console)
+
+1. Create the function `second-look-tools` (Python 3.12) and paste `lambda/lambda_function.py`.
+2. Add the layer `AWSSDKPandas-Python312`. Set memory to 1024 MB and the timeout to 1 min.
+3. Environment variables: `DATA_BUCKET=<bucket>`, `DATA_PREFIX=data/`. Give the execution role S3 read access.
+4. Test event: `{"action": "rule_check", "client_id": "robert", "ticker": "NVDA", "amount_cad": 100000}` should return red.
+
+## Contributing to the agent pipeline
+
+- Write plain functions with JSON in and JSON out, and keep the output fields of the action you replace.
+- Read data through `load_csv` / `load_json`. No local paths, no keys in code.
+- Placeholders: `rule_check` is a working baseline, to be replaced by the team rule engine (same output). `news_snapshot.json` needs real official items.
+
+Data: AlphaForge starter dataset (Yahoo Finance, Bank of Canada, FRED), 2021-11-12 to 2026-11-12, in CAD. Ranges: National Bank Financial, Investment Strategy, Fall 2026. Everything else in `profiles.json` is a team assumption or fictional.

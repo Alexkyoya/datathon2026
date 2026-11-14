@@ -1,0 +1,25 @@
+{
+  "_note": "PLACEHOLDER. Daniel replaces this file with real official items (SEC EDGAR, company IR pages, Fed, Bank of Canada). Keep the same fields. Only items with published_date <= decision_date are returned.",
+  "items": [
+    {
+      "id": "placeholder-1",
+      "ticker": "NVDA",
+      "source_name": "PLACEHOLDER - replace with a real filing or press release",
+      "source_type": "company_filing",
+      "url": "",
+      "published_date": "2026-08-27",
+      "title": "PLACEHOLDER: latest quarterly results",
+      "text": "Placeholder text. Replace with the relevant excerpt of a real official document."
+    },
+    {
+      "id": "placeholder-2",
+      "ticker": "MACRO",
+      "source_name": "PLACEHOLDER - replace with a Bank of Canada or Fed announcement",
+      "source_type": "central_bank",
+      "url": "",
+      "published_date": "2026-10-29",
+      "title": "PLACEHOLDER: latest policy rate decision",
+      "text": "Placeholder text. Replace with the relevant excerpt of a real announcement."
+    }
+  ]
+}

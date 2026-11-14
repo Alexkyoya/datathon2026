@@ -218,3 +218,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Second Look
+# Starter CSVs are not committed (Yahoo Finance terms). Copy them into data/ locally.
+data/*.csv
+runs/
