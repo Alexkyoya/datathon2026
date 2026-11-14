@@ -137,11 +137,13 @@ def _explain(total, band, applied, profile):
 
 
 def build_client(client_id, name, age, answers, cash_cad, holdings, holdings_as_of,
-                 preferences=None, fictional=True):
+                 preferences=None, fictional=True, goals=None, income=None):
     """Stored client record in the component format (see examples/clients/*.json).
 
     holdings: {ticker: units}. cash_cad: cash ledger in CAD. preferences: optional
-    {'excluded_tickers': [...], 'excluded_sectors': [...]}.
+    {'excluded_tickers': [...], 'excluded_sectors': [...], 'esg': {...}}. goals and
+    income are passed through unchanged for the goal-coverage rule (goals.py) and are
+    validated by contracts.validate_client when the client is evaluated.
     """
     identifier(client_id)
     if not isinstance(name, str) or not name.strip():
@@ -152,8 +154,18 @@ def build_client(client_id, name, age, answers, cash_cad, holdings, holdings_as_
         raise ValueError('holdings must map ticker to non-negative units')
     prefs = {'excluded_tickers': [], 'excluded_sectors': []}
     prefs.update(preferences or {})
+    if goals is not None and not isinstance(goals, list):
+        raise ValueError('goals must be a list')
+    if income is not None and not isinstance(income, dict):
+        raise ValueError('income must be an object')
     placement = place_investor(answers)
+    extra = {}
+    if goals is not None:
+        extra['goals'] = goals
+    if income is not None:
+        extra['income'] = income
     return {
+        **extra,
         'client_id': client_id, 'name': name.strip(), 'age': age,
         'profile': placement['profile'],
         'horizon_years': number(answers['horizon_years'], 'horizon_years'),

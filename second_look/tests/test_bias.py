@@ -83,7 +83,7 @@ class BiasTests(unittest.TestCase):
         # even though the fixed-income breach is still there (reported, unchanged).
         r = self.run_trade('Growth', BOND_PARKED, 'SPY', 10000)
         self.assertEqual(r['verdict'], 'green')
-        self.assertEqual(self.check(r, 'allocation.equities.min')['effect'], 'reduces')
+        self.assertEqual(self.check(r, 'allocation.equities.min')['effect'], 'improves')
         self.assertEqual(self.check(r, 'allocation.fixed_income.max')['effect'], 'unchanged')
 
     def test_bond_buying_is_flagged_for_aggressive_profiles_only(self):

@@ -62,7 +62,8 @@ def main():
     spec = json.loads(Path(args.answers_file).read_text(encoding='utf-8'))
     client = build_client(spec['client_id'], spec['name'], spec['age'], spec['answers'],
                           spec['cash_cad'], spec['holdings'], spec['holdings_as_of'],
-                          spec.get('preferences'), spec.get('fictional', True))
+                          spec.get('preferences'), spec.get('fictional', True),
+                          goals=spec.get('goals'), income=spec.get('income'))
     show(client['client_id'], place_investor(spec['answers']))
     if args.write:
         out = ROOT / 'examples' / 'clients' / f'{client["client_id"]}.json'
