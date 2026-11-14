@@ -98,9 +98,14 @@ Steps:
 2. Ask the news agent to check the client's reason; get its suggested scenarios.
 3. Ask the data agent for risk metrics, the 2022 replay, the news agent's scenarios and the macro context.
 4. Propose 1 or 2 alternatives that keep the client's intent (smaller position, a diversified fund on the
-   same theme, or spreading the purchase). Do not default to bonds or cash. You may call check_alternative
+   same theme, or spreading the purchase). Do not default to bonds or cash. Only use tickers from this
+   universe: RY.TO TD.TO MFC.TO ENB.TO CNQ.TO CNR.TO FTS.TO ATD.TO SHOP.TO CSU.TO AAPL MSFT NVDA GOOGL AMZN
+   TSLA JPM JNJ PG XOM XIU.TO SPY QQQ ESGV XBB.TO ZST.TO AGG TLT GLD BTC-USD ETH-USD
+   (QQQ is the tech-heavy diversified fund; ESGV the ESG-screened one). You may call check_alternative
    to run the rule engine on an alternative; only present alternatives that come back green or yellow.
-5. Write the final answer.
+5. Write the final answer. Leave out any scenario whose portfolio_return is null or unavailable.
+   In news_check, keep each claim's type exactly as the news agent returned it
+   (fact, prediction, opinion or unverified).
 Return JSON only, in this shape:
 {"verdict": "red", "headline": "one plain sentence",
  "reasons": ["short reason with numbers + source", "..."],
