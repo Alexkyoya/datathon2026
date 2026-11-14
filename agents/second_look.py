@@ -210,6 +210,12 @@ def run(client_id, ticker, amount_cad, reason=None, interactive=True):
     else:
         if reason is None and interactive:
             reason = input("This trade conflicts with your profile. Why do you want to buy it? > ")
+        if reason is None:  # API step 1: stop here, the dashboard asks the client why, then calls again
+            result = {"verdict": "red", "needs_reason": True,
+                      "message": "This trade conflicts with your profile. Why do you want to buy it?",
+                      "rule_check": rc}
+            result["saved_to"] = save_run(result)
+            return result
         reason = reason or "(no reason given)"
         coordinator = Agent(model=model(), system_prompt=COORDINATOR_PROMPT,
                             tools=[ask_profile_agent, ask_news_agent, ask_data_agent, check_alternative])

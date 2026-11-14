@@ -121,6 +121,17 @@ Manual alternative (console):
 3. Environment variables: `DATA_BUCKET=<bucket>`, `DATA_PREFIX=data/`. Give the execution role S3 read access.
 4. Test event: `{"action": "rule_check", "client_id": "robert", "ticker": "NVDA", "amount_cad": 100000}` should return red.
 
+## API for the dashboard
+
+`uv run python scripts/deploy_api.py` deploys the agents as a second Lambda (`second-look-api`) with a public HTTPS URL. It prints the URL at the end, and it's safe to re-run after changes to `agents/` or `api_handler.py`.
+
+POST JSON to the URL:
+- `{"client_id": "robert", "ticker": "NVDA", "amount_cad": 100000}` returns green, yellow, or red with `"needs_reason": true` (no agents run yet).
+- The same call plus `"reason": "..."` returns the full red explanation (about 1–2 min, so show a spinner).
+- `{"action": "get_profile", "client_id": "robert"}` returns profile data for the dashboard (also `risk_metrics` and `macro_snapshot`).
+
+The response is `{"result": {...}, "trace": [...]}`. The trace lists every tool call and feeds the evidence panel. The URL is public (no auth) for the demo, so don't share it outside the team.
+
 ## Contributing to the agent pipeline
 
 - Write plain functions with JSON in and JSON out, and keep the output fields of the action you replace.
