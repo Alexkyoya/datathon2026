@@ -1,0 +1,33 @@
+{
+  "client_id": "mateo",
+  "name": "Mateo",
+  "age": 41,
+  "profile": "Balanced",
+  "horizon_years": 10,
+  "objectives": [
+    "balanced_growth"
+  ],
+  "loss_tolerance_fraction": 0.2,
+  "preferences": {
+    "excluded_tickers": [
+      "XOM",
+      "CNQ.TO"
+    ],
+    "excluded_sectors": []
+  },
+  "cash_cad": 14000,
+  "holdings_as_of": "2026-11-13",
+  "holdings": {
+    "XBB.TO": 1089.7202655386754,
+    "AGG": 132.6102524299841,
+    "TLT": 131.9947755749248,
+    "ESGV": 131.57556447651925,
+    "XIU.TO": 329.97250834046764,
+    "FTS.TO": 59.2206561648703,
+    "RY.TO": 13.82217696764693,
+    "ATD.TO": 48.49660347369289,
+    "GLD": 13.836843786808044
+  },
+  "fictional": true,
+  "source": "data/profiles.json (team persona file)"
+}

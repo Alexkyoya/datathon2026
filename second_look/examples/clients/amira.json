@@ -1,0 +1,29 @@
+{
+  "client_id": "amira",
+  "name": "Amira",
+  "age": 26,
+  "profile": "Growth",
+  "horizon_years": 15,
+  "objectives": [
+    "long_term_growth"
+  ],
+  "loss_tolerance_fraction": 0.3,
+  "preferences": {
+    "excluded_tickers": [],
+    "excluded_sectors": []
+  },
+  "cash_cad": 5000,
+  "holdings_as_of": "2026-11-13",
+  "holdings": {
+    "SPY": 11.581853724551483,
+    "QQQ": 7.64536662508555,
+    "XIU.TO": 91.65903009457433,
+    "SHOP.TO": 9.550642098263845,
+    "NVDA": 8.442243628131758,
+    "XBB.TO": 454.05011064111477,
+    "GLD": 4.9417299238600165,
+    "BTC-USD": 0.014749349270425167
+  },
+  "fictional": true,
+  "source": "data/profiles.json (team persona file)"
+}

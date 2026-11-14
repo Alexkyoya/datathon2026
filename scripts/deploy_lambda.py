@@ -4,10 +4,10 @@
 
 What it does (same as the manual console steps in the README):
   1. IAM role for the Lambda (logs + S3 read), created once
-  2. Zips lambda/lambda_function.py
+  2. Zips lambda/lambda_function.py + the team rule engine (second_look/second_look) and its config
   3. Finds the AWS-managed pandas layer (AWSSDKPandas-Python312)
   4. Creates the function, or updates its code + settings if it already exists
-  5. Test call: rule_check robert NVDA 100000 -> should print "red"
+  5. Test call: rule_check robert NVDA 24000 -> should print "red"
 """
 import io
 import json
@@ -61,6 +61,14 @@ def code_zip():
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         z.write(os.path.join(ROOT, "lambda", "lambda_function.py"), "lambda_function.py")
+        # team rule engine (stdlib only) + its config, loaded by lambda_function.engine()
+        eng = os.path.join(ROOT, "second_look", "second_look")
+        for f in sorted(os.listdir(eng)):
+            if f.endswith(".py"):
+                z.write(os.path.join(eng, f), "sl_engine/" + f)
+        cfg = os.path.join(ROOT, "second_look", "config")
+        for f in ("assets.json", "policy.json", "reference_portfolios.json"):
+            z.write(os.path.join(cfg, f), "sl_config/" + f)
     return buf.getvalue()
 
 
@@ -97,9 +105,9 @@ def main():
                 raise
         lam.get_waiter("function_active_v2").wait(FunctionName=config.LAMBDA_NAME)
 
-    print("Test call: rule_check robert NVDA 100000 ...")
+    print("Test call: rule_check robert NVDA 24000 ...")
     resp = lam.invoke(FunctionName=config.LAMBDA_NAME, Payload=json.dumps(
-        {"action": "rule_check", "client_id": "robert", "ticker": "NVDA", "amount_cad": 100000}).encode())
+        {"action": "rule_check", "client_id": "robert", "ticker": "NVDA", "amount_cad": 24000}).encode())
     out = json.loads(resp["Payload"].read())
     if "error" in out or "errorMessage" in out:
         print("Lambda returned an error:", out)

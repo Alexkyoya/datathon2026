@@ -21,13 +21,18 @@ def check(client, ticker, amount, expected):
 
 ok = all([
     check("robert", "SPY", 2000, "green"),
-    check("amira", "QQQ", 6000, "yellow"),
-    check("robert", "NVDA", 100000, "red"),
+    check("mateo", "ESGV", 12000, "yellow"),
+    check("robert", "NVDA", 24000, "red"),
     check("mateo", "XOM", 3000, "red"),
+    check("amira", "ETH-USD", 3000, "red"),
 ])
 
+r = L.lambda_handler({"action": "rule_check", "client_id": "robert", "ticker": "NVDA", "amount_cad": 100000})
+assert "Insufficient cash" in r.get("error", ""), r
+print("OK  robert NVDA 100,000 rejected: only 24,000 CAD cash (purchases are cash-funded)")
+
 r = L.lambda_handler({"action": "risk_metrics", "tickers": ["NVDA"], "client_id": "robert",
-                      "ticker": "NVDA", "amount_cad": 100000})
+                      "ticker": "NVDA", "amount_cad": 24000})
 assert "error" not in r, r
 print("NVDA max drawdown:", r["assets"]["NVDA"]["max_drawdown"],
       "| Robert after trade, 2022 replay:", r["scenarios"][0]["portfolio_return"])

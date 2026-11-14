@@ -24,9 +24,14 @@ def make_handler(root):
             self.wfile.write(encoded)
 
         def do_GET(self):
-            if self.path == '/api/context':
+            if self.path == '/api/context' or self.path.startswith('/api/context?'):
                 try:
-                    client = runtime.load('clients/demo_balanced.json')
+                    # optional ?client_id=robert|mateo|amira (default: demo_balanced)
+                    query = dict(p.split('=', 1) for p in self.path.partition('?')[2].split('&') if '=' in p)
+                    cid = query.get('client_id', 'demo_balanced')
+                    if not cid.replace('_', '').isalnum():
+                        raise ValueError('Invalid client_id')
+                    client = runtime.load(f'clients/{cid}.json')
                     assets = runtime.load('config/assets.json')
                     policy = runtime.load('config/policy.json')
                     refs = runtime.load('config/reference_portfolios.json')

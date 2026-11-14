@@ -1,12 +1,12 @@
 """Second Look API (Lambda + Function URL). Called by the dashboard.
 
 POST JSON, one of:
-  {"client_id": "robert", "ticker": "NVDA", "amount_cad": 100000}
+  {"client_id": "robert", "ticker": "NVDA", "amount_cad": 24000}
       -> green / yellow, or red with "needs_reason": true (no agents run yet)
-  {"client_id": "robert", "ticker": "NVDA", "amount_cad": 100000, "reason": "..."}
+  {"client_id": "robert", "ticker": "NVDA", "amount_cad": 24000, "reason": "..."}
       -> red: full agent explanation (about 1-2 minutes)
   {"action": "get_profile", "client_id": "robert"}            (any tools-Lambda action, for dashboard data)
-  {"action": "risk_metrics", "client_id": "robert", "ticker": "NVDA", "amount_cad": 100000, "tickers": ["NVDA"]}
+  {"action": "risk_metrics", "client_id": "robert", "ticker": "NVDA", "amount_cad": 24000, "tickers": ["NVDA"]}
 
 Response: {"result": {...}, "trace": [...]}  -- trace = every tool call (the evidence panel)
 """
@@ -35,8 +35,8 @@ USAGE = {
     "note": "Simulation only. Not investment advice. Clients and holdings are fictional.",
     "how_to_use": "POST JSON to this URL.",
     "requests": {
-        "check_a_trade": {"client_id": "robert", "ticker": "NVDA", "amount_cad": 100000},
-        "red_with_reason": {"client_id": "robert", "ticker": "NVDA", "amount_cad": 100000,
+        "check_a_trade": {"client_id": "robert", "ticker": "NVDA", "amount_cad": 24000},
+        "red_with_reason": {"client_id": "robert", "ticker": "NVDA", "amount_cad": 24000,
                             "reason": "AI demand is exploding and NVIDIA will double next year"},
         "profile": {"action": "get_profile", "client_id": "robert"},
     },
@@ -68,6 +68,6 @@ def handler(event, context=None):
                 return _resp(400, {"error": f"missing {k}"})
         res = S.run(req["client_id"], req["ticker"], float(req["amount_cad"]),
                     reason=req.get("reason"), interactive=False)
-        return _resp(200, {"result": res, "trace": T.TRACE})
+        return _resp(400 if "error" in res else 200, {"result": res, "trace": T.TRACE})
     except Exception as e:  # keep the dashboard informed instead of a bare 502
         return _resp(500, {"error": f"{type(e).__name__}: {e}"})

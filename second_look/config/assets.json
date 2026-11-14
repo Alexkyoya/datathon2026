@@ -441,5 +441,48 @@
     "sector_weights": {},
     "mapping_source": "Starter build_dataset.py; crypto is an alternative asset per project requirement; separate crypto cap still applies.",
     "esg_tags": null
+  },
+  "XIT.TO": {
+    "name": "iShares S&P/TSX Capped Information Technology Index ETF",
+    "currency": "CAD",
+    "asset_class": "equities",
+    "instrument_type": "etf_equity",
+    "market": "TSX",
+    "sector": "Information Technology",
+    "is_single_stock": false,
+    "is_crypto": false,
+    "sector_weights": {
+      "Information Technology": 1.0
+    },
+    "mapping_source": "scripts/add_assets.py (same yfinance method as starter build_dataset.py) + team mapping assumption",
+    "esg_tags": null
+  },
+  "XLK": {
+    "name": "Technology Select Sector SPDR Fund",
+    "currency": "USD",
+    "asset_class": "equities",
+    "instrument_type": "etf_equity",
+    "market": "NYSE Arca",
+    "sector": "Information Technology",
+    "is_single_stock": false,
+    "is_crypto": false,
+    "sector_weights": {
+      "Information Technology": 1.0
+    },
+    "mapping_source": "scripts/add_assets.py (same yfinance method as starter build_dataset.py) + team mapping assumption",
+    "esg_tags": null
+  },
+  "XEF.TO": {
+    "name": "iShares Core MSCI EAFE IMI Index ETF",
+    "currency": "CAD",
+    "asset_class": "equities",
+    "instrument_type": "etf_equity",
+    "market": "TSX",
+    "sector": null,
+    "is_single_stock": false,
+    "is_crypto": false,
+    "sector_weights": null,
+    "mapping_source": "scripts/add_assets.py (same yfinance method as starter build_dataset.py) + team mapping assumption",
+    "esg_tags": null
   }
 }

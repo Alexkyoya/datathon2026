@@ -6,7 +6,7 @@ Everything here is plain code: no LLM, same input -> same output.
 
 Actions
   get_profile     client profile + holdings + limits
-  rule_check      green / yellow / red for a proposed trade (placeholder of Oliver's rule engine, works end to end)
+  rule_check      green / yellow / red from the team rule engine in second_look/ (Ariane), plus spectrum position
   risk_metrics    volatility, max drawdown, recovery, 2022 replay, custom shocks (CAD)
   macro_snapshot  latest macro values as they were known on the decision date
   news_check      official items published before the decision date (from the news snapshot file)
@@ -15,11 +15,15 @@ Data location
   On AWS: env DATA_BUCKET + DATA_PREFIX (S3).
   Locally: env SECOND_LOOK_LOCAL=1 and DATA_DIR=<folder>.
 """
+import importlib
+import importlib.util
 import io
 import json
 import math
 import os
+import sys
 from functools import lru_cache
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -30,6 +34,7 @@ DATA_BUCKET = os.getenv("DATA_BUCKET", "")
 DATA_PREFIX = os.getenv("DATA_PREFIX", "data/")
 
 DATA_WINDOW = "2021-11-12 to 2026-11-12"
+DECISION_DATE = "2026-11-13"  # decided on the morning of Nov 13 with data through the Nov 12 close
 PRICE_SOURCE = "Yahoo Finance via the AlphaForge starter dataset (adj_close), converted to CAD with Bank of Canada USD/CAD"
 
 # Broad, diversified funds: not treated as a single issuer
@@ -115,23 +120,20 @@ def get_client(client_id):
 
 
 def simulate_trade(holdings, ticker, amount_cad, side="buy"):
-    """Buy: paid from CASH first, then other positions are sold pro rata. Sell: proceeds go to CASH."""
+    """Same convention as the team rule engine: a buy is paid from CASH only (other holdings are never
+    sold automatically); a sell adds the proceeds to CASH. Total value is unchanged."""
     h = {k: float(v) for k, v in holdings.items()}
     amt = float(amount_cad)
     if side == "sell":
-        amt = min(amt, h.get(ticker, 0.0))
+        if amt > h.get(ticker, 0.0) + 1e-6:
+            raise ValueError("Insufficient holdings; short sales are unsupported")
         h[ticker] = h.get(ticker, 0.0) - amt
         h["CASH"] = h.get("CASH", 0.0) + amt
     else:
-        total = sum(h.values())
-        amt = min(amt, total)
-        from_cash = min(h.get("CASH", 0.0), amt)
-        h["CASH"] = h.get("CASH", 0.0) - from_cash
-        rest = amt - from_cash
-        others = {k: v for k, v in h.items() if k not in ("CASH", ticker) and v > 0}
-        pool = sum(others.values())
-        for k, v in others.items():
-            h[k] = v - rest * v / pool if pool else v
+        if amt > h.get("CASH", 0.0) + 1e-6:
+            raise ValueError(f"Insufficient cash: {h.get('CASH', 0.0):,.0f} CAD available. "
+                             "Purchases are paid from cash only (ZST.TO is not sold automatically).")
+        h["CASH"] = h.get("CASH", 0.0) - amt
         h[ticker] = h.get(ticker, 0.0) + amt
     return {k: v for k, v in h.items() if v > 1e-6}
 
@@ -171,84 +173,72 @@ def get_profile(ev):
     }
 
 
-def _limits(c, prof, buffer_):
-    """Every rule as (name, low, high, value_fn, hard). Hard rules go straight to red when broken."""
-    rules = []
-    for cls, (lo, hi) in prof["ranges"].items():
-        rules.append((f"{cls}_range", lo, hi, lambda w, cls=cls: class_weights(w)[cls], False))
-    a = prof["assumptions"]
-    rules.append(("single_stock_max", 0.0, a["single_stock_max"],
-                  lambda w: max([x for t, x in single_issuer_weights(w).items() if t not in CRYPTO and asset_class(t) == "equity"] or [0.0]), True))
-    rules.append(("crypto_max", 0.0, a["crypto_max"], lambda w: sum(x for t, x in w.items() if t in CRYPTO), True))
-    excl = set(c.get("excluded_tickers", []))
-    rules.append(("excluded_holdings", 0.0, 0.0, lambda w: sum(x for t, x in w.items() if t in excl), True))
-    return rules
+# ---------------------------------------------------------------- team rule engine (second_look/)
+NBF_PROFILE = {"income": "Income", "conservative": "Conservative", "balanced": "Balanced",
+               "growth": "Growth", "max_growth": "Maximum growth"}
+_HERE = Path(__file__).resolve().parent
 
 
-def _deviation(v, lo, hi):
-    return max(0.0, lo - v, v - hi)
+def _engine_paths():
+    if (_HERE / "sl_engine").is_dir():  # inside the deployed Lambda zip
+        return _HERE / "sl_engine", _HERE / "sl_config"
+    return _HERE.parent / "second_look" / "second_look", _HERE.parent / "second_look" / "config"
+
+
+@lru_cache(maxsize=None)
+def engine():
+    """Load Ariane's engine under the name sl_engine (avoids clashing with agents/second_look.py)."""
+    pkg, cfg = _engine_paths()
+    if "sl_engine" not in sys.modules:
+        spec = importlib.util.spec_from_file_location("sl_engine", pkg / "__init__.py",
+                                                      submodule_search_locations=[str(pkg)])
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["sl_engine"] = mod
+        spec.loader.exec_module(mod)
+    rules = importlib.import_module("sl_engine.rules")
+    cfg_json = lambda n: json.loads((cfg / n).read_text(encoding="utf-8"))  # noqa: E731
+    return rules, cfg_json("assets.json"), cfg_json("policy.json"), cfg_json("reference_portfolios.json")
 
 
 def rule_check(ev):
-    """PLACEHOLDER of the rule engine (Oliver replaces the logic, keeps the output format)."""
-    data, c, prof = get_client(ev["client_id"])
-    buf = data["near_limit_buffer"]
-    before = weights(c["holdings_cad"])
-    after_h = simulate_trade(c["holdings_cad"], ev["ticker"], ev["amount_cad"], ev.get("side", "buy"))
-    after = weights(after_h)
-    order = {"green": 0, "yellow": 1, "red": 2}
-    verdict, findings = "green", []
+    """Green / yellow / red from the team rule engine (second_look/second_look/rules.py),
+    run on the stored client's CAD holdings. Output keeps the field names the agents use."""
+    _, c, prof = get_client(ev["client_id"])
+    rules, assets, policy, refs = engine()
+    holdings = {("CASH_CAD" if k == "CASH" else k): float(v) for k, v in c["holdings_cad"].items()}
+    client = {"client_id": ev["client_id"], "profile": NBF_PROFILE[c["profile"]],
+              "horizon_years": c["horizon_years"], "objectives": c["objectives"],
+              "loss_tolerance_fraction": prof["assumptions"]["loss_tolerance"],
+              "preferences": {"excluded_tickers": c.get("excluded_tickers", [])}}
+    req = {"client_id": ev["client_id"], "decision_date": ev.get("decision_date", DECISION_DATE),
+           "ticker": ev["ticker"], "side": ev.get("side", "buy"), "amount_cad": float(ev["amount_cad"])}
+    r = rules.evaluate_trade(req, client, holdings, assets, policy, refs)
+    cl = r.get("classification") or {}
 
-    for name, lo, hi, fn, hard in _limits(c, prof, buf):
-        vb, va = fn(before), fn(after)
-        db, da = _deviation(vb, lo, hi), _deviation(va, lo, hi)
-        if da == 0 and db == 0:
-            effect = "none"
-        elif db == 0:
-            effect = "creates"
-        elif da > db + 1e-9:
-            effect = "worsens"
-        elif da < db - 1e-9:
-            effect = "reduces"
-        else:
-            effect = "unchanged"
-        level = "green"
-        if effect in ("creates", "worsens"):
-            level = "red" if (hard or da > buf) else "yellow"
-        elif effect == "none" and not hard:
-            # close to a bound and the trade moved toward it
-            near_hi = hi - va < buf and va > vb + 1e-9
-            near_lo = lo > 0 and va - lo < buf and va < vb - 1e-9  # a minimum of 0% is not a risk bound
-            if near_hi or near_lo:
-                level, effect = "yellow", "approaches_limit"
-        if level != "green" or effect in ("reduces", "unchanged"):
-            findings.append({"rule": name, "limit_low": _f(lo), "limit_high": _f(hi),
-                             "before": _f(vb), "after": _f(va), "effect": effect, "level": level,
-                             "source": "NBF model portfolio range" if name.endswith("_range") else "team assumption"})
-        if order[level] > order[verdict]:
-            verdict = level
-
-    th = data["hhi_thresholds"]
-    hb, ha = hhi(before), hhi(after)
-    hhi_level = "green"
-    if ha > hb + 1e-9:
-        hhi_level = "red" if ha > th["concentrated"] else ("yellow" if ha > th["watch"] else "green")
-    if hhi_level != "green":
-        findings.append({"rule": "hhi_concentration", "limit_high": th["watch"], "before": _f(hb), "after": _f(ha),
-                         "effect": "worsens", "level": hhi_level, "source": "team assumption"})
-        if order[hhi_level] > order[verdict]:
-            verdict = hhi_level
+    def spot(key):
+        x = cl.get(key) or {}
+        return {"score": _f(x.get("score")), "distance": _f(x.get("distance")),
+                "membership": {k: _f(v) for k, v in (x.get("membership_weights") or {}).items() if v > 1e-10}}
 
     return {
-        "verdict": verdict, "client_id": ev["client_id"], "profile": c["profile"],
-        "trade": {"ticker": ev["ticker"], "side": ev.get("side", "buy"), "amount_cad": ev["amount_cad"]},
-        "decision_date": ev.get("decision_date", "2026-11-12"),
-        "findings": findings,
-        "class_weights_before": {k: _f(v) for k, v in class_weights(before).items()},
-        "class_weights_after": {k: _f(v) for k, v in class_weights(after).items()},
-        "weights_after": {k: _f(v) for k, v in sorted(after.items(), key=lambda kv: -kv[1])},
-        "hhi_before": _f(hb), "hhi_after": _f(ha),
-        "engine": "placeholder_v0 (to be replaced by the team rule engine)",
+        "verdict": r["verdict"] or "manual_review",
+        "client_id": ev["client_id"], "profile": client["profile"], "decision_date": req["decision_date"],
+        "trade": {"ticker": req["ticker"], "side": req["side"], "amount_cad": req["amount_cad"]},
+        "findings": [{"rule": x["rule"], "level": x["severity"], "bound": x["bound"], "limit": _f(x["limit"]),
+                      "before": _f(x["before"]), "after": _f(x["after"]), "effect": x["effect"],
+                      "source": x["source"]} for x in r["alerts"]],
+        "reasons": r["reasons"],
+        "unresolved": r["coverage"]["unresolved"],
+        "class_weights_before": {k: _f(v) for k, v in r["weights_before"].items()},
+        "class_weights_after": {k: _f(v) for k, v in r["weights_after"].items()},
+        "weights_after": {k: _f(v) for k, v in sorted(r["position_weights_after"].items(), key=lambda kv: -kv[1])},
+        "hhi_before": _f(r["hhi_before"]), "hhi_after": _f(r["hhi_after"]),
+        "spectrum": {"target_profile": client["profile"], "target_score": _f(cl.get("target_score")),
+                     "before": spot("before"), "after": spot("after"),
+                     "note": "Position on the NBF model-portfolio spectrum (0 = Income ... 4 = Maximum growth)."},
+        "portfolio_value_cad": _f(r["portfolio_value_cad"], 2),
+        "engine": f"team rule engine, policy {r['policy_version']}, references {r['reference_portfolio_version']}",
+        "assumptions": r["assumptions"],
     }
 
 
@@ -283,7 +273,7 @@ def _portfolio_nav(w, px):
 
 def risk_metrics(ev):
     """Historical risk for tickers and/or a portfolio, in CAD. Illustrates the past, never predicts."""
-    decision_date = pd.Timestamp(ev.get("decision_date", "2026-11-12"))
+    decision_date = pd.Timestamp(ev.get("decision_date", DECISION_DATE))
     px = prices_cad().loc[:decision_date]
     window = f"{px.index[0].date()} to {px.index[-1].date()}" if len(px) else None
     out = {"window": window, "currency": "CAD", "source": PRICE_SOURCE, "assets": {}}
@@ -364,7 +354,7 @@ MONTHLY = {"STATIC_TOTALCPICHANGE", "CPIAUCSL", "UNRATE"}
 def macro_snapshot(ev):
     """Latest value of each macro series known on the decision date. Monthly series are lagged 1 month
     because they are dated to the reference month, not the release date."""
-    d = pd.Timestamp(ev.get("decision_date", "2026-11-12"))
+    d = pd.Timestamp(ev.get("decision_date", DECISION_DATE))
     m = load_csv("macro_rates.csv").copy()
     m["date"] = pd.to_datetime(m["date"])
     m["available"] = m.apply(lambda r: r["date"] + pd.DateOffset(months=1) if r["series_id"] in MONTHLY else r["date"], axis=1)
@@ -387,7 +377,7 @@ def macro_snapshot(ev):
 def news_check(ev):
     """Return official items for a ticker (and macro items) published on or before the decision date.
     Classification of claims (fact / prediction / opinion / unverified) is done by the News agent."""
-    d = ev.get("decision_date", "2026-11-12")
+    d = ev.get("decision_date", DECISION_DATE)
     snap = load_json("news_snapshot.json")
     wanted = {ev.get("ticker", ""), "MACRO"}
     items = [i for i in snap["items"] if i["ticker"] in wanted and i["published_date"] <= d]

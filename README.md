@@ -105,10 +105,10 @@ A pre-trade check for self-directed investors. Simulation only, not investment a
 - Local tools test: `uv run python tests/test_tools_local.py` should print `ALL GOOD`.
 - Bedrock check: `uv run python scripts/test_bedrock.py`
 - Upload data to S3: `uv run python scripts/upload_to_s3.py`
-- Agents with local tools: `uv run python agents/second_look.py --client robert --ticker NVDA --amount 100000 --local`
+- Agents with local tools: `uv run python agents/second_look.py --client robert --ticker NVDA --amount 24000 --local`
 - Agents with the Lambda: the same command without `--local`
 
-Demo cases: `robert SPY 2000` (green), `amira QQQ 6000` (yellow), `robert NVDA 100000` (red), `mateo XOM 3000` (red, exclusion list).
+Demo cases (purchases are paid from cash): `robert SPY 2000` (green), `mateo ESGV 12000` (yellow, concentration watch), `amira ETH-USD 3000` (red, crypto cap), `robert NVDA 24000` (red, all his cash into one stock), `mateo XOM 3000` (red, exclusion list).
 
 ## Lambda
 
@@ -119,14 +119,14 @@ Manual alternative (console):
 1. Create the function `second-look-tools` (Python 3.12) and paste `lambda/lambda_function.py`.
 2. Add the layer `AWSSDKPandas-Python312`. Set memory to 1024 MB and the timeout to 1 min.
 3. Environment variables: `DATA_BUCKET=<bucket>`, `DATA_PREFIX=data/`. Give the execution role S3 read access.
-4. Test event: `{"action": "rule_check", "client_id": "robert", "ticker": "NVDA", "amount_cad": 100000}` should return red.
+4. Test event: `{"action": "rule_check", "client_id": "robert", "ticker": "NVDA", "amount_cad": 24000}` should return red.
 
 ## API for the dashboard
 
 `uv run python scripts/deploy_api.py` deploys the agents as a second Lambda (`second-look-api`) with a public HTTPS URL. It prints the URL at the end, and it's safe to re-run after changes to `agents/` or `api_handler.py`.
 
 POST JSON to the URL:
-- `{"client_id": "robert", "ticker": "NVDA", "amount_cad": 100000}` returns green, yellow, or red with `"needs_reason": true` (no agents run yet).
+- `{"client_id": "robert", "ticker": "NVDA", "amount_cad": 24000}` returns green, yellow, or red with `"needs_reason": true` (no agents run yet).
 - The same call plus `"reason": "..."` returns the full red explanation (about 1–2 min, so show a spinner).
 - `{"action": "get_profile", "client_id": "robert"}` returns profile data for the dashboard (also `risk_metrics` and `macro_snapshot`).
 
@@ -136,7 +136,7 @@ The response is `{"result": {...}, "trace": [...]}`. The trace lists every tool 
 
 - Write plain functions with JSON in and JSON out, and keep the output fields of the action you replace.
 - Read data through `load_csv` / `load_json`. No local paths, no keys in code.
-- Placeholders: `rule_check` is a working baseline, to be replaced by the team rule engine (same output). `news_snapshot.json` needs real official items.
+- `rule_check` runs the team rule engine in `second_look/` (Ariane's `rules.py` and `config/policy.json`), bundled into the tools Lambda by `deploy_lambda.py`. Purchases are paid from cash only. The demo personas live in `data/profiles.json` (CAD), and `second_look/scripts/make_persona_clients.py` writes them in the component's client format. `news_snapshot.json` holds official items (Daniel).
 
 Data: AlphaForge starter dataset (Yahoo Finance, Bank of Canada, FRED), 2021-11-12 to 2026-11-12, in CAD. Three extra ETFs (XIT.TO, XLK, XEF.TO) are added with `uv run --with yfinance python scripts/add_assets.py`, using the same method and window as the organizers' `build_dataset.py`. Run it after copying the starter CSVs, then upload to S3. Ranges: National Bank Financial, Investment Strategy, Fall 2026. Everything else in `profiles.json` is a team assumption or fictional.
 ## Second Look: reproduce output and integrate with AWS

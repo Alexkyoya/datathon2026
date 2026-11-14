@@ -44,6 +44,9 @@ class ProjectStore(FileStore):
             return json.loads((self.project/key).read_text())
         if key == 'clients/demo_balanced.json':
             return json.loads((self.project/'examples/client.json').read_text())
+        if key.startswith('clients/') and (self.project/'examples'/key).is_file():
+            # team personas (robert, mateo, amira) written by scripts/make_persona_clients.py
+            return json.loads((self.project/'examples'/key).read_text())
         return super().load(key)
 
 

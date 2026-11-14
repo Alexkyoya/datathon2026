@@ -1,51 +1,235 @@
 {
-  "_note": "Asset-class ranges come from National Bank Financial, Investment Strategy, Fall 2026 (model portfolios). Every field under 'assumptions' is our own design choice. Clients and holdings are fictional.",
+  "_note": "Asset-class ranges come from National Bank Financial, Investment Strategy, Fall 2026 (model portfolios). Every field under 'assumptions' is our own design choice. Clients and holdings are fictional. Rule checks use the team engine in second_look/ (config/policy.json is the authoritative copy of the limits). Purchases are paid from CASH only (no automatic sale of other holdings).",
   "profiles": {
     "income": {
-      "ranges": {"cash": [0.0, 0.20], "fixed_income": [0.60, 1.00], "equity": [0.0, 0.30], "alternatives": [0.0, 0.20]},
-      "assumptions": {"single_stock_max": 0.05, "crypto_max": 0.0, "loss_tolerance": 0.10, "horizon": "under 3 years"}
+      "ranges": {
+        "cash": [
+          0.0,
+          0.2
+        ],
+        "fixed_income": [
+          0.6,
+          1.0
+        ],
+        "equity": [
+          0.0,
+          0.3
+        ],
+        "alternatives": [
+          0.0,
+          0.2
+        ]
+      },
+      "assumptions": {
+        "single_stock_max": 0.05,
+        "crypto_max": 0.0,
+        "loss_tolerance": 0.1,
+        "horizon": "under 3 years"
+      }
     },
     "conservative": {
-      "ranges": {"cash": [0.0, 0.20], "fixed_income": [0.45, 0.80], "equity": [0.20, 0.45], "alternatives": [0.0, 0.20]},
-      "assumptions": {"single_stock_max": 0.05, "crypto_max": 0.0, "loss_tolerance": 0.15, "horizon": "3-5 years"}
+      "ranges": {
+        "cash": [
+          0.0,
+          0.2
+        ],
+        "fixed_income": [
+          0.45,
+          0.8
+        ],
+        "equity": [
+          0.2,
+          0.45
+        ],
+        "alternatives": [
+          0.0,
+          0.2
+        ]
+      },
+      "assumptions": {
+        "single_stock_max": 0.05,
+        "crypto_max": 0.0,
+        "loss_tolerance": 0.15,
+        "horizon": "3-5 years"
+      }
     },
     "balanced": {
-      "ranges": {"cash": [0.0, 0.20], "fixed_income": [0.30, 0.65], "equity": [0.30, 0.65], "alternatives": [0.0, 0.25]},
-      "assumptions": {"single_stock_max": 0.10, "crypto_max": 0.0, "loss_tolerance": 0.20, "horizon": "5-12 years"}
+      "ranges": {
+        "cash": [
+          0.0,
+          0.2
+        ],
+        "fixed_income": [
+          0.3,
+          0.65
+        ],
+        "equity": [
+          0.3,
+          0.65
+        ],
+        "alternatives": [
+          0.0,
+          0.25
+        ]
+      },
+      "assumptions": {
+        "single_stock_max": 0.1,
+        "crypto_max": 0.0,
+        "loss_tolerance": 0.2,
+        "horizon": "5-12 years"
+      }
     },
     "growth": {
-      "ranges": {"cash": [0.0, 0.25], "fixed_income": [0.20, 0.45], "equity": [0.40, 0.75], "alternatives": [0.0, 0.25]},
-      "assumptions": {"single_stock_max": 0.10, "crypto_max": 0.05, "loss_tolerance": 0.30, "horizon": "10+ years"}
+      "ranges": {
+        "cash": [
+          0.0,
+          0.25
+        ],
+        "fixed_income": [
+          0.2,
+          0.45
+        ],
+        "equity": [
+          0.4,
+          0.75
+        ],
+        "alternatives": [
+          0.0,
+          0.25
+        ]
+      },
+      "assumptions": {
+        "single_stock_max": 0.1,
+        "crypto_max": 0.05,
+        "loss_tolerance": 0.3,
+        "horizon": "10+ years"
+      }
     },
     "max_growth": {
-      "ranges": {"cash": [0.0, 0.30], "fixed_income": [0.0, 0.30], "equity": [0.55, 1.00], "alternatives": [0.0, 0.30]},
-      "assumptions": {"single_stock_max": 0.15, "crypto_max": 0.10, "loss_tolerance": 0.40, "horizon": "15+ years"}
+      "ranges": {
+        "cash": [
+          0.0,
+          0.3
+        ],
+        "fixed_income": [
+          0.0,
+          0.3
+        ],
+        "equity": [
+          0.55,
+          1.0
+        ],
+        "alternatives": [
+          0.0,
+          0.3
+        ]
+      },
+      "assumptions": {
+        "single_stock_max": 0.15,
+        "crypto_max": 0.1,
+        "loss_tolerance": 0.4,
+        "horizon": "15+ years"
+      }
     }
   },
-  "hhi_thresholds": {"watch": 0.15, "concentrated": 0.25},
+  "hhi_thresholds": {
+    "watch": 0.15,
+    "concentrated": 0.25
+  },
   "near_limit_buffer": 0.05,
   "clients": {
     "robert": {
-      "name": "Robert", "age": 59, "profile": "conservative", "experience": "advanced",
+      "name": "Robert",
+      "age": 59,
+      "profile": "conservative",
+      "experience": "advanced",
       "objective": "Preserve capital with some growth; retiring in 3-5 years",
-      "preferences": ["established companies", "little interest in crypto"],
+      "preferences": [
+        "established companies",
+        "little interest in crypto"
+      ],
       "excluded_tickers": [],
-      "holdings_cad": {"CASH": 10000, "XBB.TO": 110000, "ZST.TO": 10000, "XIU.TO": 25000, "SPY": 25000, "RY.TO": 8000, "FTS.TO": 8000, "JNJ": 4000}
+      "holdings_cad": {
+        "CASH": 24000,
+        "XBB.TO": 45000,
+        "AGG": 35000,
+        "TLT": 30000,
+        "XIU.TO": 20000,
+        "SPY": 20000,
+        "RY.TO": 5000,
+        "FTS.TO": 5000,
+        "JNJ": 5000,
+        "PG": 5000,
+        "GLD": 6000
+      },
+      "horizon_years": 4,
+      "objectives": [
+        "capital_preservation",
+        "some_growth"
+      ],
+      "portfolio_value_cad": 200000
     },
     "mateo": {
-      "name": "Mateo", "age": 41, "profile": "balanced", "experience": "intermediate",
+      "name": "Mateo",
+      "age": 41,
+      "profile": "balanced",
+      "experience": "intermediate",
       "objective": "Balanced growth over 8-12 years with ESG preferences",
-      "preferences": ["ESG matters a lot", "avoid companies he sees as controversial", "little interest in speculation"],
-      "excluded_tickers": ["XOM", "CNQ.TO"],
+      "preferences": [
+        "ESG matters a lot",
+        "avoid companies he sees as controversial",
+        "little interest in speculation"
+      ],
+      "excluded_tickers": [
+        "XOM",
+        "CNQ.TO"
+      ],
       "_excluded_note": "Fictional personal exclusion list chosen by the persona, not a claim about these companies.",
-      "holdings_cad": {"CASH": 6000, "XBB.TO": 48000, "ESGV": 30000, "XIU.TO": 18000, "FTS.TO": 6000, "RY.TO": 6000, "GLD": 6000}
+      "holdings_cad": {
+        "CASH": 14000,
+        "XBB.TO": 30000,
+        "AGG": 18000,
+        "TLT": 15000,
+        "ESGV": 25000,
+        "XIU.TO": 18000,
+        "FTS.TO": 5000,
+        "RY.TO": 4000,
+        "ATD.TO": 4000,
+        "GLD": 7000
+      },
+      "horizon_years": 10,
+      "objectives": [
+        "balanced_growth"
+      ],
+      "portfolio_value_cad": 140000
     },
     "amira": {
-      "name": "Amira", "age": 26, "profile": "growth", "experience": "intermediate",
+      "name": "Amira",
+      "age": 26,
+      "profile": "growth",
+      "experience": "intermediate",
       "objective": "Long-term growth over 15+ years",
-      "preferences": ["interested in AI and crypto", "wants some diversification, not only tech"],
+      "preferences": [
+        "interested in AI and crypto",
+        "wants some diversification, not only tech"
+      ],
       "excluded_tickers": [],
-      "holdings_cad": {"CASH": 2500, "SPY": 12500, "QQQ": 7500, "XIU.TO": 5000, "SHOP.TO": 2000, "NVDA": 2000, "XBB.TO": 12500, "GLD": 2500, "BTC-USD": 1500}
+      "holdings_cad": {
+        "CASH": 5000,
+        "SPY": 12500,
+        "QQQ": 7500,
+        "XIU.TO": 5000,
+        "SHOP.TO": 2000,
+        "NVDA": 2000,
+        "XBB.TO": 12500,
+        "GLD": 2500,
+        "BTC-USD": 1500
+      },
+      "horizon_years": 15,
+      "objectives": [
+        "long_term_growth"
+      ],
+      "portfolio_value_cad": 50500
     }
   }
 }

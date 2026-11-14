@@ -9,8 +9,8 @@ Flow
   4. Result + full trace saved (S3 on AWS, ./runs locally).
 
 Run
-  uv run python agents/second_look.py --client robert --ticker NVDA --amount 100000 --local
-  uv run python agents/second_look.py --client robert --ticker NVDA --amount 100000 --reason "AI demand is exploding"
+  uv run python agents/second_look.py --client robert --ticker NVDA --amount 24000 --local
+  uv run python agents/second_look.py --client robert --ticker NVDA --amount 24000 --reason "AI demand is exploding"
 """
 import argparse
 import json
@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import config  # noqa: E402
 import tools as T  # noqa: E402
 
-DECISION_DATE = "2026-11-12"
+DECISION_DATE = "2026-11-13"  # morning of Nov 13, data through the Nov 12 close
 
 
 def model():
@@ -203,10 +203,17 @@ def run(client_id, ticker, amount_cad, reason=None, interactive=True):
     if rc["verdict"] == "green":
         result = {"verdict": "green", "message": "Checked. Fits your profile.", "rule_check": rc}
     elif rc["verdict"] == "yellow":
-        msgs = [f"{f['rule']}: {f['before']:.0%} -> {f['after']:.0%} (limit {f.get('limit_low', 0):.0%}-{f['limit_high']:.0%})"
-                for f in rc["findings"] if f["level"] == "yellow"]
+        def fmt(f):
+            if f["rule"].startswith("hhi"):
+                return f"concentration (HHI) {f['before']:.3f} -> {f['after']:.3f} (watch from 0.150)"
+            return f"{f['rule']}: {f['before']:.0%} -> {f['after']:.0%} ({f['bound']} {f['limit']:.0%})"
+        msgs = [fmt(f) for f in rc["findings"] if f["level"] == "yellow"]
         result = {"verdict": "yellow", "message": "Heads-up before you confirm: " + "; ".join(msgs),
                   "needs_confirmation": True, "rule_check": rc}
+    elif rc["verdict"] == "manual_review":
+        result = {"verdict": "manual_review", "needs_confirmation": False,
+                  "message": "This trade can't be checked automatically: " + " ".join(rc.get("unresolved", [])),
+                  "rule_check": rc}
     else:
         if reason is None and interactive:
             reason = input("This trade conflicts with your profile. Why do you want to buy it? > ")

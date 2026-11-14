@@ -1,0 +1,32 @@
+{
+  "client_id": "robert",
+  "name": "Robert",
+  "age": 59,
+  "profile": "Conservative",
+  "horizon_years": 4,
+  "objectives": [
+    "capital_preservation",
+    "some_growth"
+  ],
+  "loss_tolerance_fraction": 0.15,
+  "preferences": {
+    "excluded_tickers": [],
+    "excluded_sectors": []
+  },
+  "cash_cad": 24000,
+  "holdings_as_of": "2026-11-13",
+  "holdings": {
+    "XBB.TO": 1634.5803983080132,
+    "AGG": 257.85326861385795,
+    "TLT": 263.9895511498496,
+    "XIU.TO": 366.63612037829733,
+    "SPY": 18.530965959282373,
+    "RY.TO": 17.277721209558663,
+    "FTS.TO": 59.2206561648703,
+    "JNJ": 12.371407130695324,
+    "PG": 20.87449404560944,
+    "GLD": 11.86015181726404
+  },
+  "fictional": true,
+  "source": "data/profiles.json (team persona file)"
+}
