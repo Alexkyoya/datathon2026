@@ -1,25 +1,55 @@
 {
-  "_note": "PLACEHOLDER. Daniel replaces this file with real official items (SEC EDGAR, company IR pages, Fed, Bank of Canada). Keep the same fields. Only items with published_date <= decision_date are returned.",
+  "_note": "Official-source summaries for the November 12, 2026 demo. Coverage is limited to these records. Dates are publication dates.",
   "items": [
     {
-      "id": "placeholder-1",
+      "id": "nvda-2026-08-26-10q",
       "ticker": "NVDA",
-      "source_name": "PLACEHOLDER - replace with a real filing or press release",
+      "source_name": "SEC EDGAR (NVIDIA Corporation)",
       "source_type": "company_filing",
-      "url": "",
-      "published_date": "2026-08-27",
-      "title": "PLACEHOLDER: latest quarterly results",
-      "text": "Placeholder text. Replace with the relevant excerpt of a real official document."
+      "url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000075/nvda-20260726.htm",
+      "published_date": "2026-08-26",
+      "title": "NVIDIA Form 10-Q for the quarter ended July 26, 2026",
+      "text": "NVIDIA filed quarterly results for the period ended July 26, 2026. It disclosed U.S. licensing restrictions on exports of certain chips to China. NVIDIA reported that restrictions on the Chinese side had limited sales even after the U.S. granted some H200 export licenses."
     },
     {
-      "id": "placeholder-2",
+      "id": "nvda-2026-08-26-earnings",
+      "ticker": "NVDA",
+      "source_name": "NVIDIA Investor Relations",
+      "source_type": "company_release",
+      "url": "https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-Second-Quarter-Fiscal-2027/default.aspx",
+      "published_date": "2026-08-26",
+      "title": "NVIDIA Announces Financial Results for Second Quarter Fiscal 2027",
+      "text": "For the fiscal quarter ended July 26, 2026, NVIDIA reported total revenue of US$96.2 billion, 106% above the year-earlier quarter. Data Center revenue was US$89.0 billion, up 117% year over year."
+    },
+    {
+      "id": "nvda-2026-10-28-call",
+      "ticker": "NVDA",
+      "source_name": "NVIDIA Investor Relations",
+      "source_type": "company_release",
+      "url": "https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Sets-Conference-Call-for-Third-Quarter-Financial-Results/default.aspx",
+      "published_date": "2026-10-28",
+      "title": "NVIDIA Sets Conference Call for Third-Quarter Financial Results",
+      "text": "NVIDIA announced a November 17, 2026 call to discuss fiscal third-quarter results for the period ended October 25. The announcement set the release schedule and provided no third-quarter results."
+    },
+    {
+      "id": "fed-2026-10-28",
       "ticker": "MACRO",
-      "source_name": "PLACEHOLDER - replace with a Bank of Canada or Fed announcement",
+      "source_name": "Federal Reserve",
       "source_type": "central_bank",
-      "url": "",
-      "published_date": "2026-10-29",
-      "title": "PLACEHOLDER: latest policy rate decision",
-      "text": "Placeholder text. Replace with the relevant excerpt of a real announcement."
+      "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261028a.htm",
+      "published_date": "2026-10-28",
+      "title": "Federal Reserve issues FOMC statement",
+      "text": "The FOMC kept the federal funds target range at 3.75% to 4.00%. The committee described inflation as elevated. Two members voted against the decision and preferred a 25-basis-point increase."
+    },
+    {
+      "id": "boc-2026-10-28",
+      "ticker": "MACRO",
+      "source_name": "Bank of Canada",
+      "source_type": "central_bank",
+      "url": "https://www.bankofcanada.ca/2026/10/fad-press-release-2026-10-28/",
+      "published_date": "2026-10-28",
+      "title": "Bank of Canada raises the policy rate by 25 basis points to 2½%",
+      "text": "The Bank of Canada increased its target for the overnight rate by 25 basis points to 2.50%."
     }
   ]
 }

@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "NVDA",
+    "decision_date": "2026-11-12",
+    "client_reason": "NVIDIA reported US$96.2 billion in revenue for the fiscal quarter ended July 26, 2026.",
+    "expected_types": ["fact"]
+  },
+  {
+    "ticker": "NVDA",
+    "decision_date": "2026-11-12",
+    "client_reason": "I think the AI boom will continue and NVIDIA's stock will double next year.",
+    "expected_types": ["prediction", "prediction"]
+  },
+  {
+    "ticker": "NVDA",
+    "decision_date": "2026-11-12",
+    "client_reason": "I prefer owning companies whose products I find exciting.",
+    "expected_types": ["opinion"]
+  },
+  {
+    "ticker": "NVDA",
+    "decision_date": "2026-11-12",
+    "client_reason": "I heard NVIDIA secretly signed an exclusive chip deal with a major cloud provider yesterday.",
+    "expected_types": ["unverified"]
+  },
+  {
+    "ticker": "NVDA",
+    "decision_date": "2026-11-12",
+    "client_reason": "The Fed cut rates at its October 28 meeting, and the Bank of Canada raised the overnight-rate target to 2.50% the same day.",
+    "expected_types": ["unverified", "fact"]
+  }
+]

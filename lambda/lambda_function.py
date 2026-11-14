@@ -252,6 +252,9 @@ def rule_check(ev):
 
 
 def _path_stats(nav):
+    if len(nav) < 2:
+        return dict.fromkeys(("max_drawdown", "peak_date", "trough_date", "recovery_date",
+                              "months_peak_to_recovery", "recovered"))
     dd = nav / nav.cummax() - 1
     trough = dd.idxmin()
     peak = nav[:trough].idxmax()
@@ -261,7 +264,7 @@ def _path_stats(nav):
     return {
         "max_drawdown": _f(dd.min()), "peak_date": str(peak.date()), "trough_date": str(trough.date()),
         "recovery_date": str(rec_date.date()) if rec_date is not None else None,
-        "months_peak_to_recovery": _f(((rec_date or nav.index[-1]) - peak).days / 30.44, 1),
+        "months_peak_to_recovery": _f((rec_date - peak).days / 30.44, 1) if rec_date is not None else None,
         "recovered": rec_date is not None,
     }
 
@@ -270,6 +273,8 @@ def _portfolio_nav(w, px):
     """Buy-and-hold path for a set of weights (CASH earns 0)."""
     cols = [t for t in w if t != "CASH"]
     sub = px[cols].dropna()
+    if sub.empty:
+        return pd.Series(dtype=float, index=sub.index)
     rel = sub / sub.iloc[0]
     nav = (rel * pd.Series({t: w[t] for t in cols})).sum(axis=1) + w.get("CASH", 0.0)
     return nav
@@ -277,13 +282,18 @@ def _portfolio_nav(w, px):
 
 def risk_metrics(ev):
     """Historical risk for tickers and/or a portfolio, in CAD. Illustrates the past, never predicts."""
-    px = prices_cad()
-    out = {"window": DATA_WINDOW, "currency": "CAD", "source": PRICE_SOURCE, "assets": {}}
+    decision_date = pd.Timestamp(ev.get("decision_date", "2026-11-12"))
+    px = prices_cad().loc[:decision_date]
+    window = f"{px.index[0].date()} to {px.index[-1].date()}" if len(px) else None
+    out = {"window": window, "currency": "CAD", "source": PRICE_SOURCE, "assets": {}}
     for t in ev.get("tickers", []):
         s = px[t].dropna()
         r = s.pct_change().dropna()
-        out["assets"][t] = {"vol_annual": _f(r.std() * np.sqrt(252)),
-                            "total_return": _f(s.iloc[-1] / s.iloc[0] - 1), **_path_stats(s)}
+        out["assets"][t] = {
+            "vol_annual": _f(r.std() * np.sqrt(252)),
+            "total_return": _f(s.iloc[-1] / s.iloc[0] - 1) if len(s) >= 2 else None,
+            **_path_stats(s),
+        }
 
     w = None
     if ev.get("weights"):
@@ -295,28 +305,55 @@ def risk_metrics(ev):
             h = simulate_trade(h, ev["ticker"], ev["amount_cad"], ev.get("side", "buy"))
         w = weights(h)
     if w:
+        if any(not math.isfinite(x) or x < 0 for x in w.values()) or not math.isclose(
+            sum(w.values()), 1.0, abs_tol=1e-6
+        ):
+            raise ValueError("Portfolio weights must be finite, nonnegative, and sum to one")
+        w = {t: x for t, x in w.items() if x}
         nav = _portfolio_nav(w, px)
         r = nav.pct_change().dropna()
         out["portfolio"] = {"weights": {k: _f(v) for k, v in w.items()},
                             "vol_annual": _f(r.std() * np.sqrt(252)), **_path_stats(nav)}
-        # Historical scenario: 2022 (rates up fast, stocks and bonds down together)
-        p22 = px.loc["2022-01-03":"2022-12-30"]
+
+        # A full calendar-year replay begins at the close immediately before 2022.
+        p22 = px.loc["2021-12-31":"2022-12-30"]
         nav22 = _portfolio_nav(w, p22)
-        out["scenarios"] = [{"name": "2022 replay", "type": "historical",
-                             "period": "2022-01-03 to 2022-12-30",
-                             "portfolio_return": _f(nav22.iloc[-1] / nav22.iloc[0] - 1),
-                             "max_drawdown_in_period": _path_stats(nav22)["max_drawdown"],
-                             "note": "What these weights would have done in 2022. Not a forecast."}]
-        # Custom shocks: {"equity": -0.2} or {"NVDA": -0.3}; ticker shocks override class shocks
-        for sc in ev.get("shocks", []):
+        full_replay = (
+            len(nav22) >= 2
+            and nav22.index[0] == pd.Timestamp("2021-12-31")
+            and nav22.index[-1] == pd.Timestamp("2022-12-30")
+        )
+        out["scenarios"] = [{
+            "name": "2022 replay", "type": "historical", "period": "2021-12-31 to 2022-12-30",
+            "portfolio_return": _f(nav22.iloc[-1] / nav22.iloc[0] - 1) if full_replay else None,
+            "max_drawdown_in_period": _path_stats(nav22)["max_drawdown"] if full_replay else None,
+            "note": ("CAD buy-and-hold replay using the analyzed weights and prior year-end close."
+                     if full_replay else "Full 2022 replay unavailable at the selected date or data coverage."),
+        }]
+
+        # First-order bond price change: -modified duration × change in yields.
+        # The duration is a team assumption for the fixed-income sleeve.
+        rate_shock = {"name": "Parallel +200 bp rate shock", "shock": {"fixed_income": -6.0 * 0.02}}
+        valid_keys = set(px.columns) | {"CASH", "cash", "fixed_income", "equity", "alternatives"}
+        for sc in [rate_shock, *(ev.get("shocks") or [])]:
             shock = sc["shock"]
-            impact = 0.0
-            for t, x in w.items():
-                s_ = shock.get(t, shock.get(asset_class(t), 0.0))
-                impact += x * s_
+            if any(k not in valid_keys or isinstance(v, bool) or not isinstance(v, (int, float))
+                   or not math.isfinite(v) or v < -1 for k, v in shock.items()):
+                raise ValueError("Shocks must map known tickers or asset classes to finite decimal returns >= -1")
+            impact = sum(x * (shock[t] if t in shock else shock.get(asset_class(t), 0.0))
+                         for t, x in w.items())
+            note = ("Team assumption: yields rise 200 bp and fixed-income modified duration is 6 years. "
+                    "First-order bond price impact only, with cash and other sleeves held flat."
+                    if sc is rate_shock else
+                    "Instant hypothetical shock on the analyzed CAD weights. Ticker shocks override class shocks.")
             out["scenarios"].append({"name": sc.get("name", "custom shock"), "type": "hypothetical",
-                                     "shock": shock, "portfolio_return": _f(impact),
-                                     "note": "Instant hypothetical shock applied to current weights. Assumption, not a forecast."})
+                                     "shock": shock, "portfolio_return": _f(impact), "note": note})
+
+        out["scenarios"].append({
+            "name": "NBF Fall 2026 baseline", "type": "hypothetical", "shock": {},
+            "portfolio_return": None,
+            "note": "Unavailable: the exact NBF forecast and a return mapping for the held assets are needed.",
+        })
     return out
 
 
