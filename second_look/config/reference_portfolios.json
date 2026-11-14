@@ -1,0 +1,124 @@
+{
+  "version": "fbn-fall-2026-proxies-v1",
+  "source": {
+    "document": "../strategie-placement-profil.pdf",
+    "sha256": "4a44880e17e161ab83811a90dbc4c81aa9b51247dcf51c1e401854189e0d1b7c",
+    "page": 1,
+    "column": "Ponderation recommandee",
+    "title": "FBN Strategie de placement - Automne 2026"
+  },
+  "method": "unweighted_euclidean_allocation_projection",
+  "asset_class_order": [
+    "cash",
+    "fixed_income",
+    "equities",
+    "alternatives"
+  ],
+  "assumptions": [
+    "Class totals use the official recommended allocations, not range midpoints or historical performance.",
+    "ETF selection is a configurable team assumption, not an official FBN model or investment recommendation.",
+    "No international-equity ETF exists in the supplied universe. Its weight is redistributed proportionally to the documented Canadian and US equity targets; the missing regional exposure is not replicated.",
+    "ZST.TO proxies cash, XBB.TO fixed income, XIU.TO Canadian equities, SPY US equities and GLD the entire alternative sleeve. GLD does not replicate all alternative investments.",
+    "Crypto belongs to alternatives but is absent from these reference targets. Crypto limits, stock limits, HHI and explicit preferences are independent checks.",
+    "References describe class allocations, not fully screened or concentration-approved portfolios. No ETF sector look-through, duration matching or predicted returns are implied."
+  ],
+  "proxies": {
+    "ZST.TO": "Cash proxy: ultra short-term Canadian bond ETF; not identical to cash.",
+    "XBB.TO": "Canadian fixed-income proxy; the model duration is not replicated.",
+    "XIU.TO": "Canadian-equity proxy.",
+    "SPY": "US-equity proxy, valued in CAD.",
+    "GLD": "Gold proxy for the alternative allocation; not a complete alternatives basket."
+  },
+  "portfolios": [
+    {
+      "category": "Income",
+      "official_recommended_weights": {
+        "cash": 0.04,
+        "fixed_income": 0.685,
+        "canadian_equities": 0.095,
+        "us_equities": 0.09,
+        "international_equities": 0.04,
+        "alternatives": 0.05
+      },
+      "ticker_weights": {
+        "ZST.TO": 0.04,
+        "XBB.TO": 0.685,
+        "XIU.TO": 0.11554054054054054,
+        "SPY": 0.10945945945945945,
+        "GLD": 0.05
+      }
+    },
+    {
+      "category": "Conservative",
+      "official_recommended_weights": {
+        "cash": 0.04,
+        "fixed_income": 0.535,
+        "canadian_equities": 0.155,
+        "us_equities": 0.15,
+        "international_equities": 0.07,
+        "alternatives": 0.05
+      },
+      "ticker_weights": {
+        "ZST.TO": 0.04,
+        "XBB.TO": 0.535,
+        "XIU.TO": 0.19057377049180327,
+        "SPY": 0.18442622950819673,
+        "GLD": 0.05
+      }
+    },
+    {
+      "category": "Balanced",
+      "official_recommended_weights": {
+        "cash": 0.04,
+        "fixed_income": 0.38,
+        "canadian_equities": 0.2,
+        "us_equities": 0.19,
+        "international_equities": 0.09,
+        "alternatives": 0.1
+      },
+      "ticker_weights": {
+        "ZST.TO": 0.04,
+        "XBB.TO": 0.38,
+        "XIU.TO": 0.24615384615384617,
+        "SPY": 0.23384615384615384,
+        "GLD": 0.1
+      }
+    },
+    {
+      "category": "Growth",
+      "official_recommended_weights": {
+        "cash": 0.04,
+        "fixed_income": 0.28,
+        "canadian_equities": 0.24,
+        "us_equities": 0.23,
+        "international_equities": 0.11,
+        "alternatives": 0.1
+      },
+      "ticker_weights": {
+        "ZST.TO": 0.04,
+        "XBB.TO": 0.28,
+        "XIU.TO": 0.29617021276595745,
+        "SPY": 0.28382978723404256,
+        "GLD": 0.1
+      }
+    },
+    {
+      "category": "Maximum growth",
+      "official_recommended_weights": {
+        "cash": 0.03,
+        "fixed_income": 0.14,
+        "canadian_equities": 0.28,
+        "us_equities": 0.27,
+        "international_equities": 0.13,
+        "alternatives": 0.15
+      },
+      "ticker_weights": {
+        "ZST.TO": 0.03,
+        "XBB.TO": 0.14,
+        "XIU.TO": 0.34618181818181815,
+        "SPY": 0.33381818181818185,
+        "GLD": 0.15
+      }
+    }
+  ]
+}

@@ -1,0 +1,526 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:second-look:simulation:2.0",
+  "title": "Second Look simulation response v2.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "simulation_id",
+    "request",
+    "result",
+    "stage",
+    "agent_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "2.0"
+    },
+    "simulation_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,128}$"
+    },
+    "request": {
+      "$ref": "#/$defs/trade"
+    },
+    "result": {
+      "$ref": "#/$defs/result"
+    },
+    "stage": {
+      "enum": [
+        "simulation_continued",
+        "awaiting_confirmation",
+        "awaiting_reason",
+        "awaiting_agents",
+        "manual_review",
+        "cancelled"
+      ]
+    },
+    "agent_status": {
+      "enum": [
+        "not_requested",
+        "not_configured",
+        "dispatched",
+        "dispatch_failed"
+      ]
+    },
+    "investor_reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 5000
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "trade": {
+      "type": "object",
+      "required": [
+        "client_id",
+        "decision_date",
+        "ticker",
+        "side",
+        "amount_cad"
+      ],
+      "properties": {
+        "client_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,128}$"
+        },
+        "decision_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "ticker": {
+          "type": "string"
+        },
+        "side": {
+          "enum": [
+            "buy",
+            "sell"
+          ]
+        },
+        "amount_cad": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "vector": {
+      "type": "object",
+      "required": [
+        "cash",
+        "fixed_income",
+        "equities",
+        "alternatives"
+      ],
+      "properties": {
+        "cash": {
+          "type": "number"
+        },
+        "fixed_income": {
+          "type": "number"
+        },
+        "equities": {
+          "type": "number"
+        },
+        "alternatives": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "classWeights": {
+      "type": "object",
+      "required": [
+        "cash",
+        "fixed_income",
+        "equities",
+        "alternatives"
+      ],
+      "properties": {
+        "cash": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "fixed_income": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "equities": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "alternatives": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "projection": {
+      "type": "object",
+      "required": [
+        "categories",
+        "membership_weights",
+        "score",
+        "normalized_score",
+        "distance",
+        "projected_class_weights",
+        "residual_class_weights"
+      ],
+      "properties": {
+        "categories": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "enum": [
+              "Income",
+              "Conservative",
+              "Balanced",
+              "Growth",
+              "Maximum growth"
+            ]
+          }
+        },
+        "membership_weights": {
+          "type": "object",
+          "minProperties": 2,
+          "maxProperties": 2,
+          "propertyNames": {
+            "enum": [
+              "Income",
+              "Conservative",
+              "Balanced",
+              "Growth",
+              "Maximum growth"
+            ]
+          },
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "normalized_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "distance": {
+          "type": "number",
+          "minimum": 0
+        },
+        "projected_class_weights": {
+          "$ref": "#/$defs/classWeights"
+        },
+        "residual_class_weights": {
+          "$ref": "#/$defs/vector"
+        }
+      },
+      "additionalProperties": false
+    },
+    "check": {
+      "type": "object",
+      "required": [
+        "rule",
+        "before",
+        "after",
+        "limit",
+        "effect",
+        "severity",
+        "gap_before",
+        "gap_after",
+        "resolved",
+        "unit",
+        "source",
+        "bound"
+      ],
+      "properties": {
+        "rule": {
+          "type": "string"
+        },
+        "before": {
+          "type": "number"
+        },
+        "after": {
+          "type": "number"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "effect": {
+          "enum": [
+            "creates",
+            "worsens",
+            "reduces",
+            "unchanged"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "none",
+            "yellow",
+            "red"
+          ]
+        },
+        "gap_before": {
+          "type": "number",
+          "minimum": 0
+        },
+        "gap_after": {
+          "type": "number",
+          "minimum": 0
+        },
+        "resolved": {
+          "type": "boolean"
+        },
+        "unit": {
+          "enum": [
+            "weight",
+            "hhi_index"
+          ]
+        },
+        "source": {
+          "type": "string"
+        },
+        "bound": {
+          "enum": [
+            "min",
+            "max"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "classification": {
+      "type": "object",
+      "required": [
+        "reference_portfolio_version",
+        "method",
+        "class_order",
+        "score_range",
+        "target_profile",
+        "target_score",
+        "references",
+        "before",
+        "after",
+        "movement",
+        "distance_unit",
+        "tie_break",
+        "interpretation",
+        "source",
+        "assumptions"
+      ],
+      "properties": {
+        "reference_portfolio_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "method": {
+          "const": "unweighted_euclidean_allocation_projection"
+        },
+        "class_order": {
+          "const": [
+            "cash",
+            "fixed_income",
+            "equities",
+            "alternatives"
+          ]
+        },
+        "score_range": {
+          "const": [
+            0,
+            4
+          ]
+        },
+        "target_profile": {
+          "enum": [
+            "Income",
+            "Conservative",
+            "Balanced",
+            "Growth",
+            "Maximum growth"
+          ]
+        },
+        "target_score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "references": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "required": [
+              "category",
+              "ticker_weights",
+              "class_weights"
+            ],
+            "properties": {
+              "category": {
+                "enum": [
+                  "Income",
+                  "Conservative",
+                  "Balanced",
+                  "Growth",
+                  "Maximum growth"
+                ]
+              },
+              "ticker_weights": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "class_weights": {
+                "$ref": "#/$defs/classWeights"
+              }
+            }
+          }
+        },
+        "before": {
+          "$ref": "#/$defs/projection"
+        },
+        "after": {
+          "$ref": "#/$defs/projection"
+        },
+        "movement": {
+          "type": "object",
+          "required": [
+            "score_delta",
+            "distance_to_target_before",
+            "distance_to_target_after",
+            "change_in_distance_to_target"
+          ],
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "source": {
+          "type": "object"
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "policy_version",
+        "reference_portfolio_version",
+        "classification",
+        "client_id",
+        "decision_date",
+        "profile",
+        "verdict",
+        "evaluation_status",
+        "action",
+        "activate_agents",
+        "breaches",
+        "checks",
+        "alerts",
+        "hhi_before",
+        "hhi_after",
+        "weights_before",
+        "weights_after",
+        "valuation",
+        "input_sha256"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "2.0"
+        },
+        "policy_version": {
+          "type": "string"
+        },
+        "reference_portfolio_version": {
+          "type": "string"
+        },
+        "classification": {
+          "$ref": "#/$defs/classification"
+        },
+        "verdict": {
+          "enum": [
+            "green",
+            "yellow",
+            "red",
+            null
+          ]
+        },
+        "evaluation_status": {
+          "enum": [
+            "complete",
+            "partial"
+          ]
+        },
+        "profile": {
+          "enum": [
+            "Income",
+            "Conservative",
+            "Balanced",
+            "Growth",
+            "Maximum growth"
+          ]
+        },
+        "action": {
+          "enum": [
+            "pass_simulation",
+            "confirm_or_cancel",
+            "pause_and_ask_reason",
+            "manual_review"
+          ]
+        },
+        "activate_agents": {
+          "type": "boolean"
+        },
+        "hhi_before": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "hhi_after": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "weights_before": {
+          "$ref": "#/$defs/classWeights"
+        },
+        "weights_after": {
+          "$ref": "#/$defs/classWeights"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/check"
+          }
+        },
+        "breaches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/check"
+          }
+        },
+        "alerts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/check"
+          }
+        },
+        "input_sha256": {
+          "type": "object",
+          "required": [
+            "assets",
+            "policy",
+            "client",
+            "request",
+            "references"
+          ],
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

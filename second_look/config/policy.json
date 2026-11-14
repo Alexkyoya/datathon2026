@@ -1,0 +1,141 @@
+{
+  "version": "second-look-0.2",
+  "allocation_source": "FBN Strategie de placement - Automne 2026, supplied strategie-placement-profil.pdf, page 1, visually verified ranges.",
+  "assumptions": [
+    "All non-allocation thresholds, asset mapping and color precedence are team assumptions.",
+    "HHI is sum of squared whole-portfolio position weights, including one cash bucket; no ETF look-through.",
+    "HHI watch begins at 0.15; new/worsened concentration above 0.25 is red. HHI uses index points, not the allocation 5-percentage-point buffer.",
+    "Near-limit warnings apply to meaningful asset-class boundaries only (exclude 0% minima and 100% maxima).",
+    "Strict improvement is green only if no breach is created or worsened; unchanged existing breaches remain yellow for review.",
+    "Single-stock, crypto and explicit exclusion breaches are red when created or worsened.",
+    "Sector limits require look-through for equity ETFs. Missing required coverage gives verdict null unless a definite red breach exists.",
+    "Cash-funded long-only trades; fractional units; zero fees and slippage; no automatic sale of ZST.TO for funding.",
+    "Data ages: securities and FX at most 7 calendar days; crypto at most 2 days. Calendar-day returns use 365 for annualization."
+  ],
+  "yellow_buffer": 0.05,
+  "hhi_watch": 0.15,
+  "hhi_max": 0.25,
+  "profiles": {
+    "Income": {
+      "asset_class_ranges": {
+        "cash": [
+          0,
+          0.2
+        ],
+        "fixed_income": [
+          0.6,
+          1
+        ],
+        "equities": [
+          0,
+          0.3
+        ],
+        "alternatives": [
+          0,
+          0.2
+        ]
+      },
+      "single_stock_max": 0.05,
+      "crypto_max": 0,
+      "sector_max": null
+    },
+    "Conservative": {
+      "asset_class_ranges": {
+        "cash": [
+          0,
+          0.2
+        ],
+        "fixed_income": [
+          0.45,
+          0.8
+        ],
+        "equities": [
+          0.2,
+          0.45
+        ],
+        "alternatives": [
+          0,
+          0.2
+        ]
+      },
+      "single_stock_max": 0.05,
+      "crypto_max": 0,
+      "sector_max": null
+    },
+    "Balanced": {
+      "asset_class_ranges": {
+        "cash": [
+          0,
+          0.2
+        ],
+        "fixed_income": [
+          0.3,
+          0.65
+        ],
+        "equities": [
+          0.3,
+          0.65
+        ],
+        "alternatives": [
+          0,
+          0.25
+        ]
+      },
+      "single_stock_max": 0.1,
+      "crypto_max": 0,
+      "sector_max": null
+    },
+    "Growth": {
+      "asset_class_ranges": {
+        "cash": [
+          0,
+          0.25
+        ],
+        "fixed_income": [
+          0.2,
+          0.45
+        ],
+        "equities": [
+          0.4,
+          0.75
+        ],
+        "alternatives": [
+          0,
+          0.25
+        ]
+      },
+      "single_stock_max": 0.1,
+      "crypto_max": 0.05,
+      "sector_max": 0.4
+    },
+    "Maximum growth": {
+      "asset_class_ranges": {
+        "cash": [
+          0,
+          0.3
+        ],
+        "fixed_income": [
+          0,
+          0.3
+        ],
+        "equities": [
+          0.55,
+          1
+        ],
+        "alternatives": [
+          0,
+          0.3
+        ]
+      },
+      "single_stock_max": 0.15,
+      "crypto_max": 0.1,
+      "sector_max": null
+    }
+  },
+  "data_quality": {
+    "max_security_price_age_days": 7,
+    "max_crypto_price_age_days": 2,
+    "max_fx_age_days": 7,
+    "annualization_days": 365
+  }
+}

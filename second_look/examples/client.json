@@ -1,0 +1,25 @@
+{
+  "client_id": "demo_balanced",
+  "profile": "Balanced",
+  "horizon_years": 8,
+  "objectives": [
+    "long_term_growth"
+  ],
+  "loss_tolerance_fraction": 0.2,
+  "preferences": {
+    "excluded_tickers": [],
+    "excluded_sectors": []
+  },
+  "cash_cad": 15000,
+  "holdings_as_of": "2026-11-13",
+  "holdings": {
+    "XBB.TO": 581.184141620627,
+    "AGG": 103.14130744554318,
+    "TLT": 123.19512386992982,
+    "SPY": 11.118579575569424,
+    "XIU.TO": 219.98167222697842,
+    "ESGV": 57.89324836966847,
+    "GLD": 11.86015181726404
+  },
+  "fictional": true
+}

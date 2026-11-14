@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Second Look · Trade simulation</title><link rel="stylesheet" href="/styles.css"><script src="/app.js" defer></script></head>
+<body>
+<header><a class="wordmark" href="/">Second Look<span> / </span></a><span>Portfolio alignment</span><span class="tag">Simulation only</span></header>
+<main>
+<section class="intro"><p class="eyebrow">A moment before the trade</p><h1>See what changes.</h1><p>Compare a proposed trade with your stored investor profile and reference allocations. Your profile stays fixed.</p></section>
+<div class="layout">
+<aside><section class="panel"><p class="eyebrow">Stored investor record · fictional</p><h2 id="profile">Loading profile…</h2><p id="client-context"></p><p id="cash"></p><p id="asof" class="muted"></p></section>
+<section class="panel"><h2>Proposed trade</h2><form id="trade-form"><label for="ticker">Asset</label><select id="ticker" name="ticker" required></select><label for="side">Direction</label><select id="side" name="side"><option value="buy">Buy</option><option value="sell">Sell</option></select><label for="amount">Amount (CAD)</label><input id="amount" name="amount" type="number" min="0.01" step="0.01" value="4000" required><button type="submit" id="evaluate">Check simulation</button></form><p class="muted">Funded from cash. Fractional units; no fees, margin or short sales.</p><p class="eyebrow">Try a demo trade</p><div class="demo-buttons"><button type="button" data-demo="green">SPY · $4,000</button><button type="button" data-demo="yellow">GLD · $14,000</button><button type="button" data-demo="red">TSLA · $12,000</button></div></section></aside>
+<div class="content">
+<section class="panel" aria-labelledby="spectrum-title"><div class="section-heading"><h2 id="spectrum-title">The allocation spectrum</h2><span class="tag">0–4 allocation score</span></div><p>Income → Conservative → Balanced → Growth → Maximum growth</p><div id="spectrum" aria-label="Ordered reference spectrum"></div><div id="positions" class="positions"><p class="muted">Check a trade to compare portfolio positions before and after.</p></div><p class="muted">Memberships describe interpolation between adjacent allocations. They are not probabilities or a complete measure of risk. Concentration, crypto and preferences are checked separately.</p></section>
+<section id="outcome" class="panel" aria-live="polite"><p class="eyebrow">Numerical check</p><h2>Ready when you are.</h2><p>Choose a trade. The rule engine uses the stored holdings and completed daily prices.</p></section>
+<section id="mismatch" class="panel" hidden><h2>Reference mismatch</h2><p id="distance"></p><p>A position on the spectrum can still be a poor match to every reference. Distance is the Euclidean difference in four class weights; no match-quality threshold is assumed.</p><div class="table-scroll"><table><thead><tr><th>Asset class</th><th>Before</th><th>After</th><th>Projected after</th><th>Residual after</th></tr></thead><tbody id="class-rows"></tbody></table></div></section>
+<section class="panel"><h2>What the references represent</h2><p id="reference-source"></p><div class="table-scroll"><table><thead><tr><th>Reference</th><th>Cash proxy</th><th>Fixed income</th><th>CA equities</th><th>US equities</th><th>Alternatives</th></tr></thead><tbody id="reference-rows"></tbody></table></div><p class="muted">ZST.TO → cash; XBB.TO → fixed income; XIU.TO and SPY → equities; GLD → alternatives. Crypto is also an alternative asset, with an independent crypto cap.</p><p class="muted">Official recommended class totals; configurable team ETF substitutions. International equity targets are redistributed proportionally to Canada and the US because no international-equity fund is supplied. Regional exposure and a broad alternatives basket are not replicated. Reference ETFs are exposure proxies, not investment recommendations.</p></section>
+<details class="panel" id="audit" hidden><summary>Calculation details and provenance</summary><pre id="audit-json"></pre></details>
+</div></div>
+<p id="error" role="alert" hidden></p>
+<footer>Fictional investor · Real historical source data · No orders are executed · Not investment advice</footer>
+</main>
+</body></html>

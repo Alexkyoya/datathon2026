@@ -34,7 +34,7 @@ macOS ARM64; your teammate should confirm it on their computer.
 ## Everyday use
 
 - After pulling changes: `uv sync --locked`.
-- Run a script: `uv run python path/to/script.py` (once a script exists).
+- Run a script: `uv run python path/to/script.py`.
 - Add a package: `uv add PACKAGE`.
 - Remove a package: `uv remove PACKAGE`.
 - Upgrade one package: `uv lock --upgrade-package PACKAGE`, then `uv sync --locked`.
@@ -57,7 +57,7 @@ recommended Microsoft Python and Jupyter extensions.
    this repository's `.venv`. These UI selections must be made on each computer.
 
 The environment includes ipykernel, so no separate kernel registration is needed
-for VS Code. No project scripts or notebooks have been added yet.
+for VS Code. The Second Look component and its tests are described below.
 
 ## What the files do
 
@@ -139,3 +139,39 @@ The response is `{"result": {...}, "trace": [...]}`. The trace lists every tool 
 - Placeholders: `rule_check` is a working baseline, to be replaced by the team rule engine (same output). `news_snapshot.json` needs real official items.
 
 Data: AlphaForge starter dataset (Yahoo Finance, Bank of Canada, FRED), 2021-11-12 to 2026-11-12, in CAD. Three extra ETFs (XIT.TO, XLK, XEF.TO) are added with `uv run --with yfinance python scripts/add_assets.py`, using the same method and window as the organizers' `build_dataset.py`. Run it after copying the starter CSVs, then upload to S3. Ranges: National Bank Financial, Investment Strategy, Fall 2026. Everything else in `profiles.json` is a team assumption or fictional.
+## Second Look: reproduce output and integrate with AWS
+
+The component is included in [`second_look/`](second_look/README.md) on `ari.dev`.
+A teammate can update their checkout and run from the repository root:
+
+```sh
+git fetch origin
+git switch ari.dev
+git pull --ff-only origin ari.dev
+uv sync --locked
+uv run --directory second_look python -m second_look demo
+uv run --directory second_look python -m second_look serve
+```
+
+Open http://127.0.0.1:8000 for the dashboard; Ctrl+C stops the server. The demo
+prints green/yellow/red checks and writes results to
+`second_look/data/runtime/demo_results.json`. Generated outputs and `.venv` are
+not committed; raw inputs needed to regenerate them are included.
+
+Run the tests and build an offline AWS handoff bundle from this same directory:
+
+```sh
+uv run --directory second_look python -m unittest discover -s tests -v
+uv run --directory second_look python scripts/package_aws.py
+```
+
+The bundle is generated under `second_look/dist/aws/`. Use its `lambda.zip` for
+an existing rule Lambda and its `s3/` inputs in an existing bucket. Handler:
+`second_look.lambda_handler.handler`. Configure `DATA_BUCKET`, optional
+`DATA_PREFIX` (default `second-look`), and optional `AGENT_FUNCTION_NAME` for the
+existing Lambda that runs the team's AWS agent. No AWS resources are created.
+The [component README](second_look/README.md#existing-aws-adapter) documents the
+JSON contracts, S3 keys and red-reason handoff. An agent explanation cannot
+change the numerical verdict. Crypto counts as alternatives and also has its
+own cap. AWS calls are locally mocked in tests; live deployment/Bedrock execution
+has not been verified.
