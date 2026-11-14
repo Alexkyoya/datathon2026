@@ -163,8 +163,17 @@ def _run_agents(record):
         if res.get("verdict") != record["result"]["verdict"]:
             record["agent_note"] = "Agent tools saw a different verdict; the rule engine result above is authoritative."
     except Exception as e:  # keep the simulation paused but say why
+        print(f"[second-look] agent review failed: {type(e).__name__}: {e}")  # full detail -> CloudWatch
         record["agent_status"] = "failed"
-        record["agent_error"] = f"{type(e).__name__}: {e}"
+        msg = str(e)
+        if "AccessDenied" in msg or "not authorized" in msg:
+            record["agent_error"] = "the AI model is not enabled for this AWS account"
+        elif "Throttl" in msg or "Too many" in msg:
+            record["agent_error"] = "the AI service is busy, please try again in a moment"
+        elif "timed out" in msg.lower() or "Timeout" in msg:
+            record["agent_error"] = "the AI review took too long, please try again"
+        else:
+            record["agent_error"] = "the AI review could not finish"
     return record
 
 
