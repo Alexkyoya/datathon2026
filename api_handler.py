@@ -1,73 +1,230 @@
-"""Second Look API (Lambda + Function URL). Called by the dashboard.
+"""Second Look on AWS: one Lambda + Function URL serving the dashboard, its API and the agents.
 
-POST JSON, one of:
-  {"client_id": "robert", "ticker": "NVDA", "amount_cad": 24000}
-      -> green / yellow, or red with "needs_reason": true (no agents run yet)
-  {"client_id": "robert", "ticker": "NVDA", "amount_cad": 24000, "reason": "..."}
-      -> red: full agent explanation (about 1-2 minutes)
-  {"action": "get_profile", "client_id": "robert"}            (any tools-Lambda action, for dashboard data)
-  {"action": "risk_metrics", "client_id": "robert", "ticker": "NVDA", "amount_cad": 24000, "tickers": ["NVDA"]}
+GET  /                       dashboard (Ariane's web/ files)
+GET  /api                    usage (JSON)
+GET  /api/context?client_id= stored client + references for the dashboard (default robert)
+POST /api/evaluate           team rule engine (second_look/), result saved to S3
+POST /api/simulations/{id}/decision
+                             {"decision":"confirm"|"cancel"} or {"decision":"explain","reason":"..."}
+                             explain -> the agents run here and their explanation is added to the record
+POST /  (JSON, legacy)       {"client_id","ticker","amount_cad"[,"reason"]} or {"action": ...}
 
-Response: {"result": {...}, "trace": [...]}  -- trace = every tool call (the evidence panel)
+Every record keeps the rule engine's verdict; the agents can only explain it.
 """
 import base64
+import importlib
+import importlib.util
 import json
 import os
+import re
 import sys
+from pathlib import Path
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "agents"))
-sys.path.insert(0, HERE)
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE / "agents"))
+sys.path.insert(0, str(HERE))
 
-import second_look as S  # noqa: E402
+import config  # noqa: E402
+import second_look as S  # noqa: E402  (agents/second_look.py)
 import tools as T  # noqa: E402
 
+
+def _pick(bundled, repo):
+    """Inside the Lambda zip the component files are bundled under sl_*; locally use the repo."""
+    return HERE / bundled if (HERE / bundled).exists() else HERE / repo
+
+
+ENGINE = _pick("sl_engine", "second_look/second_look")
+SL_CONFIG = _pick("sl_config", "second_look/config")
+WEB = _pick("sl_web", "second_look/web")
+CLIENTS = _pick("sl_clients", "second_look/examples/clients")
+SNAPSHOTS = _pick("sl_snapshots", "second_look/data/runtime/snapshots")
+DEMO_BALANCED = _pick("sl_clients/demo_balanced.json", "second_look/examples/client.json")
+STATE_PREFIX = "second-look/"  # results/ and agent_requests/ under this S3 prefix
+DEFAULT_CLIENT = "robert"
 TOOL_ACTIONS = {"get_profile", "risk_metrics", "macro_snapshot", "news_check", "rule_check"}
 
 
-def _resp(code, body):
-    return {"statusCode": code, "headers": {"content-type": "application/json"},
-            "body": json.dumps(body, default=str)}
+def _engine():
+    if "sl_engine" not in sys.modules:
+        spec = importlib.util.spec_from_file_location("sl_engine", ENGINE / "__init__.py",
+                                                      submodule_search_locations=[str(ENGINE)])
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["sl_engine"] = mod
+        spec.loader.exec_module(mod)
+    return importlib.import_module("sl_engine.application"), importlib.import_module("sl_engine.spectrum")
 
+
+class HybridStore:
+    """Read-only inputs (config, clients, snapshot) come from the bundle; simulation state goes to S3."""
+
+    def __init__(self):
+        self._s3 = None
+
+    def _state_path(self, key):
+        return HERE / "runs" / "second_look_state" / key
+
+    def _client(self):
+        if self._s3 is None:
+            import boto3
+            self._s3 = boto3.client("s3", region_name=config.AWS_REGION)
+        return self._s3
+
+    def load(self, key):
+        if key.startswith(("results/", "agent_requests/")):
+            try:
+                if config.LOCAL:
+                    return json.loads(self._state_path(key).read_text())
+                obj = self._client().get_object(Bucket=config.DATA_BUCKET, Key=STATE_PREFIX + key)
+                return json.loads(obj["Body"].read())
+            except Exception:
+                raise ValueError("Unknown simulation id") from None
+        kind, _, name = key.partition("/")
+        if kind == "config":
+            path = SL_CONFIG / name
+        elif kind == "clients":
+            cid = name[:-5]
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", cid):
+                raise ValueError("Invalid client_id")
+            path = DEMO_BALANCED if cid == "demo_balanced" else CLIENTS / name
+        elif kind == "snapshots":
+            path = SNAPSHOTS / name
+        else:
+            raise ValueError("Unknown store key")
+        if not path.is_file():
+            raise ValueError(f"Not found: {key}")
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def save(self, key, value):
+        body = json.dumps(value, default=str)
+        if config.LOCAL:
+            p = self._state_path(key)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(body)
+            return
+        self._client().put_object(Bucket=config.DATA_BUCKET, Key=STATE_PREFIX + key, Body=body.encode(),
+                                  ContentType="application/json")
+
+
+STORE = HybridStore()
 
 USAGE = {
     "service": "Second Look - pre-trade check for self-directed investors (PolyFinances Datathon 2026)",
     "note": "Simulation only. Not investment advice. Clients and holdings are fictional.",
-    "how_to_use": "POST JSON to this URL.",
-    "requests": {
-        "check_a_trade": {"client_id": "robert", "ticker": "NVDA", "amount_cad": 24000},
-        "red_with_reason": {"client_id": "robert", "ticker": "NVDA", "amount_cad": 24000,
-                            "reason": "AI demand is exploding and NVIDIA will double next year"},
-        "profile": {"action": "get_profile", "client_id": "robert"},
+    "dashboard": "Open the root URL (/) in a browser.",
+    "api": {
+        "GET /api/context?client_id=robert": "stored client, tickers and reference portfolios",
+        "POST /api/evaluate": {"client_id": "robert", "decision_date": "2026-11-13", "ticker": "NVDA",
+                               "side": "buy", "amount_cad": 24000},
+        "POST /api/simulations/{id}/decision": [{"decision": "confirm"}, {"decision": "cancel"},
+                                                {"decision": "explain", "reason": "..."}],
+        "POST / (JSON)": {"client_id": "robert", "ticker": "NVDA", "amount_cad": 24000, "reason": "optional"},
     },
     "flow": ["green: passes without interruption", "yellow: short warning, client confirms",
-             "red: returns needs_reason; send the client's reason to get the agents' explanation (1-2 min)"],
+             "red: asks why; the agents then explain the fixed verdict (1-2 min)"],
     "demo_clients": {"robert": "59, conservative, retiring in 3-5 years",
                      "mateo": "41, balanced, ESG preferences", "amira": "26, growth, long horizon"},
-    "response": {"result": "verdict + explanation", "trace": "every tool call, for verification"},
 }
+
+
+def _resp(code, body, content_type="application/json"):
+    if content_type == "application/json":
+        body = json.dumps(body, default=str)
+    return {"statusCode": code, "headers": {"content-type": content_type, "cache-control": "no-store"},
+            "body": body}
+
+
+def _context(params):
+    application, spectrum = _engine()
+    cid = (params or {}).get("client_id", DEFAULT_CLIENT)
+    client = STORE.load(f"clients/{cid}.json")
+    assets = STORE.load("config/assets.json")
+    policy = STORE.load("config/policy.json")
+    refs = STORE.load("config/reference_portfolios.json")
+    clients = sorted(p.stem for p in CLIENTS.glob("*.json"))
+    return {"client": client, "clients": clients, "tickers": sorted(assets),
+            "references": spectrum.build_references(refs, assets, policy), "reference_config": refs}
+
+
+def _run_agents(record):
+    """Explain a red simulation with the agents; the record's numerical verdict never changes."""
+    req = record["request"]
+    try:
+        res = S.run(req["client_id"], req["ticker"], float(req["amount_cad"]),
+                    reason=record.get("investor_reason", ""), interactive=False)
+        if "error" in res:
+            raise RuntimeError(res["error"])
+        res.pop("rule_check", None)
+        record["agent_status"] = "completed"
+        record["agent_result"] = res
+        record["agent_trace"] = T.TRACE
+        if res.get("verdict") != record["result"]["verdict"]:
+            record["agent_note"] = "Agent tools saw a different verdict; the rule engine result above is authoritative."
+    except Exception as e:  # keep the simulation paused but say why
+        record["agent_status"] = "failed"
+        record["agent_error"] = f"{type(e).__name__}: {e}"
+    return record
+
+
+def _legacy(req):
+    if req.get("action"):
+        if req["action"] not in TOOL_ACTIONS:
+            return _resp(400, {"error": f"unknown action {req['action']}"})
+        T.reset_trace()
+        a = req.pop("action")
+        return _resp(200, {"result": T.call_tool(a, **req), "trace": T.TRACE})
+    for k in ("client_id", "ticker", "amount_cad"):
+        if k not in req:
+            return _resp(400, {"error": f"missing {k}"})
+    res = S.run(req["client_id"], req["ticker"], float(req["amount_cad"]), reason=req.get("reason"),
+                interactive=False)
+    return _resp(400 if "error" in res else 200, {"result": res, "trace": T.TRACE})
 
 
 def handler(event, context=None):
     try:
-        method = (event.get("requestContext", {}).get("http", {}).get("method") or "POST").upper()
-        if method == "GET" or not event.get("body"):
-            return _resp(200, USAGE)
-        raw = event.get("body") or "{}"
-        if event.get("isBase64Encoded"):
+        http = event.get("requestContext", {}).get("http", {})
+        method = (http.get("method") or "POST").upper()
+        path = event.get("rawPath") or http.get("path") or "/"
+        if method == "GET":
+            files = {"/": ("index.html", "text/html; charset=utf-8"),
+                     "/index.html": ("index.html", "text/html; charset=utf-8"),
+                     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+                     "/styles.css": ("styles.css", "text/css; charset=utf-8")}
+            if path in files:
+                name, kind = files[path]
+                return _resp(200, (WEB / name).read_text(encoding="utf-8"), kind)
+            if path in ("/api", "/api/"):
+                return _resp(200, USAGE)
+            if path == "/api/context":
+                return _resp(200, _context(event.get("queryStringParameters")))
+            return _resp(404, {"error": "Not found"})
+
+        raw = event.get("body") or ""
+        if event.get("isBase64Encoded") and raw:
             raw = base64.b64decode(raw).decode()
-        req = json.loads(raw) if isinstance(raw, str) else raw
-        if req.get("action"):
-            if req["action"] not in TOOL_ACTIONS:
-                return _resp(400, {"error": f"unknown action {req['action']}"})
-            T.reset_trace()
-            a = req.pop("action")
-            return _resp(200, {"result": T.call_tool(a, **req), "trace": T.TRACE})
-        for k in ("client_id", "ticker", "amount_cad"):
-            if k not in req:
-                return _resp(400, {"error": f"missing {k}"})
-        res = S.run(req["client_id"], req["ticker"], float(req["amount_cad"]),
-                    reason=req.get("reason"), interactive=False)
-        return _resp(400 if "error" in res else 200, {"result": res, "trace": T.TRACE})
+        if not raw:
+            return _resp(200, USAGE)
+        if len(raw) > 16384:
+            return _resp(400, {"error": "Request too large"})
+        payload = json.loads(raw)
+        application, _ = _engine()
+        app = application.SecondLookApplication(STORE)
+        if path == "/api/evaluate":
+            return _resp(200, app.evaluate(payload, getattr(context, "aws_request_id", None)))
+        m = re.fullmatch(r"/api/simulations/([A-Za-z0-9_-]{1,128})/decision", path)
+        if m:
+            if set(payload) - {"decision", "reason"} or "decision" not in payload:
+                raise ValueError("Decision accepts only decision and optional reason")
+            record = app.decide(m.group(1), payload["decision"], payload.get("reason"))
+            if payload["decision"] == "explain":
+                record = _run_agents(record)
+                STORE.save(f"results/{record['simulation_id']}.json", record)
+            return _resp(200, record)
+        if path in ("/", "/api/check"):
+            return _legacy(payload)
+        return _resp(404, {"error": "Not found"})
+    except (ValueError, KeyError, TypeError) as e:
+        return _resp(400, {"status": "invalid_input", "verdict": None, "error": str(e)})
     except Exception as e:  # keep the dashboard informed instead of a bare 502
         return _resp(500, {"error": f"{type(e).__name__}: {e}"})

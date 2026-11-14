@@ -121,16 +121,17 @@ Manual alternative (console):
 3. Environment variables: `DATA_BUCKET=<bucket>`, `DATA_PREFIX=data/`. Give the execution role S3 read access.
 4. Test event: `{"action": "rule_check", "client_id": "robert", "ticker": "NVDA", "amount_cad": 24000}` should return red.
 
-## API for the dashboard
+## Dashboard and API on AWS
 
-`uv run python scripts/deploy_api.py` deploys the agents as a second Lambda (`second-look-api`) with a public HTTPS URL. It prints the URL at the end, and it's safe to re-run after changes to `agents/` or `api_handler.py`.
+`uv run python scripts/deploy_api.py` deploys one Lambda (`second-look-api`) with a public URL. It serves Ariane's dashboard (`second_look/web`), her API routes running the team rule engine, and the agents. Simulation state is saved to `s3://<bucket>/second-look/`. It's safe to re-run after any change.
 
-POST JSON to the URL:
-- `{"client_id": "robert", "ticker": "NVDA", "amount_cad": 24000}` returns green, yellow, or red with `"needs_reason": true` (no agents run yet).
-- The same call plus `"reason": "..."` returns the full red explanation (about 1–2 min, so show a spinner).
-- `{"action": "get_profile", "client_id": "robert"}` returns profile data for the dashboard (also `risk_metrics` and `macro_snapshot`).
+- `GET /`: the dashboard. Pick a client (robert, mateo, amira, demo_balanced) and use the demo buttons.
+- `GET /api`: usage. `GET /api/context?client_id=robert`: stored client and reference portfolios.
+- `POST /api/evaluate` with `{"client_id","decision_date":"2026-11-13","ticker","side","amount_cad"}` returns green, yellow or red.
+- `POST /api/simulations/{id}/decision` with `{"decision":"confirm"|"cancel"}`, or `{"decision":"explain","reason":"..."}` on red. The explain call runs the agents (1–2 min) and adds `agent_result` and `agent_trace` to the record. The verdict never changes.
+- `POST /` with `{"client_id","ticker","amount_cad"[,"reason"]}` or `{"action": ...}`: the simple JSON API.
 
-The response is `{"result": {...}, "trace": [...]}`. The trace lists every tool call and feeds the evidence panel. The URL is public (no auth) for the demo, so don't share it outside the team.
+The URL is public (no auth) for the demo, so keep it inside the team.
 
 ## Contributing to the agent pipeline
 

@@ -44,6 +44,20 @@ def build_zip():
                     "--python-version", "3.12", "--only-binary", ":all:", "strands-agents", "boto3"], check=True)
     shutil.copy(ROOT / "config.py", BUILD)
     shutil.copy(ROOT / "api_handler.py", BUILD)
+    # dashboard + team rule engine (second_look/), bundled under sl_* names
+    comp = ROOT / "second_look"
+    snap = comp / "data" / "runtime" / "snapshots" / "2026-11-13.json"
+    if not snap.exists():
+        print("Building the price snapshot (python -m second_look demo)...")
+        subprocess.run([sys.executable, "-m", "second_look", "demo"], cwd=comp, check=True)
+    for src, dst, pattern in [(comp / "second_look", "sl_engine", "*.py"), (comp / "config", "sl_config", "*.json"),
+                              (comp / "web", "sl_web", "*"), (comp / "examples" / "clients", "sl_clients", "*.json"),
+                              (snap.parent, "sl_snapshots", "*.json")]:
+        (BUILD / dst).mkdir(parents=True, exist_ok=True)
+        for f in src.glob(pattern):
+            if f.is_file():
+                shutil.copy(f, BUILD / dst / f.name)
+    shutil.copy(comp / "examples" / "client.json", BUILD / "sl_clients" / "demo_balanced.json")
     (BUILD / "agents").mkdir(exist_ok=True)
     for f in ("second_look.py", "tools.py"):
         shutil.copy(ROOT / "agents" / f, BUILD / "agents")
@@ -152,4 +166,4 @@ if __name__ == "__main__":
     deploy_function(role_arn())
     url = function_url()
     test(url)
-    print("\nOK - API URL for the dashboard:\n" + url)
+    print("\nOK - dashboard (open in a browser):\n" + url + "\nAPI usage: " + url + "api")

@@ -1,5 +1,8 @@
 'use strict';
 let context, current;
+// Demo trades per stored client (team personas; purchases are paid from cash).
+const DEMOS={robert:[['green','SPY',2000],['red','NVDA',24000]],mateo:[['yellow','ESGV',12000],['red','XOM',3000]],amira:[['red','ETH-USD',3000]],demo_balanced:[['green','SPY',4000],['yellow','GLD',14000],['red','TSLA',12000]]};
+const clientId=()=>new URLSearchParams(location.search).get('client')||'robert';
 const $ = id => document.getElementById(id);
 const pct = value => `${(value * 100).toFixed(1)}%`;
 const labels = {cash:'Cash',fixed_income:'Fixed income',equities:'Equities',alternatives:'Alternatives'};
@@ -39,8 +42,9 @@ function render(record) {
   r.coverage.unresolved.forEach(reason=>reasons.append(text('li',reason)));
   if(!reasons.children.length) reasons.append(text('li','All evaluated limits are respected, with no near-limit warning.'));
   outcome.append(reasons);
-  const stageLabels={simulation_continued:'Simulation continued. No real order was placed.',awaiting_confirmation:'Confirmation is required to continue this simulation.',awaiting_reason:'Explain your reason to request an agent review.',awaiting_agents:({dispatched:'Agent review requested from the configured service.',not_configured:'Agent handoff saved. No agent service is configured locally; review remains pending.',dispatch_failed:'Agent service could not be reached. Review remains pending.'})[record.agent_status],cancelled:'Simulation cancelled.',manual_review:'Manual review is required. This result cannot continue automatically.'};
+  const stageLabels={simulation_continued:'Simulation continued. No real order was placed.',awaiting_confirmation:'Confirmation is required to continue this simulation.',awaiting_reason:'Explain your reason to request an agent review.',awaiting_agents:({completed:'Agent review complete. The numerical verdict above is unchanged.',failed:'Agent review failed: '+(record.agent_error||'unknown error')+'. The simulation stays paused.',dispatched:'Agent review requested from the configured service.',not_configured:'Agent handoff saved. No agent service is configured locally; review remains pending.',dispatch_failed:'Agent service could not be reached. Review remains pending.'})[record.agent_status],cancelled:'Simulation cancelled.',manual_review:'Manual review is required. This result cannot continue automatically.'};
   outcome.append(text('p',stageLabels[record.stage] || record.stage));
+  const review=agentPanel(record);if(review)outcome.append(review);
   if(record.stage==='awaiting_reason') {
     const form=document.createElement('form');const label=text('label','Why do you want to make this trade?');label.htmlFor='reason';const input=document.createElement('textarea');input.id='reason';input.required=true;input.maxLength=5000;const button=text('button','Request agent review');button.type='submit';form.append(label,input,button);form.addEventListener('submit',event=>{event.preventDefault();decide('explain',input.value);});outcome.append(form);
   }
@@ -61,16 +65,43 @@ async function evaluate() {
   catch(err){$('outcome').replaceChildren(text('h2','Proposal could not be evaluated.'),text('p','No verdict was produced. Correct the issue before continuing.'));error(err);}
   finally {$('evaluate').disabled=false;}
 }
-async function decide(decision,reason) { try { $('error').hidden=true;render(await api(`/api/simulations/${current.simulation_id}/decision`,{decision,...(reason!==undefined?{reason}:{})})); }catch(err){error(err);} }
+async function decide(decision,reason) { try { $('error').hidden=true;if(decision==='explain'){$('outcome').append(text('p','The agents are reviewing your reason, the data and stress tests. This takes about 1–2 minutes…','muted'));document.querySelectorAll('#outcome button').forEach(b=>b.disabled=true);}render(await api(`/api/simulations/${current.simulation_id}/decision`,{decision,...(reason!==undefined?{reason}:{})})); }catch(err){error(err);} }
 async function start() {
   try {
-    context=await api('/api/context');const client=context.client;
-    $('profile').textContent=`Target: ${client.profile}`;$('client-context').textContent=`${client.horizon_years}-year horizon · ${client.objectives.join(', ').replaceAll('_',' ')}. Horizon and loss tolerance are context, not a new profile score.`;$('cash').textContent=`Available cash: ${client.cash_cad.toLocaleString('en-CA',{style:'currency',currency:'CAD'})}`;$('asof').textContent=`Holdings / decision date: ${client.holdings_as_of} · 00:00 UTC daily snapshot`;
+    context=await api('/api/context?client_id='+encodeURIComponent(clientId()));const client=context.client;
+    $('profile').textContent=`${client.name?client.name+' · ':''}Target: ${client.profile}`;clientPicker();demoButtons();$('client-context').textContent=`${client.horizon_years}-year horizon · ${client.objectives.join(', ').replaceAll('_',' ')}. Horizon and loss tolerance are context, not a new profile score.`;$('cash').textContent=`Available cash: ${client.cash_cad.toLocaleString('en-CA',{style:'currency',currency:'CAD'})}`;$('asof').textContent=`Holdings / decision date: ${client.holdings_as_of} · 00:00 UTC daily snapshot`;
     context.tickers.forEach(ticker=>{const option=text('option',ticker);option.value=ticker;$('ticker').append(option);});$('ticker').value='SPY';drawSpectrum();
     $('reference-source').textContent=`${context.reference_config.source.title}, page 1, recommended allocations. Version ${context.reference_config.version}.`;
     $('reference-rows').replaceChildren(...context.references.map(ref=>{const row=document.createElement('tr');[ref.category,...['ZST.TO','XBB.TO','XIU.TO','SPY','GLD'].map(t=>pct(ref.ticker_weights[t]))].forEach(v=>row.append(text('td',v)));return row;}));
   }catch(err){error(err);$('evaluate').disabled=true;}
 }
 $('trade-form').addEventListener('submit',event=>{event.preventDefault();evaluate();});
-document.querySelectorAll('[data-demo]').forEach(button=>button.addEventListener('click',()=>{if(!context)return;const [ticker,amount]=({green:['SPY',4000],yellow:['GLD',14000],red:['TSLA',12000]})[button.dataset.demo];$('ticker').value=ticker;$('amount').value=amount;$('side').value='buy';evaluate();}));
+function clientPicker(){
+  if($('client-picker')||!context.clients)return;
+  const select=document.createElement('select');select.id='client-picker';select.setAttribute('aria-label','Stored client');
+  [...context.clients,'demo_balanced'].forEach(id=>{const o=text('option',id[0].toUpperCase()+id.slice(1).replace('_',' '));o.value=id;select.append(o);});
+  select.value=clientId();select.addEventListener('change',()=>{location.search='?client='+select.value;});
+  $('profile').before(select);
+}
+function demoButtons(){
+  const box=document.querySelector('.demo-buttons');if(!box)return;
+  box.replaceChildren(...(DEMOS[context.client.client_id]||[]).map(([color,ticker,amount])=>{
+    const b=text('button',`${ticker} · $${amount.toLocaleString('en-CA')}`);b.type='button';b.dataset.demo=color;
+    b.addEventListener('click',()=>{$('ticker').value=ticker;$('amount').value=amount;$('side').value='buy';evaluate();});return b;}));
+}
+function agentPanel(record){
+  const a=record.agent_result;if(!a)return null;
+  const panel=text('div','','agent-review');panel.append(text('p','Agent review · explains the fixed verdict','eyebrow'));
+  if(a.headline)panel.append(text('h3',a.headline));
+  const list=(title,items,fmt)=>{if(!items||!items.length)return;panel.append(text('p',title,'eyebrow'));const ul=text('ul','');items.forEach(i=>ul.append(text('li',fmt(i))));panel.append(ul);};
+  list('Why',a.reasons,r=>r);
+  if(a.client_reason_response){panel.append(text('p','Your reason','eyebrow'),text('p',a.client_reason_response));}
+  list('Checking your reason',a.news_check,c=>`${c.claim} → ${c.type}. ${c.evidence||''}${c.source&&c.source.name?' ('+c.source.name+(c.date?', '+c.date:'')+')':''}`);
+  list('Stress tests (hypothetical, not forecasts)',(a.risk&&a.risk.scenarios)||[],s=>`${s.name}: ${typeof s.portfolio_return==='number'?pct(s.portfolio_return):s.portfolio_return}`);
+  if(a.macro_context){panel.append(text('p','Rates and inflation','eyebrow'),text('p',a.macro_context));}
+  list('Alternatives that keep your idea',a.alternatives,x=>`${x.description}${x.rule_check_verdict?' — rule check: '+x.rule_check_verdict:''}`);
+  list('Assumptions',a.assumptions,x=>x);
+  panel.append(text('p',a.disclaimer||'Simulation only. Not investment advice.','muted'));
+  return panel;
+}
 start();
