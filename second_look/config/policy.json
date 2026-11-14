@@ -1,5 +1,5 @@
 {
-  "version": "second-look-0.2",
+  "version": "second-look-0.3",
   "allocation_source": "FBN Strategie de placement - Automne 2026, supplied strategie-placement-profil.pdf, page 1, visually verified ranges.",
   "assumptions": [
     "All non-allocation thresholds, asset mapping and color precedence are team assumptions.",
@@ -8,9 +8,13 @@
     "Near-limit warnings apply to meaningful asset-class boundaries only (exclude 0% minima and 100% maxima).",
     "Strict improvement is green only if no breach is created or worsened; unchanged existing breaches remain yellow for review.",
     "Single-stock, crypto and explicit exclusion breaches are red when created or worsened.",
-    "Sector limits require look-through for equity ETFs. Missing required coverage gives verdict null unless a definite red breach exists.",
     "Cash-funded long-only trades; fractional units; zero fees and slippage; no automatic sale of ZST.TO for funding.",
-    "Data ages: securities and FX at most 7 calendar days; crypto at most 2 days. Calendar-day returns use 365 for annualization."
+    "Data ages: securities and FX at most 7 calendar days; crypto at most 2 days. Calendar-day returns use 365 for annualization.",
+    "Missing data never passes silently: a rule that cannot be evaluated returns an unresolved item. unresolved_handling decides per rule whether it is a yellow note or a manual review (default yellow).",
+    "Goal coverage: money needed by a date only counts if the asset, in its worst fall in the 5-year provided price window, recovered in less time than is left. Counted value = market value x (1 + that worst fall). Historical stress, not a forecast.",
+    "Goals are funded earliest first, each from the most liquid usable assets first (cash, then the shortest past recovery). A goal is flagged only when the money covering it and all earlier goals falls.",
+    "ESG: exclusions cover equity exposure (single stocks and equity-fund look-through from issuer fact sheets). Corporate bonds inside bond funds are not looked through.",
+    "Trades are only flagged by the goal and ESG rules when they create or worsen a problem; selling or improving is never flagged by them."
   ],
   "yellow_buffer": 0.05,
   "hhi_watch": 0.15,
@@ -137,5 +141,81 @@
     "max_crypto_price_age_days": 2,
     "max_fx_age_days": 7,
     "annualization_days": 365
+  },
+  "goal_liquidity": {
+    "planning_horizon_years": 5,
+    "red_within_months": 24,
+    "days_per_month": 30.44
+  },
+  "inflation_assumption": 0.02,
+  "esg": {
+    "default_max_lookthrough_excluded_share": 0.05
+  },
+  "unresolved_handling": {
+    "default": "yellow",
+    "sector_lookthrough": "yellow",
+    "esg_lookthrough": "yellow",
+    "esg_required_unscreened": "yellow",
+    "goal_horizon_data": "yellow",
+    "unsupported_preference": "manual_review",
+    "other_constraints": "manual_review"
+  },
+  "threshold_sources": {
+    "profiles.*.asset_class_ranges": {
+      "source": "NBF Fall 2026",
+      "rationale": "Recommended asset-class ranges per profile, strategie-placement-profil.pdf page 1."
+    },
+    "profiles.*.single_stock_max": {
+      "source": "Second Look team assumption",
+      "rationale": "Caps a single company so one issuer cannot dominate; tighter for cautious profiles."
+    },
+    "profiles.*.crypto_max": {
+      "source": "Second Look team assumption",
+      "rationale": "No crypto for Income/Conservative/Balanced; small sleeve for growth profiles."
+    },
+    "profiles.*.sector_max": {
+      "source": "Second Look team assumption",
+      "rationale": "Growth profile sector cap (look-through) to limit one-theme portfolios."
+    },
+    "yellow_buffer": {
+      "source": "Second Look team assumption",
+      "rationale": "5 percentage points from a range limit is close enough to warn before it is crossed."
+    },
+    "hhi_watch": {
+      "source": "Second Look team assumption",
+      "rationale": "Concentration index level where a warning starts (about 7 equal positions)."
+    },
+    "hhi_max": {
+      "source": "Second Look team assumption",
+      "rationale": "Concentration index level treated as concentrated (about 4 equal positions)."
+    },
+    "goal_liquidity.planning_horizon_years": {
+      "source": "Second Look team assumption",
+      "rationale": "Goal installments within 5 years are checked; the longest recovered fall in the provided window took under 4 years."
+    },
+    "goal_liquidity.red_within_months": {
+      "source": "Second Look team assumption",
+      "rationale": "An essential goal due within 2 years has little time to wait out a fall, so a coverage drop is red."
+    },
+    "goal_liquidity.days_per_month": {
+      "source": "Second Look team assumption",
+      "rationale": "Average month length, same constant as the risk_metrics tool."
+    },
+    "inflation_assumption": {
+      "source": "Second Look team assumption",
+      "rationale": "Bank of Canada 2% inflation-control target; only indexes goals marked indexed_to_inflation."
+    },
+    "esg.default_max_lookthrough_excluded_share": {
+      "source": "Second Look team assumption",
+      "rationale": "Funds rarely hold exactly 0% of a sector; 5% tolerates incidental exposure when a client sets no own limit."
+    },
+    "unresolved_handling": {
+      "source": "Second Look team assumption",
+      "rationale": "A data gap is a yellow note so one gap does not block every trade; unreadable stored constraints need a person."
+    },
+    "data_quality": {
+      "source": "Second Look team assumption",
+      "rationale": "Maximum price/FX staleness before a quote is unusable."
+    }
   }
 }

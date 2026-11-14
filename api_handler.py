@@ -42,7 +42,7 @@ SNAPSHOTS = _pick("sl_snapshots", "second_look/data/runtime/snapshots")
 DEMO_BALANCED = _pick("sl_clients/demo_balanced.json", "second_look/examples/client.json")
 STATE_PREFIX = "second-look/"  # results/ and agent_requests/ under this S3 prefix
 DEFAULT_CLIENT = "robert"
-TOOL_ACTIONS = {"get_profile", "risk_metrics", "macro_snapshot", "news_check", "rule_check"}
+TOOL_ACTIONS = {"get_profile", "risk_metrics", "macro_snapshot", "news_check", "rule_check", "goal_check"}
 
 
 def _engine():
@@ -115,15 +115,15 @@ USAGE = {
     "api": {
         "GET /api/context?client_id=robert": "stored client, tickers and reference portfolios",
         "POST /api/evaluate": {"client_id": "robert", "decision_date": "2026-11-13", "ticker": "NVDA",
-                               "side": "buy", "amount_cad": 24000},
+                               "side": "buy", "amount_cad": 360000},
         "POST /api/simulations/{id}/decision": [{"decision": "confirm"}, {"decision": "cancel"},
                                                 {"decision": "explain", "reason": "..."}],
-        "POST / (JSON)": {"client_id": "robert", "ticker": "NVDA", "amount_cad": 24000, "reason": "optional"},
+        "POST / (JSON)": {"client_id": "robert", "ticker": "NVDA", "amount_cad": 360000, "reason": "optional"},
     },
     "flow": ["green: passes without interruption", "yellow: short warning, client confirms",
              "red: asks why; the agents then explain the fixed verdict (1-2 min)"],
-    "demo_clients": {"robert": "59, conservative, retiring in 3-5 years",
-                     "mateo": "41, balanced, ESG preferences", "amira": "26, growth, long horizon"},
+    "demo_clients": {"robert": "63, conservative, health care worker retiring on 2027-07-01; needs CAD 70,000 a year",
+                     "mateo": "41, balanced, no fossil fuels; home down payment in 2029", "amira": "26, growth, long horizon; master's tuition in 2028"},
 }
 
 
@@ -177,20 +177,6 @@ def _run_agents(record):
     return record
 
 
-def _with_liquidity(record):
-    """Attach the cash-cushion check (informational; the rule engine verdict is unchanged)."""
-    try:
-        req = record.get("request") or {}
-        if req.get("client_id") and "liquidity" not in record:
-            liq = T.call_tool("liquidity_check", client_id=req["client_id"], ticker=req.get("ticker"),
-                              side=req.get("side", "buy"), amount_cad=float(req.get("amount_cad", 0)))
-            if "error" not in liq:
-                record["liquidity"] = liq
-    except Exception as e:  # never block the verdict on this
-        print(f"[second-look] liquidity check skipped: {e}")
-    return record
-
-
 def _legacy(req):
     if req.get("action"):
         if req["action"] not in TOOL_ACTIONS:
@@ -236,7 +222,7 @@ def handler(event, context=None):
         application, _ = _engine()
         app = application.SecondLookApplication(STORE)
         if path == "/api/evaluate":
-            return _resp(200, _with_liquidity(app.evaluate(payload, getattr(context, "aws_request_id", None))))
+            return _resp(200, app.evaluate(payload, getattr(context, "aws_request_id", None)))
         m = re.fullmatch(r"/api/simulations/([A-Za-z0-9_-]{1,128})/decision", path)
         if m:
             if set(payload) - {"decision", "reason"} or "decision" not in payload:
@@ -245,7 +231,7 @@ def handler(event, context=None):
             if payload["decision"] == "explain":
                 record = _run_agents(record)
                 STORE.save(f"results/{record['simulation_id']}.json", record)
-            return _resp(200, _with_liquidity(record))
+            return _resp(200, record)
         if path in ("/", "/api/check"):
             return _legacy(payload)
         return _resp(404, {"error": "Not found"})

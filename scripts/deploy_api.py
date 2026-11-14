@@ -59,7 +59,7 @@ def build_zip():
                 shutil.copy(f, BUILD / dst / f.name)
     shutil.copy(comp / "examples" / "client.json", BUILD / "sl_clients" / "demo_balanced.json")
     (BUILD / "agents").mkdir(exist_ok=True)
-    for f in ("second_look.py", "tools.py"):
+    for f in ("second_look.py", "tools.py", "universe.py"):
         shutil.copy(ROOT / "agents" / f, BUILD / "agents")
     print("Zipping...")
     with zipfile.ZipFile(ZIP, "w", zipfile.ZIP_DEFLATED) as z:
@@ -147,7 +147,7 @@ def function_url():
 
 def test(url):
     print("Test call (green case: robert buys 2,000 CAD of SPY)...")
-    req = urllib.request.Request(url, data=json.dumps({"client_id": "robert", "ticker": "SPY", "amount_cad": 2000}).encode(),
+    req = urllib.request.Request(url, data=json.dumps({"client_id": "robert", "ticker": "SPY", "amount_cad": 30000}).encode(),
                                  headers={"content-type": "application/json"}, method="POST")
     for attempt in range(6):  # a brand-new URL can take a few seconds to accept calls
         try:

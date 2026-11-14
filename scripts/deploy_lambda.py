@@ -7,7 +7,7 @@ What it does (same as the manual console steps in the README):
   2. Zips lambda/lambda_function.py + the team rule engine (second_look/second_look) and its config
   3. Finds the AWS-managed pandas layer (AWSSDKPandas-Python312)
   4. Creates the function, or updates its code + settings if it already exists
-  5. Test call: rule_check robert NVDA 24000 -> should print "red"
+  5. Test call: rule_check robert NVDA 360000 -> should print "red"
 """
 import io
 import json
@@ -105,9 +105,9 @@ def main():
                 raise
         lam.get_waiter("function_active_v2").wait(FunctionName=config.LAMBDA_NAME)
 
-    print("Test call: rule_check robert NVDA 24000 ...")
+    print("Test call: rule_check robert NVDA 360000 ...")
     resp = lam.invoke(FunctionName=config.LAMBDA_NAME, Payload=json.dumps(
-        {"action": "rule_check", "client_id": "robert", "ticker": "NVDA", "amount_cad": 24000}).encode())
+        {"action": "rule_check", "client_id": "robert", "ticker": "NVDA", "amount_cad": 360000}).encode())
     out = json.loads(resp["Payload"].read())
     if "error" in out or "errorMessage" in out:
         print("Lambda returned an error:", out)

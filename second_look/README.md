@@ -110,94 +110,39 @@ Calendar-day adjusted returns use 365 for annualization, not 252. Price-age caps
 shared through policy. Missing/stale required valuation data rejects a proposal.
 
 The engine checks **both** allocation bounds, every single stock, crypto, HHI,
-explicit ticker/sector exclusions and liquid cash reserves. Funds are exempt
+goal coverage, ESG preferences and liquid cash reserves. Funds are exempt
 from single-stock caps; HHI sees whole fund positions and combines cash with ZST.
 A reduction cannot cancel a new/worsened breach. New/worsened stock, crypto or
-explicit preference breaches are red; allocation breaches use the existing
+explicit ESG exclusion breaches are red; allocation breaches use the existing
 5-point buffer. Existing HHI/watch and strict-improvement precedence is preserved.
-All non-allocation limits and color precedence remain labeled team assumptions.
+All non-allocation limits and color precedence remain labeled team assumptions,
+each with a source and rationale in `policy.json` (`threshold_sources`).
 
-Horizon, objectives and loss tolerance stay agent context. Unknown stored
-preferences, required ESG evidence or ETF sector look-through prevent a complete
-green: result is partial/manual review unless a known red breach takes precedence.
+### Profiles and limits
+
+- Asset-class ranges come from NBF Fall 2026. Single-stock, crypto, HHI and sector
+  caps are team assumptions per profile.
+- Goals (`goals.py`) check each client's goals (emergency fund, one-off spending,
+  recurring withdrawals such as retirement income) against the assets that would
+  still be there in time. An asset counts only if it recovered from its worst past
+  fall faster than the time left, and only at its value after such a fall. The fall
+  and recovery come from `assets.json` `horizon`, written by
+  `scripts/add_asset_horizons.py` from the provided prices. A trade that lowers the
+  coverage of an essential goal due within 24 months is red; other drops are
+  yellow. Planning horizon 5 years; 2% inflation for indexed goals.
+- ESG (`esg.py`): buying an excluded ticker, or a single stock in an excluded
+  sector, is red. Buying a fund above the client's look-through tolerance for
+  excluded sectors, or pushing the whole portfolio above it, is yellow. Selling
+  is never flagged.
+- Personas (all fictional): Robert, 63, health care worker retiring 2027-07-01,
+  CAD 3,000,000, needs CAD 70,000 a year (indexed) for 30 years. Mateo, 41, no
+  fossil fuels, home down payment in 2029. Amira, 26, master's tuition in 2028.
+
+Horizon, objectives and loss tolerance stay agent context. A rule that cannot be
+evaluated (no sector breakdown, no price history, an unverified ESG wish) returns
+an unresolved item. `unresolved_handling` makes it a yellow note by default, and a
+manual review only for stored constraints the engine cannot read.
 No sector exposures, ESG certification or numerical horizon rules are invented.
-
-## Interface and JSON contract v2.0
-
-`POST /api/evaluate` accepts only the existing five trade fields:
-
-```json
-{"client_id":"demo_balanced","decision_date":"2026-11-13","ticker":"TSLA","side":"buy","amount_cad":12000}
-```
-
-Both HTTP and Lambda return the same record: `schema_version`, `simulation_id`,
-`request`, `result`, `stage`, `agent_status`. Consumers read **`result.verdict`**
-(previously top-level in v1.1). The result retains all original numerical fields,
-adds `reference_portfolio_version` and `classification`, and hashes the request,
-stored client, asset mapping, policy, references and snapshot.
-The schema also exposes the trade shape as `$defs.trade`.
-
-Green continues the simulation. Yellow waits for confirm/cancel. Red pauses for
-a nonempty reason; only then is the agent handoff stored and the configured
-service activated. `POST /api/simulations/{id}/decision` accepts
-`{"decision":"confirm"}`, `{"decision":"cancel"}`, or
-`{"decision":"explain","reason":"..."}`. No reason is a rule input. Agent
-return values cannot change the numerical result. Missing required information
-is manual review, never green. The UI shows target, positions, memberships,
-mismatch, residual allocation, individual checks and provenance.
-
-## Existing AWS adapter
-
-Build the offline handoff bundle from this component directory after `demo`:
-
-```sh
-../.venv/bin/python scripts/package_aws.py
-```
-
-This creates ignored `dist/aws/lambda.zip`, staged objects under `dist/aws/s3/`,
-and a SHA-256 manifest. It does not contact AWS. The ZIP has the importable
-`second_look/` package and `config/` at its root, with no virtual environment,
-raw data, caches or third-party dependencies. Your teammate can upload that ZIP
-to an existing rule Lambda and upload the staged `s3/` contents beneath the
-existing bucket/prefix. The manifest describes the exact files to transfer.
-
-Handler: `second_look.lambda_handler.handler`; configure existing `DATA_BUCKET`,
-optional `DATA_PREFIX` (default `second-look`), and optionally an **existing**
-`AGENT_FUNCTION_NAME`. No resources are provisioned. Beneath that prefix supply:
-
-```text
-config/assets.json
-config/policy.json
-config/reference_portfolios.json
-clients/demo_balanced.json          <- examples/client.json
-snapshots/2026-11-13.json            <- data/runtime/snapshots/2026-11-13.json
-```
-
-Evaluation/decision routes use the same bodies and response record as local HTTP
-(the `/api` prefix is optional in the Lambda routing). Results go to `results/`,
-agent payloads to `agent_requests/`. A red reason invokes the configured existing
-agent Lambda asynchronously. No configured service means `not_configured`, and
-failed invocation means `dispatch_failed`; the simulation remains paused.
-`AGENT_FUNCTION_NAME` is the name/ARN of an existing **Lambda**, not a Bedrock
-agent ID. That Lambda is the bridge to the team's Bedrock/Strands implementation.
-It receives `schema_version`, `simulation_id`, `investor_reason`, `request`,
-`numerical_result` (including both spectrum positions and provenance), and an
-instruction to preserve the fixed verdict. For an agent that calls the numerical
-engine as a tool, invoke the rule Lambda with only the five trade fields above;
-parse its HTTP envelope `body` and read `record.result`. Agents must get trusted
-profiles/holdings from the store and cannot supply a replacement profile.
-Returning/persisting the final agent explanation in the main platform is an
-integration step for the teammate; this component only dispatches that handoff.
-Direct Python callers can import `second_look.service.evaluate_from_snapshot`
-from the ZIP's package root and should pass assets, policy and references from
-the trusted configuration explicitly.
-
-The existing role needs these S3 reads/writes, CloudWatch logs and permission to
-invoke that existing function if used. Logs include stages, verdict, policy/
-reference versions and evaluation result hash. Authenticate the platform endpoint
-and authorize client/result access upstream; this adapter is not an identity layer.
-Concurrent production decision processing needs idempotency/conditional writes;
-the current workflow store is for the prototype, not a transaction system.
 
 ## Verification and gaps
 

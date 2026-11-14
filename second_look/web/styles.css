@@ -4,4 +4,5 @@
 .agent-review .alt-list li{margin:.25rem 0}
 .agent-details{margin-top:1rem;border-top:1px solid #ddd;padding-top:.5rem;font-size:.92em}
 .agent-details summary{cursor:pointer;color:#555}
-.liquidity-note{margin-top:.75rem;padding:.6rem .8rem;border-left:3px solid #c98a00;background:#fff8e6}
+.goal-note,.esg-note{margin-top:.75rem;padding:.6rem .8rem;border-left:3px solid #c98a00;background:#fff8e6}
+.goal-note li.red{font-weight:600}.goal-note li span{font-weight:400}

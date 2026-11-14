@@ -86,13 +86,16 @@ A pre-trade check for self-directed investors. Simulation only, not investment a
 ## Files
 
 - `config.py`: region (`us-east-1`), bucket, Lambda name, Bedrock model ID
-- `lambda/lambda_function.py`: all tools: `get_profile`, `rule_check`, `risk_metrics`, `macro_snapshot`, `news_check`
+- `lambda/lambda_function.py`: all tools: `get_profile`, `rule_check`, `goal_check`, `risk_metrics`, `macro_snapshot`, `news_check`
 - `agents/tools.py`: Strands tools that call the Lambda, plus the trace
 - `agents/second_look.py`: agents, prompts and the green/yellow/red flow
-- `data/profiles.json`: NBF ranges, team assumptions and fictional clients
+- `agents/universe.py`: the tickers the agents may propose, generated from `assets.json` at run time
+- `data/profiles.json`: NBF ranges, team assumptions and fictional clients (holdings, income, goals, ESG preferences)
 - `data/news_snapshot.json`: **PLACEHOLDER**, to be replaced with real official items
+- `scripts/provided_universe.py`: prints the provided universe and checks every file against it (`--fix-data` strips non-provided rows from `data/`)
+- `scripts/add_asset_horizons.py`: writes each asset's worst past fall and recovery time into `assets.json`
 - `scripts/test_bedrock.py`, `scripts/upload_to_s3.py`
-- `tests/test_tools_local.py`: runs the tools on real data, no AWS needed
+- `tests/`: tools on real data (acceptance table) and universe checks; `second_look/tests/`: rule, schema and generality tests
 
 ## Setup
 
@@ -102,13 +105,14 @@ A pre-trade check for self-directed investors. Simulation only, not investment a
 
 ## Run
 
-- Local tools test: `uv run python tests/test_tools_local.py` should print `ALL GOOD`.
+- Local tools test: `uv run python tests/test_tools_local.py` prints the acceptance table and `ALL GOOD`.
+- All tests: `uv run --with pytest python -m pytest tests` and `cd second_look && uv run --project .. --with pytest python -m pytest tests`
 - Bedrock check: `uv run python scripts/test_bedrock.py`
 - Upload data to S3: `uv run python scripts/upload_to_s3.py`
-- Agents with local tools: `uv run python agents/second_look.py --client robert --ticker NVDA --amount 24000 --local`
+- Agents with local tools: `uv run python agents/second_look.py --client robert --ticker NVDA --amount 360000 --local`
 - Agents with the Lambda: the same command without `--local`
 
-Demo cases (purchases are paid from cash): `robert SPY 2000` (green), `mateo ESGV 12000` (yellow, concentration watch), `amira QQQ 5000` (green), `amira ETH-USD 3000` (red, crypto cap), `robert NVDA 24000` (red, all his cash into one stock), `mateo XOM 3000` (red, exclusion list).
+Demo cases (purchases are paid from cash): `robert SPY 30000` (green), `robert NVDA 360000` (red, all his cash into one stock), `robert XBB.TO 340000` (red, goal rule: cash for his first retirement withdrawal moved into a bond fund that once took 3 years to recover), `mateo ESGV 12000` (yellow, concentration watch), `mateo XOM 3000` (red, ESG exclusion), `mateo XIU.TO 5000` (yellow, ESG look-through: the fund holds 18.6% Energy), `amira QQQ 5000` (green), `amira ETH-USD 3000` (red, crypto cap), `amira NVDA 5000` (red, single stock).
 
 ## Lambda
 
@@ -119,7 +123,7 @@ Manual alternative (console):
 1. Create the function `second-look-tools` (Python 3.12) and paste `lambda/lambda_function.py`.
 2. Add the layer `AWSSDKPandas-Python312`. Set memory to 1024 MB and the timeout to 1 min.
 3. Environment variables: `DATA_BUCKET=<bucket>`, `DATA_PREFIX=data/`. Give the execution role S3 read access.
-4. Test event: `{"action": "rule_check", "client_id": "robert", "ticker": "NVDA", "amount_cad": 24000}` should return red.
+4. Test event: `{"action": "rule_check", "client_id": "robert", "ticker": "NVDA", "amount_cad": 360000}` should return red.
 
 ## Dashboard and API on AWS
 
@@ -139,7 +143,45 @@ The URL is public (no auth) for the demo, so keep it inside the team.
 - Read data through `load_csv` / `load_json`. No local paths, no keys in code.
 - `rule_check` runs the team rule engine in `second_look/` (Ariane's `rules.py` and `config/policy.json`), bundled into the tools Lambda by `deploy_lambda.py`. Purchases are paid from cash only. The demo personas live in `data/profiles.json` (CAD), and `second_look/scripts/make_persona_clients.py` writes them in the component's client format. `news_snapshot.json` holds official items (Daniel).
 
-Data: AlphaForge starter dataset (Yahoo Finance, Bank of Canada, FRED), 2021-11-12 to 2026-11-12, in CAD. Three extra ETFs (XIT.TO, XLK, XEF.TO) are added with `uv run --with yfinance python scripts/add_assets.py`, using the same method and window as the organizers' `build_dataset.py`. Run it after copying the starter CSVs, then upload to S3. Ranges: National Bank Financial, Investment Strategy, Fall 2026. Everything else in `profiles.json` is a team assumption or fictional.
+Data: AlphaForge starter dataset (Yahoo Finance, Bank of Canada, FRED), 2021-11-12 to 2026-11-12, in CAD. Ranges: National Bank Financial, Investment Strategy, Fall 2026. Everything else in `profiles.json` is a team assumption or fictional.
+
+## Universe, rules and client schema
+
+**Universe = the provided data only.** The investable universe is exactly the 31 tickers in the organizers' price file (committed copy: `second_look/data/raw/prices_daily.csv`): 10 Canadian stocks, 10 U.S. stocks, 9 ETFs (XIU.TO, SPY, QQQ, ESGV, XBB.TO, ZST.TO, AGG, TLT, GLD), BTC-USD and ETH-USD. `uv run python scripts/provided_universe.py` prints it and checks `assets.json`, `profiles.json` and `data/`. Nothing else is downloaded, and the code has no price downloads anywhere. A trade, holding or exclusion on another ticker is rejected with "X is not in the asset universe (the provided datathon data)". The agents' allowed list is generated from `assets.json` at run time, and the dashboard picker shows only these tickers. Reference data that is not prices (ETF sector weights, ESGV's ESG screen) is kept only for tickers in the universe, with its source and date.
+
+**Rules** (`second_look/second_look/rules.py`, pure functions, no I/O). Every threshold is in `config/policy.json`, with a source and a rationale under `threshold_sources`.
+
+- Allocation ranges per profile (NBF Fall 2026), single-stock cap, crypto cap, concentration (HHI), Growth sector cap: unchanged.
+- **A. Goal coverage** (`goals.py`). Money needed by a date only counts if the asset holding it recovered from its worst past fall (5-year provided window, in CAD) in less time than is left before the date. It counts at the value left after a repeat of that fall. Cash and cash-like funds (asset class `cash`, i.e. ZST.TO) always count in full. Goals are funded earliest first, each from the most liquid assets first, and each dollar is used once. Recurring goals become yearly installments, minus any other income assigned to them, indexed at 2% if marked. Only installments within 5 years are checked. A goal is flagged only when the trade lowers its coverage below 100% *and* lowers the money available for it and all earlier goals. That is red for an essential goal due within 24 months, yellow otherwise. For clients without goals the rule is not applied (noted in `coverage.notes`).
+- **B. ESG preferences** (`esg.py`). One screen for every client; the older top-level `excluded_tickers` / `excluded_sectors` are read into it. Buying an excluded ticker, or a single stock in an excluded sector: red. Buying a fund whose share in excluded sectors exceeds the client's `max_lookthrough_excluded_share`: yellow, with the fact-sheet date. The whole portfolio's look-through exposure rising above that maximum: yellow. A fund without sector data: unresolved. Selling is never flagged.
+- The goal and ESG rules flag a trade only when it creates or worsens a problem. Missing data is never guessed: the rule returns an unresolved item, and `unresolved_handling` in the policy decides between a yellow note (the default) and a manual review (used for stored constraints the engine cannot read).
+- Every alert carries `rule, severity, before, after, limit, effect (creates/worsens/improves/unchanged), source, message`.
+
+**Client schema** (`contracts.validate_client`; invalid input is rejected with a plain message):
+
+```json
+"income": {"other_income_cad_per_year": 0, "source": "..."},
+"goals": [
+  {"name": "Emergency fund", "type": "one_off", "amount_cad": 12000, "target_date": "2026-11-13", "priority": "essential", "source": "..."},
+  {"name": "Retirement income", "type": "recurring", "amount_cad_per_year": 70000, "start_date": "2027-07-01",
+   "years": 30, "funded_by_other_income_cad_per_year": 0, "indexed_to_inflation": true, "priority": "essential", "source": "..."}],
+"preferences": {"esg": {"excluded_tickers": ["XOM"], "excluded_sectors": ["Energy"], "max_lookthrough_excluded_share": 0.05,
+                        "prefer_esg_screened_funds": true, "source": "..."}}
+```
+
+Recurring goals take `years` or an `end_date` after `start_date`. One-off target dates cannot be in the past. Amounts are >= 0. Other income assigned to goals cannot exceed `other_income_cad_per_year`. The emergency fund is a one-off essential goal due on the decision date: months x monthly expenses, minus savings held outside the portfolio.
+
+**Assumptions** (team assumptions, labeled in the policy):
+
+- Worst past fall and recovery time are historical stress tests, not forecasts.
+- 5-year planning horizon, 24-month red window, 2% inflation (the Bank of Canada target), 5% default look-through tolerance.
+- ESG screens cover equity exposure only; bond issuers inside bond funds are not looked through.
+- Personas are fictional. One persona value was adjusted: Mateo's in-portfolio emergency fund is CAD 2,000 (CAD 9,000 needed, CAD 7,000 held in savings outside the portfolio), so that `mateo ESGV 12000` stays yellow.
+
+**Add a client:** add it under `clients` in `data/profiles.json` (holdings in CAD, `income`, `goals`, `preferences.esg`). Run `uv run --directory second_look python scripts/make_persona_clients.py`, which validates it, then `uv run python scripts/upload_to_s3.py`. No code change is needed.
+
+**Add an asset:** only a ticker that is in the organizers' provided price file. Add its entry to `second_look/config/assets.json`: class, single stock or fund, sector or sourced `sector_weights`, and `esg` only with a real source. Run `uv run python scripts/add_asset_horizons.py` (re-run it for a new decision date too), then `uv run python scripts/provided_universe.py`. No code change is needed.
+
 ## Second Look: reproduce output and integrate with AWS
 
 The component is included in [`second_look/`](second_look/README.md) on `ari.dev`.

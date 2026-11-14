@@ -1,7 +1,14 @@
 {
   "client_id": "robert",
   "name": "Robert",
-  "age": 59,
+  "age": 63,
+  "occupation": "health care worker",
+  "retirement_date": "2027-07-01",
+  "description": "Robert, 63, health care worker, retires on 2027-07-01. Conservative investor with about CAD 3,000,000 saved; from retirement he needs CAD 70,000 a year (indexed to inflation) from the portfolio for 30 years. Fictional persona.",
+  "stated_preferences": [
+    "established companies",
+    "little interest in crypto"
+  ],
   "profile": "Conservative",
   "horizon_years": 4,
   "objectives": [
@@ -9,23 +16,60 @@
     "some_growth"
   ],
   "loss_tolerance_fraction": 0.15,
-  "preferences": {
-    "excluded_tickers": [],
-    "excluded_sectors": []
+  "preferences": {},
+  "income": {
+    "other_income_cad_per_year": 0,
+    "note": "Salary stops at retirement; pension and CPP/OAS are not counted for the retirement goal.",
+    "source": "fictional persona (team assumption)"
   },
-  "cash_cad": 24000,
+  "goals": [
+    {
+      "name": "Emergency fund",
+      "type": "one_off",
+      "amount_cad": 12000,
+      "target_date": "2026-11-13",
+      "priority": "essential",
+      "source": "fictional persona (team assumption)",
+      "basis": {
+        "emergency_months": 3,
+        "monthly_expenses_cad": 4000,
+        "held_outside_portfolio_cad": 0,
+        "formula": "emergency_months x monthly_expenses - savings held outside the portfolio"
+      }
+    },
+    {
+      "name": "Roof repair",
+      "type": "one_off",
+      "amount_cad": 6000,
+      "target_date": "2027-04-01",
+      "priority": "essential",
+      "source": "fictional persona (team assumption)"
+    },
+    {
+      "name": "Retirement income",
+      "type": "recurring",
+      "amount_cad_per_year": 70000,
+      "start_date": "2027-07-01",
+      "years": 30,
+      "funded_by_other_income_cad_per_year": 0,
+      "indexed_to_inflation": true,
+      "priority": "essential",
+      "source": "fictional persona (team assumption)"
+    }
+  ],
+  "cash_cad": 360000,
   "holdings_as_of": "2026-11-13",
   "holdings": {
-    "XBB.TO": 1634.5803983080132,
-    "AGG": 257.85326861385795,
-    "TLT": 263.9895511498496,
-    "XIU.TO": 366.63612037829733,
-    "SPY": 18.530965959282373,
-    "RY.TO": 17.277721209558663,
-    "FTS.TO": 59.2206561648703,
-    "JNJ": 12.371407130695324,
-    "PG": 20.87449404560944,
-    "GLD": 11.86015181726404
+    "XBB.TO": 24518.7059746202,
+    "AGG": 3867.7990292078694,
+    "TLT": 3959.843267247744,
+    "XIU.TO": 5499.54180567446,
+    "SPY": 277.9644893892356,
+    "RY.TO": 259.16581814337997,
+    "FTS.TO": 888.3098424730546,
+    "JNJ": 185.57110696042986,
+    "PG": 313.1174106841416,
+    "GLD": 177.9022772589606
   },
   "fictional": true,
   "source": "data/profiles.json (team persona file)"

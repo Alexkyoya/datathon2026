@@ -2,16 +2,47 @@
   "client_id": "amira",
   "name": "Amira",
   "age": 26,
+  "description": "Amira, 26, growth investor interested in AI and crypto; plans a master's degree in 2028. Fictional persona.",
+  "stated_preferences": [
+    "interested in AI and crypto",
+    "wants some diversification, not only tech"
+  ],
   "profile": "Growth",
   "horizon_years": 15,
   "objectives": [
     "long_term_growth"
   ],
   "loss_tolerance_fraction": 0.3,
-  "preferences": {
-    "excluded_tickers": [],
-    "excluded_sectors": []
+  "preferences": {},
+  "income": {
+    "other_income_cad_per_year": 60000,
+    "note": "salary",
+    "source": "fictional persona (team assumption)"
   },
+  "goals": [
+    {
+      "name": "Emergency fund",
+      "type": "one_off",
+      "amount_cad": 0,
+      "target_date": "2026-11-13",
+      "priority": "essential",
+      "source": "fictional persona (team assumption)",
+      "basis": {
+        "emergency_months": 3,
+        "monthly_expenses_cad": 2500,
+        "held_outside_portfolio_cad": 7500,
+        "formula": "emergency_months x monthly_expenses - savings held outside the portfolio"
+      }
+    },
+    {
+      "name": "Master's tuition",
+      "type": "one_off",
+      "amount_cad": 15000,
+      "target_date": "2028-09-01",
+      "priority": "flexible",
+      "source": "fictional persona (team assumption)"
+    }
+  ],
   "cash_cad": 5000,
   "holdings_as_of": "2026-11-13",
   "holdings": {

@@ -53,7 +53,7 @@ class RuleTests(unittest.TestCase):
         self.assertEqual(r['verdict'],'green')
         stock=next(c for c in r['breaches'] if c['rule']=='single_stock.TSLA')
         self.assertAlmostEqual(stock['after'],.12)
-        self.assertEqual(stock['effect'],'reduces')
+        self.assertEqual(stock['effect'],'improves')
 
     def test_improvement_does_not_hide_new_breach(self):
         h=dict(self.holdings);h['CASH_CAD']=30000;h['XBB.TO']=1000
@@ -79,15 +79,19 @@ class RuleTests(unittest.TestCase):
         self.assertEqual(self.run_trade()['verdict'],'red')
 
     def test_incomplete_sector_and_esg_not_green(self):
+        # Intent: missing look-through data or an unverified ESG wish never yields a silent green.
+        # Every equity fund in the provided universe has sector data, so use a fixture fund without it.
         self.client['profile']='Growth'
-        # SPY/XIU/ESGV/QQQ now carry sourced sector weights; XEF.TO still has no look-through.
         self.assertEqual(self.run_trade()['verdict'],'green')
-        r=self.run_trade('XEF.TO',4000)
-        self.assertIsNone(r['verdict'])
+        self.assets=dict(self.assets,FIXTURE_FUND=dict(self.assets['SPY'],name='Fixture fund',sector_weights=None,
+                                                         sector_weights_source=None))
+        r=self.run_trade('FIXTURE_FUND',4000)
+        self.assertEqual(r['verdict'],'yellow')  # policy: a data gap is a yellow note, not a block
         self.assertEqual(r['evaluation_status'],'partial')
+        self.assertEqual(r['coverage']['unresolved'][0]['rule'],'sector_lookthrough.FIXTURE_FUND')
         self.client['profile']='Balanced'
         self.client['preferences']={'esg_required':True}
-        self.assertIsNone(self.run_trade()['verdict'])
+        self.assertEqual(self.run_trade()['verdict'],'yellow')
         self.assertEqual(self.run_trade('TSLA',12000)['verdict'],'red')
 
     def test_etf_is_exempt_stock_cap_but_kept_in_hhi(self):

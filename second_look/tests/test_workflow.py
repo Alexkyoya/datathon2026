@@ -79,7 +79,7 @@ class WorkflowTests(unittest.TestCase):
         result=self.app.decide(red['simulation_id'],'explain','My reason')
         self.assertEqual(result['agent_status'],'not_configured')
         self.assertEqual(result['stage'],'awaiting_agents')
-        client=copy.deepcopy(self.client);client['preferences']['esg_required']=True
+        client=copy.deepcopy(self.client);client['preferences']['unimplemented_restriction']=True
         self.store.save('clients/demo_balanced.json',client)
         record=self.app.evaluate(self.trade())
         self.assertIsNone(record['result']['verdict'])
@@ -98,7 +98,7 @@ class WorkflowTests(unittest.TestCase):
         with self.assertRaises(ValueError):self.app.evaluate(self.trade())
 
     def test_aws_adapter_with_mock_s3_and_existing_agent_lambda(self):
-        objects={f'second-look/{str(p.relative_to(Path(self.temp.name)))}':p.read_bytes() for p in Path(self.temp.name).rglob('*.json')}
+        objects={f'second-look/{p.relative_to(Path(self.temp.name)).as_posix()}':p.read_bytes() for p in Path(self.temp.name).rglob('*.json')}
         invoked=[]
         class S3:
             def get_object(self,**kwargs):return {'Body':io.BytesIO(objects[kwargs['Key']])}

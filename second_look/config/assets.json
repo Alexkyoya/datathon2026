@@ -12,7 +12,17 @@
       "Financials": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.2121,
+      "recovery_months": 26.1,
+      "recovered": true,
+      "peak_date": "2022-01-17",
+      "trough_date": "2023-10-27",
+      "recovery_date": "2024-03-21",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "TD.TO": {
     "name": "Toronto-Dominion Bank",
@@ -27,7 +37,17 @@
       "Financials": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.2606,
+      "recovery_months": 39.3,
+      "recovered": true,
+      "peak_date": "2022-02-10",
+      "trough_date": "2022-07-14",
+      "recovery_date": "2025-05-22",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "MFC.TO": {
     "name": "Manulife Financial",
@@ -42,7 +62,17 @@
       "Financials": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.2105,
+      "recovery_months": 11.5,
+      "recovered": true,
+      "peak_date": "2022-02-10",
+      "trough_date": "2022-06-23",
+      "recovery_date": "2023-01-26",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "ENB.TO": {
     "name": "Enbridge",
@@ -57,7 +87,17 @@
       "Energy": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.2138,
+      "recovery_months": 25.8,
+      "recovered": true,
+      "peak_date": "2022-06-07",
+      "trough_date": "2023-10-04",
+      "recovery_date": "2024-08-01",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "CNQ.TO": {
     "name": "Canadian Natural Resources",
@@ -72,7 +112,17 @@
       "Energy": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.3311,
+      "recovery_months": 21.8,
+      "recovered": true,
+      "peak_date": "2024-04-10",
+      "trough_date": "2025-04-08",
+      "recovery_date": "2026-02-04",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "CNR.TO": {
     "name": "Canadian National Railway",
@@ -87,7 +137,17 @@
       "Industrials": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.2725,
+      "recovery_months": 27.1,
+      "recovered": true,
+      "peak_date": "2024-03-21",
+      "trough_date": "2025-08-07",
+      "recovery_date": "2026-06-25",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "FTS.TO": {
     "name": "Fortis",
@@ -102,7 +162,17 @@
       "Utilities": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.2401,
+      "recovery_months": 26.8,
+      "recovered": true,
+      "peak_date": "2022-05-24",
+      "trough_date": "2022-10-12",
+      "recovery_date": "2024-08-16",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "ATD.TO": {
     "name": "Alimentation Couche-Tard",
@@ -117,7 +187,17 @@
       "Consumer Staples": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.2216,
+      "recovery_months": 24.0,
+      "recovered": true,
+      "peak_date": "2024-02-23",
+      "trough_date": "2025-03-18",
+      "recovery_date": "2026-02-23",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "SHOP.TO": {
     "name": "Shopify",
@@ -132,7 +212,17 @@
       "Information Technology": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.8347,
+      "recovery_months": 46.1,
+      "recovered": true,
+      "peak_date": "2021-11-19",
+      "trough_date": "2022-10-11",
+      "recovery_date": "2025-09-22",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "CSU.TO": {
     "name": "Constellation Software",
@@ -147,7 +237,17 @@
       "Information Technology": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.5638,
+      "recovery_months": null,
+      "recovered": false,
+      "peak_date": "2025-05-08",
+      "trough_date": "2026-02-17",
+      "recovery_date": null,
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "AAPL": {
     "name": "Apple",
@@ -162,7 +262,17 @@
       "Information Technology": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.3424,
+      "recovery_months": 10.0,
+      "recovered": true,
+      "peak_date": "2024-12-26",
+      "trough_date": "2025-04-08",
+      "recovery_date": "2025-10-27",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "MSFT": {
     "name": "Microsoft",
@@ -177,7 +287,17 @@
       "Information Technology": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.3431,
+      "recovery_months": 11.3,
+      "recovered": true,
+      "peak_date": "2025-10-28",
+      "trough_date": "2026-03-27",
+      "recovery_date": "2026-10-06",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "NVDA": {
     "name": "NVIDIA",
@@ -192,7 +312,17 @@
       "Information Technology": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.6346,
+      "recovery_months": 17.6,
+      "recovered": true,
+      "peak_date": "2021-11-29",
+      "trough_date": "2022-10-14",
+      "recovery_date": "2023-05-18",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "GOOGL": {
     "name": "Alphabet (Class A)",
@@ -207,7 +337,17 @@
       "Communication Services": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.3947,
+      "recovery_months": 21.5,
+      "recovered": true,
+      "peak_date": "2021-12-27",
+      "trough_date": "2022-11-03",
+      "recovery_date": "2023-10-11",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "AMZN": {
     "name": "Amazon",
@@ -222,7 +362,17 @@
       "Consumer Discretionary": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.5239,
+      "recovery_months": 26.7,
+      "recovered": true,
+      "peak_date": "2021-11-18",
+      "trough_date": "2022-12-28",
+      "recovery_date": "2024-02-09",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "TSLA": {
     "name": "Tesla",
@@ -237,7 +387,17 @@
       "Consumer Discretionary": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.7088,
+      "recovery_months": 35.1,
+      "recovered": true,
+      "peak_date": "2022-01-03",
+      "trough_date": "2023-01-03",
+      "recovery_date": "2024-12-05",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "JPM": {
     "name": "JPMorgan Chase",
@@ -252,7 +412,17 @@
       "Financials": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.3224,
+      "recovery_months": 19.8,
+      "recovered": true,
+      "peak_date": "2021-11-23",
+      "trough_date": "2022-10-11",
+      "recovery_date": "2023-07-19",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "JNJ": {
     "name": "Johnson & Johnson",
@@ -267,7 +437,17 @@
       "Health Care": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.1555,
+      "recovery_months": 5.1,
+      "recovered": true,
+      "peak_date": "2025-03-10",
+      "trough_date": "2025-05-14",
+      "recovery_date": "2025-08-13",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "PG": {
     "name": "Procter & Gamble",
@@ -282,7 +462,17 @@
       "Consumer Staples": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.2347,
+      "recovery_months": null,
+      "recovered": false,
+      "peak_date": "2025-03-10",
+      "trough_date": "2026-01-07",
+      "recovery_date": null,
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "XOM": {
     "name": "Exxon Mobil",
@@ -297,7 +487,17 @@
       "Energy": 1.0
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.1908,
+      "recovery_months": 6.2,
+      "recovered": true,
+      "peak_date": "2023-09-27",
+      "trough_date": "2024-01-22",
+      "recovery_date": "2024-04-02",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "XIU.TO": {
     "name": "iShares S&P/TSX 60 Index ETF",
@@ -319,14 +519,24 @@
       "Other (not broken out by issuer)": 0.049
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null,
     "sector_weights_source": {
       "source": "BlackRock Canada, Apercu du FNB / ETF Facts, iShares S&P/TSX 60 Index ETF (XIU)",
       "url": "https://blackrock.com/ca/investisseurs/fr/literature/etf-summary/xiu-facts-fr-ca.pdf",
       "as_of": "2026-04-30",
       "classification": "Issuer sector names (French), mapped to GICS names",
       "note": "'Autres' (4.8%) and cash (0.1%) kept as one 'Other' bucket. Document dated 2026-06-19."
-    }
+    },
+    "horizon": {
+      "max_drawdown": -0.1636,
+      "recovery_months": 20.8,
+      "recovered": true,
+      "peak_date": "2022-04-04",
+      "trough_date": "2022-10-12",
+      "recovery_date": "2023-12-27",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "SPY": {
     "name": "SPDR S&P 500 ETF Trust",
@@ -351,14 +561,24 @@
       "Materials": 0.016996600679864027
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null,
     "sector_weights_source": {
       "source": "State Street SPDR S&P 500 ETF Trust fact sheet",
       "url": "https://www.ssga.com/library-content/products/factsheets/etfs/us/factsheet-us-en-spy.pdf",
       "as_of": "2026-09-30",
       "classification": "GICS",
       "note": "Weights normalized to sum to 1."
-    }
+    },
+    "horizon": {
+      "max_drawdown": -0.2225,
+      "recovery_months": 18.7,
+      "recovered": true,
+      "peak_date": "2021-12-27",
+      "trough_date": "2022-06-16",
+      "recovery_date": "2023-07-18",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "QQQ": {
     "name": "Invesco QQQ Trust (Nasdaq-100)",
@@ -381,14 +601,24 @@
       "Energy": 0.0044
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null,
     "sector_weights_source": {
       "source": "Invesco QQQ fact sheet",
       "url": "https://www.invesco.com/content/dam/invesco/hk/en/pdf/factsheet/Invesco_QQQ_factsheet_EN.pdf",
       "as_of": "2026-09-30",
       "classification": "ICB (Invesco), mapped to GICS names",
       "note": "ICB Technology -> Information Technology, Telecommunications -> Communication Services, Basic Materials -> Materials. ICB puts Alphabet and Meta in Technology, so the technology share is higher than under GICS (conservative for a sector cap)."
-    }
+    },
+    "horizon": {
+      "max_drawdown": -0.3205,
+      "recovery_months": 20.1,
+      "recovered": true,
+      "peak_date": "2021-12-27",
+      "trough_date": "2022-06-16",
+      "recovery_date": "2023-09-01",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "ESGV": {
     "name": "Vanguard ESG U.S. Stock ETF",
@@ -413,13 +643,42 @@
       "Energy": 0.001
     },
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null,
     "sector_weights_source": {
       "source": "Vanguard ESG U.S. Stock ETF fact sheet",
       "url": "https://workplace.vanguard.com/iippdf/pdfs/FS4393R.pdf",
       "as_of": "2026-09-30",
       "classification": "FTSE/ICB-style sector names, mapped to GICS names",
       "note": "Technology -> Information Technology, Telecommunications -> Communication Services, Basic Materials -> Materials; technology share likely higher than under GICS."
+    },
+    "horizon": {
+      "max_drawdown": -0.2686,
+      "recovery_months": 23.3,
+      "recovered": true,
+      "peak_date": "2021-12-27",
+      "trough_date": "2022-06-16",
+      "recovery_date": "2023-12-07",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": {
+      "screened": true,
+      "index": "FTSE US All Cap Choice Index",
+      "excludes": [
+        "coal, oil or gas",
+        "nuclear power",
+        "weapons (incl. civilian firearms)",
+        "tobacco",
+        "alcohol",
+        "cannabis",
+        "gambling",
+        "adult entertainment",
+        "companies failing labor, human rights, environmental and anti-corruption standards",
+        "companies failing diversity criteria"
+      ],
+      "source": "Vanguard ESG U.S. Stock ETF fact sheet (Investment approach; Benchmark exclusions)",
+      "url": "https://workplace.vanguard.com/iippdf/pdfs/FS4393R.pdf",
+      "as_of": "2026-09-30",
+      "note": "Exclusions are decided by FTSE Russell subject to revenue thresholds in the prospectus; the fund still reports 0.1% Energy (sector_weights)."
     }
   },
   "XBB.TO": {
@@ -433,7 +692,17 @@
     "is_crypto": false,
     "sector_weights": {},
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.1548,
+      "recovery_months": 38.5,
+      "recovered": true,
+      "peak_date": "2021-12-17",
+      "trough_date": "2022-10-20",
+      "recovery_date": "2025-03-03",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "ZST.TO": {
     "name": "BMO Ultra Short-Term Bond ETF",
@@ -446,7 +715,19 @@
     "is_crypto": false,
     "sector_weights": {},
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": 0.0,
+      "recovery_months": 0.0,
+      "recovered": true,
+      "window": "2021-11-12..2026-11-12",
+      "source": "Second Look policy: cash-like asset (asset_class cash) counted at full value",
+      "measured": {
+        "max_drawdown": -0.0043,
+        "recovery_months": 5.5,
+        "recovered": true
+      }
+    },
+    "esg": null
   },
   "AGG": {
     "name": "iShares Core U.S. Aggregate Bond ETF",
@@ -459,7 +740,17 @@
     "is_crypto": false,
     "sector_weights": {},
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.1275,
+      "recovery_months": 31.4,
+      "recovered": true,
+      "peak_date": "2021-12-20",
+      "trough_date": "2022-06-13",
+      "recovery_date": "2024-08-01",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "TLT": {
     "name": "iShares 20+ Year Treasury Bond ETF",
@@ -472,7 +763,17 @@
     "is_crypto": false,
     "sector_weights": {},
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.3973,
+      "recovery_months": null,
+      "recovered": false,
+      "peak_date": "2021-12-03",
+      "trough_date": "2023-10-19",
+      "recovery_date": null,
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "GLD": {
     "name": "SPDR Gold Shares",
@@ -485,7 +786,17 @@
     "is_crypto": false,
     "sector_weights": {},
     "mapping_source": "Starter build_dataset.py + project team mapping assumptions",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.26,
+      "recovery_months": null,
+      "recovered": false,
+      "peak_date": "2026-01-28",
+      "trough_date": "2026-10-30",
+      "recovery_date": null,
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "BTC-USD": {
     "name": "Bitcoin",
@@ -498,7 +809,17 @@
     "is_crypto": true,
     "sector_weights": {},
     "mapping_source": "Starter build_dataset.py; crypto is an alternative asset per project requirement; separate crypto cap still applies.",
-    "esg_tags": null
+    "horizon": {
+      "max_drawdown": -0.7366,
+      "recovery_months": 27.5,
+      "recovered": true,
+      "peak_date": "2021-11-12",
+      "trough_date": "2022-11-21",
+      "recovery_date": "2024-02-28",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
+    },
+    "esg": null
   },
   "ETH-USD": {
     "name": "Ether",
@@ -511,53 +832,16 @@
     "is_crypto": true,
     "sector_weights": {},
     "mapping_source": "Starter build_dataset.py; crypto is an alternative asset per project requirement; separate crypto cap still applies.",
-    "esg_tags": null
-  },
-  "XIT.TO": {
-    "name": "iShares S&P/TSX Capped Information Technology Index ETF",
-    "currency": "CAD",
-    "asset_class": "equities",
-    "instrument_type": "etf_equity",
-    "market": "TSX",
-    "sector": "Information Technology",
-    "is_single_stock": false,
-    "is_crypto": false,
-    "sector_weights": {
-      "Information Technology": 1.0
+    "horizon": {
+      "max_drawdown": -0.7719,
+      "recovery_months": 44.4,
+      "recovered": true,
+      "peak_date": "2021-11-30",
+      "trough_date": "2022-07-12",
+      "recovery_date": "2025-08-12",
+      "window": "2021-11-12..2026-11-12",
+      "source": "AlphaForge provided daily prices (adj_close, in CAD with Bank of Canada USD/CAD)"
     },
-    "mapping_source": "scripts/add_assets.py (same yfinance method as starter build_dataset.py) + team mapping assumption",
-    "esg_tags": null
-  },
-  "XLK": {
-    "name": "Technology Select Sector SPDR Fund",
-    "currency": "USD",
-    "asset_class": "equities",
-    "instrument_type": "etf_equity",
-    "market": "NYSE Arca",
-    "sector": "Information Technology",
-    "is_single_stock": false,
-    "is_crypto": false,
-    "sector_weights": {
-      "Information Technology": 1.0
-    },
-    "mapping_source": "scripts/add_assets.py (same yfinance method as starter build_dataset.py) + team mapping assumption",
-    "esg_tags": null
-  },
-  "XEF.TO": {
-    "name": "iShares Core MSCI EAFE IMI Index ETF",
-    "currency": "CAD",
-    "asset_class": "equities",
-    "instrument_type": "etf_equity",
-    "market": "TSX",
-    "sector": null,
-    "is_single_stock": false,
-    "is_crypto": false,
-    "sector_weights": null,
-    "mapping_source": "scripts/add_assets.py (same yfinance method as starter build_dataset.py) + team mapping assumption",
-    "esg_tags": null,
-    "sector_weights_source": {
-      "source": null,
-      "note": "No issuer sector breakdown retrieved; left unknown, so a sector-capped profile gets a manual review if it buys XEF.TO."
-    }
+    "esg": null
   }
 }

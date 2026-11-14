@@ -2,6 +2,12 @@
   "client_id": "mateo",
   "name": "Mateo",
   "age": 41,
+  "description": "Mateo, 41, balanced investor who cares about ESG: no fossil fuels. Saving for a home down payment in 2029. Fictional persona.",
+  "stated_preferences": [
+    "ESG matters a lot",
+    "avoid companies he sees as controversial",
+    "little interest in speculation"
+  ],
   "profile": "Balanced",
   "horizon_years": 10,
   "objectives": [
@@ -9,12 +15,49 @@
   ],
   "loss_tolerance_fraction": 0.2,
   "preferences": {
-    "excluded_tickers": [
-      "XOM",
-      "CNQ.TO"
-    ],
-    "excluded_sectors": []
+    "esg": {
+      "excluded_tickers": [
+        "CNQ.TO",
+        "ENB.TO",
+        "XOM"
+      ],
+      "excluded_sectors": [
+        "Energy"
+      ],
+      "max_lookthrough_excluded_share": 0.05,
+      "prefer_esg_screened_funds": true,
+      "source": "fictional persona (team assumption): no fossil fuels. Excluded tickers = every Energy stock in the provided universe; a personal choice, not a claim about these companies."
+    }
   },
+  "income": {
+    "other_income_cad_per_year": 90000,
+    "note": "salary",
+    "source": "fictional persona (team assumption)"
+  },
+  "goals": [
+    {
+      "name": "Emergency fund",
+      "type": "one_off",
+      "amount_cad": 2000,
+      "target_date": "2026-11-13",
+      "priority": "essential",
+      "source": "fictional persona (team assumption)",
+      "basis": {
+        "emergency_months": 3,
+        "monthly_expenses_cad": 3000,
+        "held_outside_portfolio_cad": 7000,
+        "formula": "emergency_months x monthly_expenses - savings held outside the portfolio"
+      }
+    },
+    {
+      "name": "Home down payment",
+      "type": "one_off",
+      "amount_cad": 40000,
+      "target_date": "2029-06-01",
+      "priority": "essential",
+      "source": "fictional persona (team assumption)"
+    }
+  ],
   "cash_cad": 14000,
   "holdings_as_of": "2026-11-13",
   "holdings": {

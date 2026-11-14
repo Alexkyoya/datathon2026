@@ -10,6 +10,7 @@ Actions
   risk_metrics    volatility, max drawdown, recovery, 2022 replay, custom shocks (CAD)
   macro_snapshot  latest macro values as they were known on the decision date
   news_check      official items published before the decision date (from the news snapshot file)
+  goal_check      each goal installment's coverage before/after a trade, and which holdings count toward it
 
 Data location
   On AWS: env DATA_BUCKET + DATA_PREFIX (S3).
@@ -37,10 +38,8 @@ DATA_WINDOW = "2021-11-12 to 2026-11-12"
 DECISION_DATE = "2026-11-13"  # decided on the morning of Nov 13 with data through the Nov 12 close
 PRICE_SOURCE = "Yahoo Finance via the AlphaForge starter dataset (adj_close), converted to CAD with Bank of Canada USD/CAD"
 
-# Broad, diversified funds: not treated as a single issuer
-BROAD_ETFS = {"XIU.TO", "SPY", "QQQ", "ESGV", "XBB.TO", "ZST.TO", "AGG", "TLT",
-              "XIT.TO", "XLK", "XEF.TO"}  # last three added by scripts/add_assets.py
-CRYPTO = {"BTC-USD", "ETH-USD"}
+# The universe and every per-asset fact (class, single stock or fund, crypto) come from
+# second_look/config/assets.json, built from the provided data only. No ticker lists in code.
 
 
 # ---------------------------------------------------------------- data loading
@@ -70,20 +69,14 @@ def universe():
 
 
 def asset_class(ticker):
-    """Map a ticker to an NBF asset class. Our mapping, documented in the handoff."""
-    if ticker in ("CASH", "ZST.TO"):
+    """NBF asset class of a ticker, from assets.json (equities are called "equity" in these tools)."""
+    if ticker == "CASH":
         return "cash"
-    if ticker in CRYPTO:
-        return "alternatives"
-    u = universe()
-    if ticker not in u.index:
-        raise ValueError(f"Unknown ticker {ticker}")
-    ac = u.loc[ticker, "asset_class"]
-    if ac == "etf_bond":
-        return "fixed_income"
-    if ac in ("equity", "etf_equity"):
-        return "equity"
-    return "alternatives"  # etf_commodity (GLD)
+    assets = engine()[1]
+    if ticker not in assets:
+        raise ValueError(f"{ticker} is not in the asset universe (the provided datathon data)")
+    ac = assets[ticker]["asset_class"]
+    return "equity" if ac == "equities" else ac
 
 
 @lru_cache(maxsize=None)
@@ -151,7 +144,8 @@ def class_weights(w):
 
 
 def single_issuer_weights(w):
-    return {t: x for t, x in w.items() if t != "CASH" and t not in BROAD_ETFS}
+    assets = engine()[1]
+    return {t: x for t, x in w.items() if t != "CASH" and assets[t]["is_single_stock"]}
 
 
 def hhi(w):
@@ -168,45 +162,11 @@ def get_profile(ev):
         "ranges": prof["ranges"], "assumptions": prof["assumptions"],
         "current_class_weights": {k: _f(v) for k, v in class_weights(w).items()},
         "portfolio_value_cad": _f(sum(c["holdings_cad"].values()), 2),
-        "liquidity": c.get("liquidity"),
+        "income": c.get("income"), "goals": c.get("goals", []),
+        "esg_preferences": (c.get("preferences") or {}).get("esg"),
         "sources": {"ranges": "National Bank Financial, Investment Strategy, Fall 2026 (model portfolios)",
                     "assumptions": "Second Look team assumptions", "client": "fictional persona"},
     }
-
-
-def liquidity_check(ev):
-    """Cash cushion after the trade vs. what the client needs soon (emergency fund + planned spending).
-    Team assumption, informational: it does not change the rule engine's verdict."""
-    data, c, _ = get_client(ev["client_id"])
-    L = c.get("liquidity")
-    if not L:
-        return {"status": "not_available", "note": "no liquidity data for this client"}
-    rule = data.get("liquidity_rule", {"horizon_months": 12, "near_term_months": 6})
-    h = c["holdings_cad"]
-    amt = float(ev.get("amount_cad", 0))
-    side = ev.get("side", "buy")
-    liquid_before = float(h.get("CASH", 0)) + float(h.get("ZST.TO", 0))
-    if side == "sell":
-        liquid_after = liquid_before + amt
-    elif ev.get("ticker") == "ZST.TO":
-        liquid_after = liquid_before
-    else:
-        liquid_after = liquid_before - amt
-    emergency = max(0.0, L["emergency_months"] * L["monthly_expenses_cad"] - L.get("emergency_fund_outside_cad", 0))
-    planned = [w for w in L.get("planned_withdrawals", []) if w["months_ahead"] <= rule["horizon_months"]]
-    near = sum(w["amount_cad"] for w in planned if w["months_ahead"] <= rule["near_term_months"])
-    needed = emergency + sum(w["amount_cad"] for w in planned)
-    if liquid_after >= needed:
-        status = "ok"
-    elif liquid_after >= near:
-        status = "below_cushion"
-    else:
-        status = "short_for_planned_spending"
-    return {"status": status, "liquid_before_cad": _f(liquid_before, 2), "liquid_after_cad": _f(liquid_after, 2),
-            "needed_cad": _f(needed, 2), "emergency_part_cad": _f(emergency, 2),
-            "planned_withdrawals": planned, "shortfall_cad": _f(max(0.0, needed - liquid_after), 2),
-            "source": "Second Look team assumption; client figures are a fictional persona",
-            "affects_verdict": False}
 
 
 # ---------------------------------------------------------------- team rule engine (second_look/)
@@ -236,19 +196,61 @@ def engine():
     return rules, cfg_json("assets.json"), cfg_json("policy.json"), cfg_json("reference_portfolios.json")
 
 
-def rule_check(ev):
-    """Green / yellow / red from the team rule engine (second_look/second_look/rules.py),
-    run on the stored client's CAD holdings. Output keeps the field names the agents use."""
+def evaluate(ev):
+    """Run the team rule engine (second_look/second_look/rules.py) on the stored client's CAD holdings."""
     _, c, prof = get_client(ev["client_id"])
     rules, assets, policy, refs = engine()
     holdings = {("CASH_CAD" if k == "CASH" else k): float(v) for k, v in c["holdings_cad"].items()}
     client = {"client_id": ev["client_id"], "profile": NBF_PROFILE[c["profile"]],
               "horizon_years": c["horizon_years"], "objectives": c["objectives"],
               "loss_tolerance_fraction": prof["assumptions"]["loss_tolerance"],
-              "preferences": {"excluded_tickers": c.get("excluded_tickers", [])}}
+              "preferences": c.get("preferences") or {}, "income": c.get("income"), "goals": c.get("goals", [])}
     req = {"client_id": ev["client_id"], "decision_date": ev.get("decision_date", DECISION_DATE),
            "ticker": ev["ticker"], "side": ev.get("side", "buy"), "amount_cad": float(ev["amount_cad"])}
-    r = rules.evaluate_trade(req, client, holdings, assets, policy, refs)
+    return client, req, rules.evaluate_trade(req, client, holdings, assets, policy, refs)
+
+
+def _finding(x):
+    return {"rule": x["rule"], "level": x["severity"], "bound": x["bound"], "limit": _f(x["limit"]),
+            "before": _f(x["before"]), "after": _f(x["after"]), "effect": x["effect"],
+            "source": x["source"], "message": x.get("message")}
+
+
+def _goal_view(r):
+    g = r["goals"]
+    if not g.get("applied"):
+        return {"applied": False, "note": g.get("note")}
+
+    def used(xs):
+        return [{"ticker": x["ticker"], "counted_cad": _f(x["counted_cad"], 2)} for x in xs]
+
+    return {
+        "applied": True, "decision_date": g["decision_date"], "checked_until": g["checked_until"],
+        "red_within_months": g["red_within_months"], "inflation_assumption": g["inflation_assumption"],
+        "installments": [{"name": i["goal"], "installment": i["installment"], "priority": i["priority"],
+                          "amount_cad": _f(i["amount_cad"], 2), "date": i["date"],
+                          "months_to_goal": _f(i["months_to_goal"], 1),
+                          "coverage_before": _f(i["coverage_before"]), "coverage_after": _f(i["coverage_after"]),
+                          "counted_before": used(i["counted_before"]), "counted_after": used(i["counted_after"]),
+                          "flagged": i["flagged"], "level": i["severity"]} for i in g["installments"]],
+        "later": [dict(x, amount_cad=_f(x["amount_cad"], 2)) for x in g["later"]],
+        "method": g["method"],
+    }
+
+
+def goal_check(ev):
+    """Goal coverage before/after a trade (rule A of the engine). Historical stress, not a forecast."""
+    _, req, r = evaluate(ev)
+    out = _goal_view(r)
+    out.update(client_id=ev["client_id"], trade={k: req[k] for k in ("ticker", "side", "amount_cad")},
+               findings=[_finding(x) for x in r["alerts"] if x.get("kind") == "goal"])
+    return out
+
+
+def rule_check(ev):
+    """Green / yellow / red from the team rule engine, including goal coverage and ESG findings.
+    Output keeps the field names the agents use."""
+    client, req, r = evaluate(ev)
     cl = r.get("classification") or {}
 
     def spot(key):
@@ -260,11 +262,10 @@ def rule_check(ev):
         "verdict": r["verdict"] or "manual_review",
         "client_id": ev["client_id"], "profile": client["profile"], "decision_date": req["decision_date"],
         "trade": {"ticker": req["ticker"], "side": req["side"], "amount_cad": req["amount_cad"]},
-        "findings": [{"rule": x["rule"], "level": x["severity"], "bound": x["bound"], "limit": _f(x["limit"]),
-                      "before": _f(x["before"]), "after": _f(x["after"]), "effect": x["effect"],
-                      "source": x["source"]} for x in r["alerts"]],
+        "findings": [_finding(x) for x in r["alerts"]],
         "reasons": r["reasons"],
-        "unresolved": r["coverage"]["unresolved"],
+        "unresolved": [u["reason"] for u in r["coverage"]["unresolved"]],
+        "unresolved_items": r["coverage"]["unresolved"],
         "class_weights_before": {k: _f(v) for k, v in r["weights_before"].items()},
         "class_weights_after": {k: _f(v) for k, v in r["weights_after"].items()},
         "weights_after": {k: _f(v) for k, v in sorted(r["position_weights_after"].items(), key=lambda kv: -kv[1])},
@@ -275,7 +276,8 @@ def rule_check(ev):
         "portfolio_value_cad": _f(r["portfolio_value_cad"], 2),
         "engine": f"team rule engine, policy {r['policy_version']}, references {r['reference_portfolio_version']}",
         "assumptions": r["assumptions"],
-        "liquidity": liquidity_check(ev),
+        "goal_check": _goal_view(r),
+        "esg": r["esg"],
     }
 
 
@@ -424,7 +426,7 @@ def news_check(ev):
 
 ACTIONS = {"get_profile": get_profile, "rule_check": rule_check, "risk_metrics": risk_metrics,
            "macro_snapshot": macro_snapshot, "news_check": news_check,
-           "liquidity_check": liquidity_check}
+           "goal_check": goal_check}
 
 
 def lambda_handler(event, context=None):

@@ -1,5 +1,5 @@
 {
-  "_note": "Asset-class ranges come from National Bank Financial, Investment Strategy, Fall 2026 (model portfolios). Every field under 'assumptions' is our own design choice. Clients and holdings are fictional. Rule checks use the team engine in second_look/ (config/policy.json is the authoritative copy of the limits). Purchases are paid from CASH only (no automatic sale of other holdings).",
+  "_note": "Asset-class ranges come from National Bank Financial, Investment Strategy, Fall 2026 (model portfolios). Every field under 'assumptions' is our own design choice. Clients and holdings are fictional. Rule checks use the team engine in second_look/ (config/policy.json is the authoritative copy of the limits). Purchases are paid from CASH only (no automatic sale of other holdings). Client goals, income and ESG preferences are fictional persona values (team assumption); the emergency fund is a one-off essential goal due on the decision date.",
   "profiles": {
     "income": {
       "ranges": {
@@ -140,64 +140,105 @@
   "clients": {
     "robert": {
       "name": "Robert",
-      "age": 59,
+      "age": 63,
+      "occupation": "health care worker",
+      "retirement_date": "2027-07-01",
+      "description": "Robert, 63, health care worker, retires on 2027-07-01. Conservative investor with about CAD 3,000,000 saved; from retirement he needs CAD 70,000 a year (indexed to inflation) from the portfolio for 30 years. Fictional persona.",
       "profile": "conservative",
       "experience": "advanced",
-      "objective": "Preserve capital with some growth; retiring in 3-5 years",
-      "preferences": [
+      "objective": "Preserve capital with some growth; retires on 2027-07-01 and will then draw about CAD 70,000 a year from the portfolio",
+      "stated_preferences": [
         "established companies",
         "little interest in crypto"
       ],
-      "excluded_tickers": [],
+      "preferences": {},
       "holdings_cad": {
-        "CASH": 24000,
-        "XBB.TO": 45000,
-        "AGG": 35000,
-        "TLT": 30000,
-        "XIU.TO": 20000,
-        "SPY": 20000,
-        "RY.TO": 5000,
-        "FTS.TO": 5000,
-        "JNJ": 5000,
-        "PG": 5000,
-        "GLD": 6000
+        "CASH": 360000,
+        "XBB.TO": 675000,
+        "AGG": 525000,
+        "TLT": 450000,
+        "XIU.TO": 300000,
+        "SPY": 300000,
+        "RY.TO": 75000,
+        "FTS.TO": 75000,
+        "JNJ": 75000,
+        "PG": 75000,
+        "GLD": 90000
       },
+      "portfolio_value_cad": 3000000,
       "horizon_years": 4,
       "objectives": [
         "capital_preservation",
         "some_growth"
       ],
-      "portfolio_value_cad": 200000,
-      "liquidity": {
-        "monthly_expenses_cad": 4000,
-        "emergency_months": 3,
-        "emergency_fund_outside_cad": 0,
-        "planned_withdrawals": [
-          {
-            "amount_cad": 6000,
-            "months_ahead": 5,
-            "purpose": "roof repair"
-          }
-        ],
+      "income": {
+        "other_income_cad_per_year": 0,
+        "note": "Salary stops at retirement; pension and CPP/OAS are not counted for the retirement goal.",
         "source": "fictional persona (team assumption)"
-      }
+      },
+      "goals": [
+        {
+          "name": "Emergency fund",
+          "type": "one_off",
+          "amount_cad": 12000,
+          "target_date": "2026-11-13",
+          "priority": "essential",
+          "source": "fictional persona (team assumption)",
+          "basis": {
+            "emergency_months": 3,
+            "monthly_expenses_cad": 4000,
+            "held_outside_portfolio_cad": 0,
+            "formula": "emergency_months x monthly_expenses - savings held outside the portfolio"
+          }
+        },
+        {
+          "name": "Roof repair",
+          "type": "one_off",
+          "amount_cad": 6000,
+          "target_date": "2027-04-01",
+          "priority": "essential",
+          "source": "fictional persona (team assumption)"
+        },
+        {
+          "name": "Retirement income",
+          "type": "recurring",
+          "amount_cad_per_year": 70000,
+          "start_date": "2027-07-01",
+          "years": 30,
+          "funded_by_other_income_cad_per_year": 0,
+          "indexed_to_inflation": true,
+          "priority": "essential",
+          "source": "fictional persona (team assumption)"
+        }
+      ]
     },
     "mateo": {
       "name": "Mateo",
       "age": 41,
+      "description": "Mateo, 41, balanced investor who cares about ESG: no fossil fuels. Saving for a home down payment in 2029. Fictional persona.",
       "profile": "balanced",
       "experience": "intermediate",
       "objective": "Balanced growth over 8-12 years with ESG preferences",
-      "preferences": [
+      "stated_preferences": [
         "ESG matters a lot",
         "avoid companies he sees as controversial",
         "little interest in speculation"
       ],
-      "excluded_tickers": [
-        "XOM",
-        "CNQ.TO"
-      ],
-      "_excluded_note": "Fictional personal exclusion list chosen by the persona, not a claim about these companies.",
+      "preferences": {
+        "esg": {
+          "excluded_tickers": [
+            "CNQ.TO",
+            "ENB.TO",
+            "XOM"
+          ],
+          "excluded_sectors": [
+            "Energy"
+          ],
+          "max_lookthrough_excluded_share": 0.05,
+          "prefer_esg_screened_funds": true,
+          "source": "fictional persona (team assumption): no fossil fuels. Excluded tickers = every Energy stock in the provided universe; a personal choice, not a claim about these companies."
+        }
+      },
       "holdings_cad": {
         "CASH": 14000,
         "XBB.TO": 30000,
@@ -210,36 +251,53 @@
         "ATD.TO": 4000,
         "GLD": 7000
       },
+      "portfolio_value_cad": 140000,
       "horizon_years": 10,
       "objectives": [
         "balanced_growth"
       ],
-      "portfolio_value_cad": 140000,
-      "liquidity": {
-        "monthly_expenses_cad": 3000,
-        "emergency_months": 3,
-        "emergency_fund_outside_cad": 3000,
-        "planned_withdrawals": [
-          {
-            "amount_cad": 4000,
-            "months_ahead": 8,
-            "purpose": "car down payment"
-          }
-        ],
+      "income": {
+        "other_income_cad_per_year": 90000,
+        "note": "salary",
         "source": "fictional persona (team assumption)"
-      }
+      },
+      "goals": [
+        {
+          "name": "Emergency fund",
+          "type": "one_off",
+          "amount_cad": 2000,
+          "target_date": "2026-11-13",
+          "priority": "essential",
+          "source": "fictional persona (team assumption)",
+          "basis": {
+            "emergency_months": 3,
+            "monthly_expenses_cad": 3000,
+            "held_outside_portfolio_cad": 7000,
+            "formula": "emergency_months x monthly_expenses - savings held outside the portfolio"
+          }
+        },
+        {
+          "name": "Home down payment",
+          "type": "one_off",
+          "amount_cad": 40000,
+          "target_date": "2029-06-01",
+          "priority": "essential",
+          "source": "fictional persona (team assumption)"
+        }
+      ]
     },
     "amira": {
       "name": "Amira",
       "age": 26,
+      "description": "Amira, 26, growth investor interested in AI and crypto; plans a master's degree in 2028. Fictional persona.",
       "profile": "growth",
       "experience": "intermediate",
       "objective": "Long-term growth over 15+ years",
-      "preferences": [
+      "stated_preferences": [
         "interested in AI and crypto",
         "wants some diversification, not only tech"
       ],
-      "excluded_tickers": [],
+      "preferences": {},
       "holdings_cad": {
         "CASH": 5000,
         "SPY": 8000,
@@ -253,23 +311,40 @@
         "GLD": 2500,
         "BTC-USD": 1500
       },
+      "portfolio_value_cad": 50000,
       "horizon_years": 15,
       "objectives": [
         "long_term_growth"
       ],
-      "portfolio_value_cad": 50000,
-      "liquidity": {
-        "monthly_expenses_cad": 2500,
-        "emergency_months": 3,
-        "emergency_fund_outside_cad": 7500,
-        "planned_withdrawals": [],
+      "income": {
+        "other_income_cad_per_year": 60000,
+        "note": "salary",
         "source": "fictional persona (team assumption)"
-      }
+      },
+      "goals": [
+        {
+          "name": "Emergency fund",
+          "type": "one_off",
+          "amount_cad": 0,
+          "target_date": "2026-11-13",
+          "priority": "essential",
+          "source": "fictional persona (team assumption)",
+          "basis": {
+            "emergency_months": 3,
+            "monthly_expenses_cad": 2500,
+            "held_outside_portfolio_cad": 7500,
+            "formula": "emergency_months x monthly_expenses - savings held outside the portfolio"
+          }
+        },
+        {
+          "name": "Master's tuition",
+          "type": "one_off",
+          "amount_cad": 15000,
+          "target_date": "2028-09-01",
+          "priority": "flexible",
+          "source": "fictional persona (team assumption)"
+        }
+      ]
     }
-  },
-  "liquidity_rule": {
-    "_note": "Team assumption, not from NBF. Cash needed in the portfolio = emergency_months x monthly_expenses - emergency_fund_outside + planned withdrawals within 12 months. Liquid = CASH + ZST.TO.",
-    "horizon_months": 12,
-    "near_term_months": 6
   }
 }

@@ -9,8 +9,8 @@ Flow
   4. Result + full trace saved (S3 on AWS, ./runs locally).
 
 Run
-  uv run python agents/second_look.py --client robert --ticker NVDA --amount 24000 --local
-  uv run python agents/second_look.py --client robert --ticker NVDA --amount 24000 --reason "AI demand is exploding"
+  uv run python agents/second_look.py --client robert --ticker NVDA --amount 360000 --local
+  uv run python agents/second_look.py --client robert --ticker NVDA --amount 360000 --reason "AI demand is exploding"
 """
 import argparse
 import json
@@ -30,6 +30,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import config  # noqa: E402
 import tools as T  # noqa: E402
+import universe as U  # noqa: E402
 
 DECISION_DATE = "2026-11-13"  # morning of Nov 13, data through the Nov 12 close
 
@@ -75,8 +76,13 @@ Rules for every answer:
 
 PROFILE_PROMPT = """You are the Profile agent of Second Look, a pre-trade check for self-directed investors.
 Use get_profile, then turn the client's profile into plain-language constraints: horizon, loss tolerance,
-asset-class ranges, single-stock and crypto limits, exclusions and preferences, and liquidity needs
-(monthly expenses, emergency fund, planned withdrawals in the next 12 months). Then read the client's stated
+asset-class ranges, single-stock and crypto limits, and stated preferences. Describe in plain words:
+- their goals: each goal's name, amount and date (emergency fund, one-off spending, and for a retirement or
+  other recurring goal the yearly amount the portfolio must pay, from when, for how long, and whether it rises
+  with inflation), and which goals are essential or flexible;
+- other income besides the portfolio (salary, pension) and whether it pays part of a goal;
+- ESG preferences: excluded companies and sectors, the largest share of an excluded sector they accept inside
+  a fund, and whether they prefer ESG-screened funds. Then read the client's stated
 reason for the trade and say, in one or two sentences, how that reason relates to their objective and horizon.
 Label which limits come from National Bank Financial's model portfolios and which are team assumptions.
 Answer in short bullet points.""" + COMMON_RULES
@@ -120,19 +126,19 @@ Return valid JSON only, without Markdown or extra keys:
   "source": {"name": "...", "url": "..."}, "date": "...", "limitations": "..."}],
  "suggested_scenarios": [{"name": "...", "shock": {"NVDA": -0.30}}]}""" + COMMON_RULES
 
-COORDINATOR_PROMPT = """You are the Coordinator of Second Look. A trade was flagged RED by the rule engine.
+COORDINATOR_TEMPLATE = """You are the Coordinator of Second Look. A trade was flagged RED by the rule engine.
 The verdict is final: you explain it, you never change it.
 The Profile, News and Financial Data agents have already run in parallel; their reports are in the message.
 Steps:
 1. Read the three reports. Do not invent anything they don't contain.
 2. Propose 1 or 2 alternatives that keep the client's intent (smaller position, a diversified fund on the
    same theme, or spreading the purchase). Do not default to bonds or cash. Purchases are paid from cash only,
-   so an alternative must cost no more than the trade. Only use tickers from this
-   universe: RY.TO TD.TO MFC.TO ENB.TO CNQ.TO CNR.TO FTS.TO ATD.TO SHOP.TO CSU.TO AAPL MSFT NVDA GOOGL AMZN
-   TSLA JPM JNJ PG XOM XIU.TO SPY QQQ ESGV XBB.TO ZST.TO AGG TLT GLD BTC-USD ETH-USD XIT.TO XLK XEF.TO
-   (QQQ is tech-heavy; XIT.TO and XLK are technology sector funds, Canada and U.S.; ESGV is ESG-screened;
-   XEF.TO is international developed equity). Call check_alternative for each alternative (you may call
-   it several times in one turn); only present alternatives that come back green or yellow.
+   so an alternative must cost no more than the trade. Only use tickers from this universe (the provided
+   datathon data; nothing else exists):
+@@UNIVERSE@@
+   Call check_alternative for each alternative (you may call it several times in one turn). Only present
+   alternatives that come back green or yellow AND whose findings contain no "goal." or "esg." rule:
+   an alternative must keep the client's goal coverage and respect their ESG preferences.
 3. Write the final answer for an ordinary retail investor with no finance background.
    The screen ALREADY shows the rule that was crossed, with its numbers (e.g. "Crypto 3% -> 11%, maximum 5%").
    Never repeat that rule or those numbers anywhere. Every fact appears ONCE across all fields: if a number,
@@ -144,12 +150,16 @@ Steps:
    - why_it_matters: one sentence, max 25 words: what could go wrong for this client, using the worst past
      fall of the asset (clearly in the past).
    - your_reason: one sentence, max 25 words, kind and neutral: what the check of their reason found.
-   - cash_cushion: only if the rule engine's "liquidity" status is not "ok": one sentence, max 25 words,
-     cash left after the trade vs. what they need soon (emergency fund and named planned spending).
-     Otherwise "".
+   - goal_check: only if a rule-engine finding starts with "goal." (a goal's coverage drops): one sentence,
+     max 25 words, naming the goal and when it is needed, why this asset is a problem for money needed then.
+     E.g. "Your retirement withdrawals in 2028 would be 60% covered instead of 100%, because this stock once
+     took 2 years to recover." Otherwise "".
+   - values_check: only if a rule-engine finding starts with "esg.": one sentence, max 25 words, how the
+     trade conflicts with the values the client stated (e.g. no fossil fuels). Otherwise "".
    - alternatives: 1 or 2, each max 15 words, naming the asset and the CAD amount, e.g.
-     "Buy CAD 1,000 of Bitcoin instead." Do not explain the limit again. An alternative must also keep
-     cash at or above the liquidity "needed_cad" when possible.
+     "Buy CAD 1,000 of Bitcoin instead." Do not explain the limit again.
+   Say "worst past fall", never "drawdown". The screen already shows the goal coverage numbers and the fund's
+   sector share: do not repeat a number shown there.
    Reviewer fields (collapsed on screen):
    - details: at most 4 short lines with numbers, sources and dates that are NOT in any other field.
      No news check, stress tests or rates here; they have their own fields.
@@ -159,7 +169,7 @@ Steps:
    (fact, prediction, opinion or unverified).
 Return JSON only, in this shape:
 {"verdict": "red",
- "why_it_matters": "...", "your_reason": "...", "cash_cushion": "",
+ "why_it_matters": "...", "your_reason": "...", "goal_check": "", "values_check": "",
  "alternatives": [{"description": "...", "ticker": "...", "amount_cad": 0, "rule_check_verdict": "..."}],
  "details": ["..."],
  "risk": {"asset": {...}, "portfolio_after": {...}, "scenarios": [...]},
@@ -167,6 +177,11 @@ Return JSON only, in this shape:
  "news_check": [...claims from the news agent...],
  "assumptions": ["..."], "sources": ["..."],
  "disclaimer": "Simulation only. Not investment advice."}""" + COMMON_RULES
+
+
+def coordinator_prompt():
+    """The coordinator's instructions with the allowed universe generated from assets.json."""
+    return COORDINATOR_TEMPLATE.replace("@@UNIVERSE@@", U.universe_prompt())
 
 
 # ---------------------------------------------------------------- agents as tools for the coordinator
@@ -253,11 +268,8 @@ def run(client_id, ticker, amount_cad, reason=None, interactive=True):
     if rc["verdict"] == "green":
         result = {"verdict": "green", "message": "Checked. Fits your profile.", "rule_check": rc}
     elif rc["verdict"] == "yellow":
-        def fmt(f):
-            if f["rule"].startswith("hhi"):
-                return f"concentration (HHI) {f['before']:.3f} -> {f['after']:.3f} (watch from 0.150)"
-            return f"{f['rule']}: {f['before']:.0%} -> {f['after']:.0%} ({f['bound']} {f['limit']:.0%})"
-        msgs = [fmt(f) for f in rc["findings"] if f["level"] == "yellow"]
+        msgs = [f["message"] for f in rc["findings"] if f["level"] == "yellow"]
+        msgs += rc.get("unresolved", [])  # data gaps are yellow notes, shown with the findings
         result = {"verdict": "yellow", "message": "Heads-up before you confirm: " + "; ".join(msgs),
                   "needs_confirmation": True, "rule_check": rc}
     elif rc["verdict"] == "manual_review":
@@ -287,7 +299,7 @@ def run(client_id, ticker, amount_cad, reason=None, interactive=True):
                                  ctx + "\nRun these scenarios as shocks: " + json.dumps(shocks))
             reports = {"profile": f_profile.result(), "news": f_news.result(), "data": f_data.result()}
         t1 = time.time()
-        coordinator = Agent(model=model(), system_prompt=COORDINATOR_PROMPT, tools=[check_alternative],
+        coordinator = Agent(model=model(), system_prompt=coordinator_prompt(), tools=[check_alternative],
                             callback_handler=None)
         prompt = (ctx + f"\nRule engine result (final verdict):\n{json.dumps(rc)}\n\n"
                   f"PROFILE AGENT REPORT:\n{reports['profile']}\n\nNEWS AGENT REPORT:\n{reports['news']}\n\n"

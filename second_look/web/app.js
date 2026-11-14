@@ -8,7 +8,9 @@ function friendly(msg){
   return msg;
 }
 // Demo trades per stored client (team personas; purchases are paid from cash).
-const DEMOS={robert:[['green','SPY',2000],['red','NVDA',24000]],mateo:[['yellow','ESGV',12000],['red','XOM',3000]],amira:[['green','QQQ',5000],['red','ETH-USD',3000],['red','NVDA',5000]],demo_balanced:[['green','SPY',4000],['yellow','GLD',14000],['red','TSLA',12000]]};
+// robert XBB.TO: the goal rule is the reason (cash for the first retirement withdrawals moved into a slow-to-recover fund).
+// mateo XIU.TO: ESG look-through is the reason (the fund holds more Energy than his 5% limit).
+const DEMOS={robert:[['green','SPY',30000],['red','NVDA',360000],['red','XBB.TO',340000]],mateo:[['yellow','ESGV',12000],['red','XOM',3000],['yellow','XIU.TO',5000]],amira:[['green','QQQ',5000],['red','ETH-USD',3000],['red','NVDA',5000]],demo_balanced:[['green','SPY',4000],['yellow','GLD',14000],['red','TSLA',12000]]};
 const clientId=()=>new URLSearchParams(location.search).get('client')||'robert';
 const $ = id => document.getElementById(id);
 const pct = value => `${(value * 100).toFixed(1)}%`;
@@ -39,19 +41,20 @@ function render(record) {
   }));
   const outcome=$('outcome');outcome.className=`panel status ${r.verdict || 'manual'}`;outcome.replaceChildren(text('p',r.verdict || 'Manual review','status-label'),text('h2',({green:'Simulation can continue.',yellow:'Review before continuing.',red:'Pause and take a second look.'})[r.verdict] || 'Required information is missing.'));
   const reasons=text('ul','');
-  r.alerts.forEach(check=>{
+  r.alerts.filter(check=>!['goal','esg'].includes(check.kind)).forEach(check=>{
     const parts=check.rule.split('.');
     const name=({allocation:`${labels[parts[1]] || parts[1]} allocation`,single_stock:`${parts[1]} position`,crypto:'Crypto allocation',hhi:'Position concentration (HHI)',excluded_ticker:`Excluded asset ${parts[1]}`,excluded_sector:`Excluded sector ${parts[1]}`,sector:`${parts[1]} sector`,liquid_cash_reserve:'Liquid cash reserve'})[parts[0]] || check.rule;
     const format=check.unit==='hhi_index'?value=>value.toFixed(3):pct;
     reasons.append(text('li',`${name}: ${format(check.before)} before → ${format(check.after)} after; ${check.bound==='max'?'maximum':'minimum'} ${format(check.limit)}. ${check.gap_after>0?'A breach remains.':'Within the warning buffer.'}`));
   });
-  if(r.verdict==='green' && r.effect==='reduces') reasons.prepend(text('li','An existing breach improves without creating or worsening another. Remaining breaches are shown below.'));
-  r.coverage.unresolved.forEach(reason=>reasons.append(text('li',reason)));
+  if(r.verdict==='green' && r.effect==='improves') reasons.prepend(text('li','An existing breach improves without creating or worsening another. Remaining breaches are shown below.'));
+  r.coverage.unresolved.filter(u=>!/^(goal|esg)/.test(u.rule)).forEach(u=>reasons.append(text('li',u.reason)));
   if(!reasons.children.length) reasons.append(text('li','All evaluated limits are respected, with no near-limit warning.'));
   outcome.append(reasons);
   const stageLabels={simulation_continued:'Simulation continued. No real order was placed.',awaiting_confirmation:'Confirmation is required to continue this simulation.',awaiting_reason:'Explain your reason to request an agent review.',awaiting_agents:({completed:'',failed:'Agent review failed: '+(record.agent_error||'unknown error')+'. The simulation stays paused.',dispatched:'Agent review requested from the configured service.',not_configured:'Agent handoff saved. No agent service is configured locally; review remains pending.',dispatch_failed:'Agent service could not be reached. Review remains pending.'})[record.agent_status],cancelled:'Simulation cancelled.',manual_review:'Manual review is required. This result cannot continue automatically.'};
   {const lbl=stageLabels[record.stage];if(lbl!=='')outcome.append(text('p',lbl || record.stage));}
-  const liq=liquidityNote(record);if(liq)outcome.append(liq);
+  const goals=goalsNote(r);if(goals)outcome.append(goals);
+  const values=esgNote(r);if(values)outcome.append(values);
   const review=agentPanel(record);if(review)outcome.append(review);
   if(record.stage==='awaiting_reason') {
     const form=document.createElement('form');const label=text('label','Why do you want to make this trade?');label.htmlFor='reason';const input=document.createElement('textarea');input.id='reason';input.required=true;input.maxLength=5000;const button=text('button','Request agent review');button.type='submit';form.append(label,input,button);form.addEventListener('submit',event=>{event.preventDefault();decide('explain',input.value);});outcome.append(form);
@@ -135,12 +138,32 @@ function demoButtons(){
     const b=text('button',`${ticker} · $${amount.toLocaleString('en-CA')}`);b.type='button';b.dataset.demo=color;
     b.addEventListener('click',()=>{selectTicker(ticker);$('amount').value=amount;$('side').value='buy';evaluate();});return b;}));
 }
-function liquidityNote(record){
-  const L=record.liquidity;if(!L||!L.status||L.status==='ok'||L.status==='not_available')return null;
-  const soon=(L.planned_withdrawals||[]).map(w=>`${money(w.amount_cad)} for ${w.purpose} in ${w.months_ahead} months`).join(', ');
-  const box=text('div','','liquidity-note');
-  box.append(text('p','Cash cushion','eyebrow'),text('p',`After this trade you would have ${money(L.liquid_after_cad)} in cash. You need about ${money(L.needed_cad)} soon (emergency fund${soon?' and '+soon:''}).`));
+const pct0=v=>`${Math.round(v*100)}%`;
+// "Your goals": shown for every verdict. Only goals whose coverage changes are listed.
+function goalsNote(r){
+  const g=r.goals;if(!g||!g.applied)return null;
+  const box=text('div','','goal-note');box.append(text('p','Your goals','eyebrow'));
+  const changed=g.installments.filter(i=>Math.abs(i.coverage_after-i.coverage_before)>1e-9);
+  const alerts=Object.fromEntries(r.alerts.filter(a=>a.kind==='goal').map(a=>[`${a.goal}|${a.date}`,a]));
+  if(!changed.length){box.append(text('p',`All ${g.installments.length} goal payments due by ${g.checked_until} stay covered after this trade.`));}
+  else{const ul=text('ul','');changed.forEach(i=>{
+    const label=`${i.goal}${i.installment?' ('+i.date.slice(0,4)+')':''}, ${money(i.amount_cad)} by ${i.date}`;
+    const li=text('li',`${label}: ${pct0(i.coverage_before)} → ${pct0(i.coverage_after)} covered.`);
+    const a=alerts[`${i.goal}|${i.date}`];if(a){li.className=a.severity;if(a.why)li.append(text('span',' '+a.why));}
+    ul.append(li);});box.append(ul);}
+  box.append(text('p','Money needed by a date only counts if the asset holding it recovered from its worst past fall in less time than is left, and at the value left after such a fall. This looks at the past; it is not a forecast.','muted'));
+  r.coverage.unresolved.filter(u=>u.rule.startsWith('goal')).forEach(u=>box.append(text('p',u.reason,'muted')));
   return box;
+}
+// Values (ESG) note: only when an ESG rule fires, data is missing, or the client prefers screened funds.
+function esgNote(r){
+  const e=r.esg;if(!e)return null;
+  const lines=r.alerts.filter(a=>a.kind==='esg').map(a=>a.message);
+  r.coverage.unresolved.filter(u=>u.rule.startsWith('esg')).forEach(u=>lines.push(u.reason));
+  if(e.screened_fund_note)lines.push(e.screened_fund_note);
+  if(!lines.length)return null;
+  const box=text('div','','esg-note');box.append(text('p','Your values','eyebrow'));
+  const ul=text('ul','');lines.forEach(l=>ul.append(text('li',l)));box.append(ul);return box;
 }
 function agentPanel(record){
   const a=record.agent_result;if(!a)return null;
@@ -148,7 +171,8 @@ function agentPanel(record){
   const line=(title,body)=>{if(body)panel.append(text('p',title,'eyebrow'),text('p',body));};
   line('Why it matters',a.why_it_matters||a.bad_year);
   line('About your reason',a.your_reason||a.client_reason_response);
-  if(!record.liquidity||record.liquidity.status==='ok')line('Cash cushion',a.cash_cushion);
+  line('Your goals',a.goal_check);
+  line('Your values',a.values_check);
   const list=(parent,title,items,fmt)=>{if(!items||!items.length)return;if(title)parent.append(text('p',title,'eyebrow'));const ul=text('ul','');items.forEach(i=>ul.append(text('li',fmt(i))));parent.append(ul);};
   const alts=(a.alternatives||[]).filter(x=>x.rule_check_verdict!=='red');
   if(alts.length){panel.append(text('p','You could instead','eyebrow'));const ul=text('ul','','alt-list');alts.forEach(x=>ul.append(text('li',(x.rule_check_verdict==='green'?'✓ ':'• ')+x.description)));panel.append(ul);}

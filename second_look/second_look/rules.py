@@ -1,9 +1,17 @@
-"""Pure deterministic rules. All weights are fractions, not percentages."""
+"""Pure deterministic rules. All weights are fractions, not percentages.
+
+No I/O here: every rule reads only the client, assets.json and policy.json passed in, so a new
+client file or a new provided asset works without code changes.
+"""
 import math
-from .contracts import CLASSES, SCHEMA_VERSION, number, validate_request
+from .contracts import (CLASSES, SCHEMA_VERSION, SUPPORTED_PREFERENCES, not_in_universe, number,
+                        validate_client, validate_request)
+from .esg import esg_check
+from .goals import goal_check
 from .spectrum import classify_transition, load_references
 
 EPS = 1e-10
+LABELS = {'cash': 'Cash', 'fixed_income': 'Fixed income', 'equities': 'Equities', 'alternatives': 'Alternatives'}
 
 
 def metrics(values, assets):
@@ -31,12 +39,24 @@ def metrics(values, assets):
                     if share > 1:
                         raise ValueError('Sector share > 1')
                     sectors[sector] = sectors.get(sector, 0) + weight*share
-    # One cash bucket combines cash ledger and ZST; other funds remain positions.
+    # One cash bucket combines cash ledger and cash-like funds; other funds remain positions.
     hhi = classes['cash']**2 + math.fsum(w*w for t,w in weights.items()
         if t != 'CASH_CAD' and assets[t]['asset_class'] != 'cash')
     crypto = math.fsum(w for t,w in weights.items() if t != 'CASH_CAD' and assets[t]['is_crypto'])
     return {'total':total,'positions':weights,'classes':classes,'sectors':sectors,
             'unknown_sector_weight':unknown,'crypto':crypto,'hhi':hhi}
+
+
+def message(c):
+    """Plain-language line for an allocation / concentration check (goal and ESG rules write their own)."""
+    parts = c['rule'].split('.') + ['']
+    name = {'allocation': f"{LABELS.get(parts[1], parts[1])} share",
+            'single_stock': f"{'.'.join(parts[1:])} position", 'crypto': 'Crypto share',
+            'hhi': 'Concentration (HHI)', 'sector': f"{'.'.join(parts[1:])} sector share",
+            'liquid_cash_reserve': 'Cash reserve'}.get(parts[0], c['rule'])
+    fmt = (lambda v: f'{v:.3f}') if c['unit'] == 'hhi_index' else (lambda v: f'{v:.1%}')
+    bound = 'maximum' if c['bound'] == 'max' else 'minimum'
+    return f"{name}: {fmt(c['before'])} before, {fmt(c['after'])} after; {bound} {fmt(c['limit'])}."
 
 
 def evaluate_trade(request, client, holdings_cad, assets, policy, references=None):
@@ -46,20 +66,13 @@ def evaluate_trade(request, client, holdings_cad, assets, policy, references=Non
         raise ValueError('Client mismatch')
     profile = client['profile']
     limits = policy['profiles'][profile]
-    number(client['horizon_years'], 'horizon_years')
-    tolerance = number(client['loss_tolerance_fraction'], 'loss_tolerance_fraction')
-    if tolerance > 1 or not isinstance(client['objectives'], list):
-        raise ValueError('Invalid stored loss tolerance or objectives')
-    preferences = client['preferences']
-    if not isinstance(preferences, dict):
-        raise ValueError('preferences must be an object')
-    for key in ('excluded_tickers','excluded_sectors'):
-        if key in preferences and (not isinstance(preferences[key], list) or
-                any(not isinstance(v,str) for v in preferences[key])):
-            raise ValueError(f'{key} must be a list of strings')
     ticker, side = request['ticker'], request['side']
-    if ticker not in assets or side not in ('buy','sell'):
-        raise ValueError('Unknown asset or unsupported side')
+    if ticker not in assets:
+        raise not_in_universe(ticker, assets)
+    if side not in ('buy','sell'):
+        raise ValueError('Unsupported side')
+    validate_client(client, request['decision_date'], assets)
+    preferences = client['preferences']
     amount = number(request['amount_cad'], 'amount_cad')
     if amount <= 0:
         raise ValueError('amount_cad must be positive')
@@ -67,7 +80,7 @@ def evaluate_trade(request, client, holdings_cad, assets, policy, references=Non
     if 'CASH_CAD' not in before:
         raise ValueError('A cash ledger is required; missing cash is not zero cash')
     if set(before)-set(assets)-{'CASH_CAD'}:
-        raise ValueError('Unmapped holding')
+        raise not_in_universe(sorted(set(before)-set(assets)-{'CASH_CAD'})[0], assets)
     if any(a['asset_class'] not in CLASSES for a in assets.values()):
         raise ValueError('Unknown asset class')
     if any(a['is_crypto'] and a['asset_class'] != 'alternatives' for a in assets.values()):
@@ -77,7 +90,7 @@ def evaluate_trade(request, client, holdings_cad, assets, policy, references=Non
     after.setdefault(ticker, 0.0)
     if side == 'buy':
         if amount > after['CASH_CAD'] + EPS:
-            raise ValueError('Insufficient cash; ZST.TO is not automatically liquidated')
+            raise ValueError('Insufficient cash; cash-like funds are not automatically sold')
         after['CASH_CAD'] -= amount
         after[ticker] += amount
     else:
@@ -89,13 +102,16 @@ def evaluate_trade(request, client, holdings_cad, assets, policy, references=Non
     b, a = metrics(before,assets), metrics(after,assets)
     if not math.isclose(b['total'], a['total'], rel_tol=1e-12):
         raise AssertionError('Trade must conserve value before fees')
-    checks, unresolved = [], []
-    supported_preferences = {'excluded_tickers', 'excluded_sectors', 'minimum_cash_cad',
-                             'esg_required', 'other_constraints'}
-    if set(preferences)-supported_preferences:
-        unresolved.append('Unsupported stored preferences: '+', '.join(sorted(set(preferences)-supported_preferences)))
-    if 'esg_required' in preferences and not isinstance(preferences['esg_required'], bool):
-        raise ValueError('esg_required must be boolean')
+    checks, unresolved, notes = [], [], []
+
+    def unresolved_item(rule, key, reason):
+        handling = policy['unresolved_handling']
+        unresolved.append({'rule': rule, 'reason': reason, 'handling': handling.get(key, handling['default']),
+                           'source': 'policy.unresolved_handling'})
+
+    if set(preferences)-SUPPORTED_PREFERENCES:
+        unresolved_item('preferences', 'unsupported_preference',
+                        'Unsupported stored preferences: '+', '.join(sorted(set(preferences)-SUPPORTED_PREFERENCES)))
 
     def check(rule, old, new, limit, bound='max', hard=False, near=False, unit='weight', source='team_assumption'):
         old_gap = max(0, old-limit) if bound=='max' else max(0, limit-old)
@@ -105,7 +121,7 @@ def evaluate_trade(request, client, holdings_cad, assets, policy, references=Non
         if new_gap > old_gap+EPS:
             effect = 'creates' if old_gap == 0 else 'worsens'
         elif new_gap < old_gap-EPS:
-            effect = 'reduces'
+            effect = 'improves'
         else:
             effect = 'unchanged'
         severity = 'none'
@@ -113,7 +129,7 @@ def evaluate_trade(request, client, holdings_cad, assets, policy, references=Non
             severity = 'red' if effect in ('creates','worsens') and (hard or new_gap > policy['yellow_buffer']+EPS) else 'yellow'
         elif near and abs(new-limit) <= policy['yellow_buffer']+EPS:
             severity = 'yellow'
-        checks.append({'rule':rule,'limit':limit,'bound':bound,'before':old,'after':new,
+        checks.append({'rule':rule,'kind':'limit','limit':limit,'bound':bound,'before':old,'after':new,
             'gap_before':old_gap,'gap_after':new_gap,'effect':effect,'severity':severity,
             'resolved':old_gap>0 and new_gap==0,'unit':unit,'source':source})
 
@@ -131,52 +147,61 @@ def evaluate_trade(request, client, holdings_cad, assets, policy, references=Non
     if policy['hhi_watch']-EPS <= a['hhi'] <= policy['hhi_max']+EPS:
         checks[-1]['severity'] = 'yellow'
 
-    needs_sectors = limits['sector_max'] is not None or bool(preferences.get('excluded_sectors'))
-    if needs_sectors and max(a['unknown_sector_weight'],b['unknown_sector_weight']) > EPS:
-        unresolved.append('ETF sector look-through missing; direct sector exposure is a lower bound only.')
     if limits['sector_max'] is not None:
+        if a['unknown_sector_weight'] > b['unknown_sector_weight']+EPS:
+            unresolved_item('sector_lookthrough.'+ticker, 'sector_lookthrough',
+                            f'{ticker} has no sector breakdown in our data, so the sector limit cannot be checked for it.')
+        elif max(a['unknown_sector_weight'], b['unknown_sector_weight']) > EPS:
+            notes.append('Some holdings have no sector breakdown; sector figures are a lower bound.')
         for sector in sorted(set(a['sectors'])|set(b['sectors'])):
             check('sector.'+sector,b['sectors'].get(sector,0),a['sectors'].get(sector,0),limits['sector_max'])
-    for t in preferences.get('excluded_tickers',[]):
-        if t not in assets:
-            raise ValueError(f'Unknown excluded ticker: {t}')
-        check('excluded_ticker.'+t,b['positions'].get(t,0),a['positions'].get(t,0),0,hard=True,source='stored_client_constraint')
-    known_sectors = {s for v in assets.values() for s in (v.get('sector_weights') or {})}
-    for sector in preferences.get('excluded_sectors',[]):
-        if sector not in known_sectors:
-            raise ValueError(f'Unknown sector exclusion: {sector}')
-        check('excluded_sector.'+sector,b['sectors'].get(sector,0),a['sectors'].get(sector,0),0,hard=True,source='stored_client_constraint')
-    if preferences.get('esg_required',False):
-        unresolved.append('An ESG preference is not a verified screen. Supply explicit exclusions or a sourced screening dataset.')
-    if preferences.get('other_constraints'):
-        unresolved.append('Other stored constraints require explicit machine-readable rules.')
     if 'minimum_cash_cad' in preferences:
         reserve = number(preferences['minimum_cash_cad'],'minimum_cash_cad')
         check('liquid_cash_reserve',before.get('CASH_CAD',0)/b['total'],after['CASH_CAD']/a['total'],
               reserve/b['total'],'min',hard=True,source='stored_client_constraint')
 
+    # Rule B (ESG preferences) and rule A (goal coverage): only creating or worsening is flagged.
+    trade = {'ticker': ticker, 'side': side, 'amount_cad': amount}
+    esg_summary, esg_checks, esg_unresolved = esg_check(preferences, policy, assets, trade, b, a)
+    goal_summary, goal_checks, goal_unresolved = goal_check(client, before, after, assets, policy,
+                                                            request['decision_date'], trade)
+    checks.extend(esg_checks + goal_checks)
+    for item in esg_unresolved + goal_unresolved:
+        unresolved_item(item['rule'], item['handling_key'], item['reason'])
+    if not goal_summary['applied']:
+        notes.append(goal_summary['note'])
+    if preferences.get('esg_required', False) and not esg_summary['applied']:
+        unresolved_item('preferences.esg_required', 'esg_required_unscreened',
+                        'An ESG preference is not a verified screen. Supply explicit exclusions or a sourced screening dataset.')
+    if preferences.get('other_constraints'):
+        unresolved_item('preferences.other_constraints', 'other_constraints',
+                        'Other stored constraints require explicit machine-readable rules.')
+
+    for c in checks:
+        c.setdefault('message', message(c))
     worsened = any(c['effect'] in ('creates','worsens') for c in checks)
-    improved = any(c['effect']=='reduces' for c in checks)
+    improved = any(c['effect']=='improves' for c in checks)
+    unresolved_yellow = any(u['handling']=='yellow' for u in unresolved)
     if any(c['severity']=='red' for c in checks):
         verdict = 'red'
-    elif unresolved:
+    elif any(u['handling']=='manual_review' for u in unresolved):
         verdict = None
-    elif improved and not worsened:
+    elif improved and not worsened and not unresolved_yellow:
         verdict = 'green'
-    elif any(c['severity']=='yellow' for c in checks):
+    elif unresolved_yellow or any(c['severity']=='yellow' for c in checks):
         verdict = 'yellow'
     else:
         verdict = 'green'
-    effect = 'mixed' if improved and worsened else ('reduces' if improved else
+    effect = 'mixed' if improved and worsened else ('improves' if improved else
         'creates_or_worsens' if worsened else 'unchanged')
     alerts = [c for c in checks if c['severity']!='none']
     breaches = [c for c in checks if c['gap_before']>0 or c['gap_after']>0]
-    reasons = [f"{c['rule']}: {c['before']:.6f} -> {c['after']:.6f}; {c['bound']} {c['limit']:.6f}; {c['effect']}" for c in alerts]
+    reasons = [c['message'] for c in alerts]
     if verdict=='green' and improved:
         reasons.insert(0,'Existing deviation reduced with no new or worsened breach; remaining breaches are reported.')
     if not reasons:
         reasons.append('All evaluated limits respected, with no near-limit warning.')
-    reasons.extend(unresolved)
+    reasons.extend(u['reason'] for u in unresolved)
     # Classification is explanatory and cannot participate in verdict selection.
     reference_config = load_references() if references is None else references
     classification = classify_transition(b['classes'], a['classes'], profile,
@@ -189,13 +214,15 @@ def evaluate_trade(request, client, holdings_cad, assets, policy, references=Non
         'action':'manual_review' if verdict is None else {'green':'pass_simulation','yellow':'confirm_or_cancel','red':'pause_and_ask_reason'}[verdict],
         'activate_agents':verdict=='red','effect':effect,'reasons':reasons,
         'breaches':breaches,'alerts':alerts,'checks':checks,
+        'goals':goal_summary,'esg':esg_summary,
         'hhi_before':b['hhi'],'hhi_after':a['hhi'],
         'weights_before':b['classes'],'weights_after':a['classes'],
         'position_weights_before':b['positions'],'position_weights_after':a['positions'],
         'holdings_cad_before':before,'holdings_cad_after':after,'portfolio_value_cad':a['total'],
-        'context_for_agents':{k:client[k] for k in ('horizon_years','objectives','loss_tolerance_fraction','preferences')},
+        'context_for_agents':{k:client.get(k) for k in ('horizon_years','objectives','loss_tolerance_fraction',
+                                                       'preferences','goals','income')},
         'context_only':['Horizon, objectives and loss tolerance do not change the assigned profile or verdict without an explicit constraint.','Historical drawdown is not a guaranteed future loss or a profile classifier.'],
-        'coverage':{'unresolved':unresolved,'unknown_sector_weight_before':b['unknown_sector_weight'],
+        'coverage':{'unresolved':unresolved,'notes':notes,'unknown_sector_weight_before':b['unknown_sector_weight'],
                     'unknown_sector_weight_after':a['unknown_sector_weight']},
         'assumptions':policy['assumptions'],
         'disclaimer':'Fictional clients; simulated trades only; no investment advice.'}
