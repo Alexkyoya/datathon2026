@@ -14,7 +14,9 @@ LAMBDA_NAME = os.getenv("LAMBDA_NAME", "second-look-tools")
 # Bedrock model. Copy the exact ID (or inference profile ID) from the Bedrock console
 # -> Model catalog / Cross-region inference. The "us." prefix = US inference profile.
 MODEL_ID = os.getenv("MODEL_ID", "global.anthropic.claude-sonnet-5-5")          # coordinator (writes the explanation)
-MODEL_ID_FAST = os.getenv("MODEL_ID_FAST", "global.anthropic.claude-haiku-5-5")  # profile / news / data agents
+# profile / news / data agents: comma-separated candidates, the first one this account can use wins
+# (Haiku needs a Marketplace subscription the event account cannot make; Amazon Nova needs none)
+MODEL_ID_FAST = os.getenv("MODEL_ID_FAST", "us.amazon.nova-2-lite-v1:0,us.amazon.nova-lite-v1:0")
 
 # Local mode: run the tools from your laptop without deploying Lambda/S3.
 # SECOND_LOOK_LOCAL=1 and DATA_DIR=<folder with the starter CSVs + profiles.json>

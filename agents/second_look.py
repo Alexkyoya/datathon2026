@@ -34,33 +34,33 @@ import tools as T  # noqa: E402
 DECISION_DATE = "2026-11-13"  # morning of Nov 13, data through the Nov 12 close
 
 
-_FAST_OK = None  # checked once per process
+_FAST_ID = None  # chosen once per process
 
 
-def _fast_model_ok():
-    """Some event accounts cannot use every model (Marketplace subscription). Probe once; fall back."""
-    global _FAST_OK
-    if _FAST_OK is None:
-        if config.MODEL_ID_FAST == config.MODEL_ID:
-            _FAST_OK = True
-        else:
+def _fast_model_id():
+    """First fast-model candidate this account can call; otherwise the main model."""
+    global _FAST_ID
+    if _FAST_ID is None:
+        import boto3
+        client = boto3.client("bedrock-runtime", region_name=config.AWS_REGION)
+        _FAST_ID = config.MODEL_ID
+        for mid in [m.strip() for m in config.MODEL_ID_FAST.split(",") if m.strip()]:
+            if mid == config.MODEL_ID:
+                break
             try:
-                import boto3
-                boto3.client("bedrock-runtime", region_name=config.AWS_REGION).converse(
-                    modelId=config.MODEL_ID_FAST,
-                    messages=[{"role": "user", "content": [{"text": "ok"}]}],
-                    inferenceConfig={"maxTokens": 1})
-                _FAST_OK = True
+                client.converse(modelId=mid, messages=[{"role": "user", "content": [{"text": "ok"}]}],
+                                inferenceConfig={"maxTokens": 1})
+                _FAST_ID = mid
+                break
             except Exception as e:
-                print(f"[second-look] fast model {config.MODEL_ID_FAST} unavailable "
-                      f"({type(e).__name__}); using {config.MODEL_ID} for all agents")
-                _FAST_OK = False
-    return _FAST_OK
+                print(f"[second-look] fast model {mid} unavailable ({type(e).__name__})")
+        print(f"[second-look] specialists use {_FAST_ID}")
+    return _FAST_ID
 
 
 def model(fast=False):
-    if fast and _fast_model_ok():  # specialists: short, tool-driven tasks -> smaller, faster model
-        return BedrockModel(model_id=config.MODEL_ID_FAST, region_name=config.AWS_REGION)
+    if fast:  # specialists: short, tool-driven tasks -> smaller, faster model
+        return BedrockModel(model_id=_fast_model_id(), region_name=config.AWS_REGION)
     return BedrockModel(model_id=config.MODEL_ID, region_name=config.AWS_REGION)  # no temperature: deprecated for newer Claude models
 
 
