@@ -99,7 +99,8 @@ def role_arn():
 def deploy_function(role):
     settings = dict(Role=role, Handler="api_handler.handler", Runtime="python3.12", Timeout=600, MemorySize=1024,
                     Environment={"Variables": {"DATA_BUCKET": config.DATA_BUCKET, "DATA_PREFIX": config.DATA_PREFIX,
-                                               "LAMBDA_NAME": config.LAMBDA_NAME, "MODEL_ID": config.MODEL_ID}})
+                                               "LAMBDA_NAME": config.LAMBDA_NAME, "MODEL_ID": config.MODEL_ID,
+                                               "MODEL_ID_FAST": config.MODEL_ID_FAST}})
     code = {"S3Bucket": config.DATA_BUCKET, "S3Key": ZIP_KEY}
     try:
         lam.get_function(FunctionName=API_NAME)

@@ -65,7 +65,7 @@ async function evaluate() {
   catch(err){$('outcome').replaceChildren(text('h2','Proposal could not be evaluated.'),text('p','No verdict was produced. Correct the issue before continuing.'));error(err);}
   finally {$('evaluate').disabled=false;}
 }
-async function decide(decision,reason) { try { $('error').hidden=true;if(decision==='explain'){$('outcome').append(text('p','The agents are reviewing your reason, the data and stress tests. This takes about 1–2 minutes…','muted'));document.querySelectorAll('#outcome button').forEach(b=>b.disabled=true);}render(await api(`/api/simulations/${current.simulation_id}/decision`,{decision,...(reason!==undefined?{reason}:{})})); }catch(err){error(err);} }
+async function decide(decision,reason) { try { $('error').hidden=true;if(decision==='explain'){$('outcome').append(text('p','The agents are reviewing your reason, the data and stress tests. The verdict above is final; this adds the explanation (about 20–40 seconds)…','muted'));document.querySelectorAll('#outcome button').forEach(b=>b.disabled=true);}render(await api(`/api/simulations/${current.simulation_id}/decision`,{decision,...(reason!==undefined?{reason}:{})})); }catch(err){error(err);} }
 async function start() {
   try {
     context=await api('/api/context?client_id='+encodeURIComponent(clientId()));const client=context.client;
@@ -101,6 +101,7 @@ function agentPanel(record){
   if(a.macro_context){panel.append(text('p','Rates and inflation','eyebrow'),text('p',a.macro_context));}
   list('Alternatives that keep your idea',a.alternatives,x=>`${x.description}${x.rule_check_verdict?' — rule check: '+x.rule_check_verdict:''}`);
   list('Assumptions',a.assumptions,x=>x);
+  if(a.timing_seconds)panel.append(text('p',`Agents: ${a.timing_seconds.specialists_parallel}s (profile, news and data in parallel) + ${a.timing_seconds.coordinator}s (coordinator).`,'muted'));
   panel.append(text('p',a.disclaimer||'Simulation only. Not investment advice.','muted'));
   return panel;
 }

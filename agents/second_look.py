@@ -14,6 +14,8 @@ Run
 """
 import argparse
 import json
+import time
+from concurrent.futures import ThreadPoolExecutor
 import os
 import re
 import sys
@@ -32,7 +34,9 @@ import tools as T  # noqa: E402
 DECISION_DATE = "2026-11-13"  # morning of Nov 13, data through the Nov 12 close
 
 
-def model():
+def model(fast=False):
+    if fast:  # specialists: short, tool-driven tasks -> smaller, faster model
+        return BedrockModel(model_id=config.MODEL_ID_FAST, region_name=config.AWS_REGION)
     return BedrockModel(model_id=config.MODEL_ID, region_name=config.AWS_REGION)  # no temperature: deprecated for newer Claude models
 
 
@@ -93,18 +97,18 @@ Return valid JSON only, without Markdown or extra keys:
 
 COORDINATOR_PROMPT = """You are the Coordinator of Second Look. A trade was flagged RED by the rule engine.
 The verdict is final: you explain it, you never change it.
+The Profile, News and Financial Data agents have already run in parallel; their reports are in the message.
 Steps:
-1. Ask the profile agent about the client and their reason.
-2. Ask the news agent to check the client's reason; get its suggested scenarios.
-3. Ask the data agent for risk metrics, the 2022 replay, the news agent's scenarios and the macro context.
-4. Propose 1 or 2 alternatives that keep the client's intent (smaller position, a diversified fund on the
-   same theme, or spreading the purchase). Do not default to bonds or cash. Only use tickers from this
+1. Read the three reports. Do not invent anything they don't contain.
+2. Propose 1 or 2 alternatives that keep the client's intent (smaller position, a diversified fund on the
+   same theme, or spreading the purchase). Do not default to bonds or cash. Purchases are paid from cash only,
+   so an alternative must cost no more than the trade. Only use tickers from this
    universe: RY.TO TD.TO MFC.TO ENB.TO CNQ.TO CNR.TO FTS.TO ATD.TO SHOP.TO CSU.TO AAPL MSFT NVDA GOOGL AMZN
    TSLA JPM JNJ PG XOM XIU.TO SPY QQQ ESGV XBB.TO ZST.TO AGG TLT GLD BTC-USD ETH-USD XIT.TO XLK XEF.TO
    (QQQ is tech-heavy; XIT.TO and XLK are technology sector funds, Canada and U.S.; ESGV is ESG-screened;
-   XEF.TO is international developed equity). If rule_check says a ticker is unknown, do not present it. You may call check_alternative
-   to run the rule engine on an alternative; only present alternatives that come back green or yellow.
-5. Write the final answer. Leave out any scenario whose portfolio_return is null or unavailable.
+   XEF.TO is international developed equity). Call check_alternative for each alternative (you may call
+   it several times in one turn); only present alternatives that come back green or yellow.
+3. Write the final answer. Leave out any scenario whose portfolio_return is null or unavailable.
    In news_check, keep each claim's type exactly as the news agent returned it
    (fact, prediction, opinion or unverified).
 Return JSON only, in this shape:
@@ -120,8 +124,8 @@ Return JSON only, in this shape:
 
 
 # ---------------------------------------------------------------- agents as tools for the coordinator
-def _ask(system_prompt, tools_, question):
-    agent = Agent(model=model(), system_prompt=system_prompt, tools=tools_, callback_handler=None)
+def _ask(system_prompt, tools_, question, fast=True):
+    agent = Agent(model=model(fast), system_prompt=system_prompt, tools=tools_, callback_handler=None)
     return str(agent(question))
 
 
@@ -224,15 +228,29 @@ def run(client_id, ticker, amount_cad, reason=None, interactive=True):
             result["saved_to"] = save_run(result)
             return result
         reason = reason or "(no reason given)"
-        coordinator = Agent(model=model(), system_prompt=COORDINATOR_PROMPT,
-                            tools=[ask_profile_agent, ask_news_agent, ask_data_agent, check_alternative])
-        prompt = (f"Client: {client_id}. Proposed trade: buy {ticker} for {amount_cad} CAD. "
-                  f"Decision date: {DECISION_DATE}.\nClient's reason: {reason}\n"
-                  f"Rule engine result (final verdict):\n{json.dumps(rc)}")
+        ctx = (f"Client: {client_id}. Proposed trade: buy {ticker} for {amount_cad} CAD. "
+               f"Decision date: {DECISION_DATE}.\nClient's reason: {reason}")
+        shocks = [{"name": f"{ticker} -30% (hypothetical)", "shock": {ticker: -0.30}},
+                  {"name": "Broad equity -15% (hypothetical)", "shock": {"equity": -0.15}}]
+        # The three specialists don't depend on each other: run them at the same time.
+        t0 = time.time()
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            f_profile = pool.submit(_ask, PROFILE_PROMPT, [T.get_profile], ctx)
+            f_news = pool.submit(_ask, NEWS_PROMPT, [T.news_check], ctx)
+            f_data = pool.submit(_ask, DATA_PROMPT, [T.risk_metrics, T.macro_snapshot],
+                                 ctx + "\nRun these scenarios as shocks: " + json.dumps(shocks))
+            reports = {"profile": f_profile.result(), "news": f_news.result(), "data": f_data.result()}
+        t1 = time.time()
+        coordinator = Agent(model=model(), system_prompt=COORDINATOR_PROMPT, tools=[check_alternative],
+                            callback_handler=None)
+        prompt = (ctx + f"\nRule engine result (final verdict):\n{json.dumps(rc)}\n\n"
+                  f"PROFILE AGENT REPORT:\n{reports['profile']}\n\nNEWS AGENT REPORT:\n{reports['news']}\n\n"
+                  f"FINANCIAL DATA AGENT REPORT:\n{reports['data']}")
         out = _parse_json(str(coordinator(prompt)))
         out["verdict"] = "red"  # the rule engine decides, never the LLM
         out["rule_check"] = rc
         out["client_reason"] = reason
+        out["timing_seconds"] = {"specialists_parallel": round(t1 - t0, 1), "coordinator": round(time.time() - t1, 1)}
         result = out
 
     result["saved_to"] = save_run(result)
