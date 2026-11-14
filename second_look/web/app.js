@@ -70,7 +70,7 @@ async function start() {
   try {
     context=await api('/api/context?client_id='+encodeURIComponent(clientId()));const client=context.client;
     $('profile').textContent=`${client.name?client.name+' · ':''}Target: ${client.profile}`;clientPicker();demoButtons();$('client-context').textContent=`${client.horizon_years}-year horizon · ${client.objectives.join(', ').replaceAll('_',' ')}. Horizon and loss tolerance are context, not a new profile score.`;$('cash').textContent=`Available cash: ${client.cash_cad.toLocaleString('en-CA',{style:'currency',currency:'CAD'})}`;$('asof').textContent=`Holdings / decision date: ${client.holdings_as_of} · 00:00 UTC daily snapshot`;
-    assetPicker();$('ticker').value='SPY';drawSpectrum();
+    assetPicker();selectTicker('SPY');drawSpectrum();
     $('reference-source').textContent=`${context.reference_config.source.title}, page 1, recommended allocations. Version ${context.reference_config.version}.`;
     $('reference-rows').replaceChildren(...context.references.map(ref=>{const row=document.createElement('tr');[ref.category,...['ZST.TO','XBB.TO','XIU.TO','SPY','GLD'].map(t=>pct(ref.ticker_weights[t]))].forEach(v=>row.append(text('td',v)));return row;}));
   }catch(err){error(err);$('evaluate').disabled=true;}
@@ -85,16 +85,32 @@ function assetGroup(a){
   if(a.asset_class==='equities')return a.currency==='CAD'?'Canadian stocks':'U.S. stocks';
   return a.instrument_type==='crypto'||/USD$/.test(a.name||'')?'Crypto':'Gold & alternatives';
 }
+const GROUP_ORDER=['Canadian stocks','U.S. stocks','Stock funds (ETFs)','Bond funds','Cash-like','Gold & alternatives','Crypto','Other'];
+// Two steps: pick a type of asset, then the asset itself ("NVIDIA (NVDA) · sector").
 function assetPicker(){
-  const info=context.assets||{};const order=['Canadian stocks','U.S. stocks','Stock funds (ETFs)','Bond funds','Cash-like','Gold & alternatives','Crypto','Other'];
-  const groups={};context.tickers.forEach(t=>{const g=assetGroup(info[t]);(groups[g]=groups[g]||[]).push(t);});
-  const select=$('ticker');select.replaceChildren();
-  order.filter(g=>groups[g]).forEach(g=>{
-    const og=document.createElement('optgroup');og.label=g;
-    groups[g].sort((x,y)=>((info[x]||{}).name||x).localeCompare((info[y]||{}).name||y)).forEach(t=>{
+  const info=context.assets||{};const groups={};
+  context.tickers.forEach(t=>{const g=assetGroup(info[t]);(groups[g]=groups[g]||[]).push(t);});
+  context.groups=groups;
+  let type=$('asset-type');
+  if(!type){
+    type=document.createElement('select');type.id='asset-type';type.setAttribute('aria-label','Type of asset');
+    const label=text('label','Type of asset');label.htmlFor='asset-type';
+    const assetLabel=document.querySelector('label[for="ticker"]');
+    assetLabel.before(label,type);
+    type.addEventListener('change',()=>fillAssets(type.value));
+  }
+  type.replaceChildren(...GROUP_ORDER.filter(g=>groups[g]).map(g=>{const o=text('option',`${g} (${groups[g].length})`);o.value=g;return o;}));
+  fillAssets(type.value);
+}
+function fillAssets(group){
+  const info=context.assets||{};
+  $('ticker').replaceChildren(...(context.groups[group]||[]).slice()
+    .sort((x,y)=>((info[x]||{}).name||x).localeCompare((info[y]||{}).name||y)).map(t=>{
       const a=info[t]||{};const extra=a.sector&&!/^Broad|^Sector|^Bonds|^Gold|^Crypto/.test(a.sector)?` · ${a.sector}`:'';
-      const o=text('option',`${a.name||t} — ${t} (${a.currency||''})${extra}`);o.value=t;og.append(o);});
-    select.append(og);});
+      const o=text('option',`${a.name||t} (${t})${extra}`);o.value=t;return o;}));
+}
+function selectTicker(t){
+  const g=assetGroup((context.assets||{})[t]);$('asset-type').value=g;fillAssets(g);$('ticker').value=t;
 }
 function clientPicker(){
   if($('client-picker')||!context.clients)return;
@@ -107,7 +123,7 @@ function demoButtons(){
   const box=document.querySelector('.demo-buttons');if(!box)return;
   box.replaceChildren(...(DEMOS[context.client.client_id]||[]).map(([color,ticker,amount])=>{
     const b=text('button',`${ticker} · $${amount.toLocaleString('en-CA')}`);b.type='button';b.dataset.demo=color;
-    b.addEventListener('click',()=>{$('ticker').value=ticker;$('amount').value=amount;$('side').value='buy';evaluate();});return b;}));
+    b.addEventListener('click',()=>{selectTicker(ticker);$('amount').value=amount;$('side').value='buy';evaluate();});return b;}));
 }
 function agentPanel(record){
   const a=record.agent_result;if(!a)return null;
