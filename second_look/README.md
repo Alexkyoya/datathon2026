@@ -1,8 +1,9 @@
 # Second Look
 
 Simulate a cash-funded trade against an investor's **stored** profile and holdings.
-There is no questionnaire. Crypto is an **alternative asset**, with a separate
-crypto cap. The allocation spectrum explains a portfolio's position; deterministic
+The profile comes from a placement questionnaire at onboarding (see
+[Placing a client](#placing-a-client)) and is never re-scored by a trade. Crypto is an
+**alternative asset**, with a separate crypto cap. The allocation spectrum explains a portfolio's position; deterministic
 limits decide green/yellow/red. Nothing executes an order or changes the profile.
 
 ## Run
@@ -50,6 +51,63 @@ Obsolete `examples/snapshot.json`, `examples/demo_results.json` and the old stat
 `VALIDATION.txt` were removed. Current generated inputs/results have one location
 under `data/runtime/`; validation lives in executable tests. Original raw datasets,
 source documentation, the stored client and existing tests are retained.
+
+## Placing a client
+
+`second_look/questionnaire.py` turns five answers into one of the five NBF profiles.
+Clients are classified by risk tolerance, never by past performance or holdings.
+
+| Question | Answer | Score |
+| --- | --- | --- |
+| Horizon: years before a significant withdrawal | < 3 / 3-5 / 5-10 / 10-15 / 15+ | 1-5 |
+| Capacity: effect of a 20% loss on your plans | severe / significant / moderate / minor / none | 1-5 |
+| Willingness: attitude to short-term losses | avoid / small / moderate / large / any | 1-5 |
+| Objective | preserve / income / balanced / growth / max_growth | 1-5 |
+| Experience | none / basic / intermediate / advanced / professional | 1-5 |
+
+Total 5-25 maps to a band: 5-8 Income, 9-12 Conservative, 13-16 Balanced, 17-20 Growth,
+21-25 Maximum growth. Two caps then apply and can only lower the placement: the horizon
+cap (< 3 years Income, 3-5 Conservative, 5-10 Balanced, 10-15 Growth) and the capacity cap
+(a "severe" answer caps at Income, "significant" at Conservative). The bands and caps are
+team assumptions; only the profile names and asset-class ranges are NBF.
+
+`place_investor(answers)` returns the profile with scores, caps and a one-sentence
+explanation; `build_client(...)` writes a stored client in this component's format, with a
+`placement` block so the dashboard or the Profile agent can explain why the client is
+where they are. The three personas' fictional answers reproduce their stored profiles:
+
+```sh
+python scripts/place_client.py --persona all      # Robert Conservative, Mateo Balanced, Amira Growth
+python scripts/place_client.py --questions        # print the questionnaire
+python scripts/place_client.py answers.json --write   # place a new client, write examples/clients/<id>.json
+```
+
+## Bias test
+
+`tests/test_bias.py` is the evidence that Second Look does not "always recommend bonds":
+
+- A Growth client parked in bonds (60% fixed income) is **red** when buying more bonds
+  (fixed-income maximum worsened) and **green** when buying equities (shortfall reduced).
+- Selling equities below a Growth client's 40% minimum is red, exactly like buying above
+  a Conservative client's 45% maximum: equal gap, equal severity, same effect label.
+- The same bond purchase from the same bond-heavy portfolio is red for Growth and
+  Maximum growth, yellow for Balanced and clean for Income and Conservative.
+- The same NVDA purchase is red under four profiles and not red under Maximum growth.
+- NVDA and JNJ, or QQQ and ESGV, produce identical checks at identical weights: the
+  verdict reads weights, never return history.
+- A Conservative client already holding 70% equities is still judged as Conservative,
+  although the spectrum places the portfolio near Growth.
+- `place_investor` has no holdings argument; the lowest and highest answer sets reach
+  Income and Maximum growth.
+
+Two properties worth knowing for the pitch, both verified in the tests: a single
+cash-funded purchase from a compliant portfolio can move an asset class by at most the
+cash cap (20 points for Income/Conservative/Balanced), so it ends at worst 5 points over
+and yellow; allocation reds come from sales, pre-existing breaches, or the hard
+single-stock and crypto caps (Robert/NVDA is red on the single-stock cap). And because
+the HHI counts a whole ETF position as one holding, a portfolio with one large bond ETF
+(for example the NBF Income reference itself, 68.5% XBB) is treated as concentrated;
+the bias tests use 8+ positions so the allocation behaviour is visible on its own.
 
 ## Reference construction
 

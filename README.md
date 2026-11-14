@@ -96,6 +96,7 @@ A pre-trade check for self-directed investors. Simulation only, not investment a
 - `scripts/add_asset_horizons.py`: writes each asset's worst past fall and recovery time into `assets.json`
 - `scripts/test_bedrock.py`, `scripts/upload_to_s3.py`
 - `tests/`: tools on real data (acceptance table) and universe checks; `second_look/tests/`: rule, schema and generality tests
+- `second_look/second_look/questionnaire.py` + `second_look/scripts/place_client.py`: placement questionnaire (answers -> NBF profile, stored client file). `second_look/tests/test_bias.py`: the "no bond bias" evidence. See the component README.
 
 ## Setup
 
