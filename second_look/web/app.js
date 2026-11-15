@@ -1,6 +1,14 @@
 'use strict';
 
 const $ = id => document.getElementById(id);
+// Bilingual interface: French (default) or English, from ?lang= or the last choice.
+const LANG = (() => {
+  const asked = new URLSearchParams(location.search).get('lang');
+  if (asked === 'en' || asked === 'fr') { try { localStorage.setItem('second-look:lang', asked); } catch {} return asked; }
+  try { return localStorage.getItem('second-look:lang') === 'en' ? 'en' : 'fr'; } catch { return 'fr'; }
+})();
+const L = (fr, en) => LANG === 'en' ? en : fr;
+const LOCALE = L('fr-CA', 'en-CA');
 const state = {
   context: null, selectedAsset: 'CNR.TO', side: 'buy', record: null,
   evaluation: 0, accountLoad: 0, evaluating: false, deciding: false, reviewing: false,
@@ -13,11 +21,13 @@ const DEMOS = {
   amira: [['QQQ',5000],['ETH-USD',3000],['NVDA',5000]],
   demo_balanced: [['SPY',4000],['GLD',14000],['TSLA',12000]]
 };
-const classes = {cash:'Cash-like', fixed_income:'Fixed income', equities:'Equities', alternatives:'Alternatives'};
-const money = value => new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:2}).format(value);
-const decimal = (value, digits=2) => Number.isFinite(value) ? new Intl.NumberFormat('en-CA',{maximumFractionDigits:digits,minimumFractionDigits:digits}).format(value) : 'Unavailable';
-const percent = value => Number.isFinite(value) ? `${(value*100).toFixed(1)}%` : 'Unavailable';
-const dateLabel = value => value ? new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'short',day:'numeric',timeZone:'UTC'}).format(new Date(value.slice(0,10)+'T00:00:00Z')) : 'Unavailable';
+const classes = {cash:L('Liquidités','Cash-like'), fixed_income:L('Revenu fixe','Fixed income'), equities:L('Actions','Equities'), alternatives:L('Placements alternatifs','Alternatives')};
+const NA = L('Non disponible','Unavailable');
+const profileFr = profile => LANG==='en' ? profile : ({Income:'Revenu',Conservative:'Conservateur',Balanced:'Équilibré',Growth:'Croissance','Maximum growth':'Croissance maximale'})[profile] || profile;
+const money = value => new Intl.NumberFormat(LOCALE,{style:'currency',currency:'CAD',maximumFractionDigits:2}).format(value);
+const decimal = (value, digits=2) => Number.isFinite(value) ? new Intl.NumberFormat(LOCALE,{maximumFractionDigits:digits,minimumFractionDigits:digits}).format(value) : NA;
+const percent = value => Number.isFinite(value) ? L(`${(value*100).toFixed(1).replace('.',',')}\u00a0%`,`${(value*100).toFixed(1)}%`) : NA;
+const dateLabel = value => value ? new Intl.DateTimeFormat(LOCALE,{year:'numeric',month:'short',day:'numeric',timeZone:'UTC'}).format(new Date(value.slice(0,10)+'T00:00:00Z')) : NA;
 const node = (tag, value='', className='') => {
   const result=document.createElement(tag); result.textContent=value;
   if(className) result.className=className;
@@ -26,9 +36,9 @@ const node = (tag, value='', className='') => {
 const finite = value => typeof value==='number' && Number.isFinite(value);
 const isTerminal = record => record && ['simulation_continued','cancelled'].includes(record.stage);
 const friendly = message => {
-  if(/Insufficient cash/i.test(message)) return 'This amount exceeds your available cash. No other holding is sold automatically.';
-  if(/Insufficient holdings/i.test(message)) return 'This amount exceeds the value of the units you hold. Short sales are not supported.';
-  if(/stale|Future|Unusable|Missing asset or price/i.test(message)) return 'A usable historical quote is unavailable for this trade. It has not been evaluated.';
+  if(/Insufficient cash/i.test(message)) return L('Ce montant dépasse votre encaisse disponible. Aucune autre position n’est vendue automatiquement.','This amount exceeds your available cash. No other holding is sold automatically.');
+  if(/Insufficient holdings/i.test(message)) return L('Ce montant dépasse la valeur des unités que vous détenez. Les ventes à découvert ne sont pas prises en charge.','This amount exceeds the value of the units you hold. Short sales are not supported.');
+  if(/stale|Future|Unusable|Missing asset or price/i.test(message)) return L('Aucun cours historique utilisable n’est disponible pour cette transaction. Elle n’a pas été évaluée.','A usable historical quote is unavailable for this trade. It has not been evaluated.');
   return message;
 };
 function announce(message) { $('announcer').textContent=message; }
@@ -42,12 +52,12 @@ async function api(path, payload, signal, timeout=20000) {
   try {
     const response=await fetch(path,{...(payload ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)} : {}),signal:controller.signal});
     let data;
-    try { data=await response.json(); } catch { throw new Error('The service returned an unreadable response. Please try again.'); }
-    if(!response.ok) throw new Error(data.error || 'The request could not be completed. Please try again.');
+    try { data=await response.json(); } catch { throw new Error(L('Le service a renvoyé une réponse illisible. Veuillez réessayer.','The service returned an unreadable response. Please try again.')); }
+    if(!response.ok) throw new Error(data.error || L('La demande n’a pas pu être traitée. Veuillez réessayer.','The request could not be completed. Please try again.'));
     return data;
   } catch(error) {
-    if(expired) throw new Error('The request timed out. No confirmation was recorded in this view. Please retry.');
-    if(error.name==='TypeError') throw new Error('The service could not be reached. Check the connection and try again.');
+    if(expired) throw new Error(L('La demande a expiré. Aucune confirmation n’a été enregistrée dans cette vue. Veuillez réessayer.','The request timed out. No confirmation was recorded in this view. Please retry.'));
+    if(error.name==='TypeError') throw new Error(L('Le service est inaccessible. Vérifiez la connexion et réessayez.','The service could not be reached. Check the connection and try again.'));
     throw error;
   } finally {clearTimeout(timer);signal?.removeEventListener('abort',abort);}
 }
@@ -64,7 +74,7 @@ function infoGroups(container, groups) {
   container.replaceChildren(...groups.map(pairs=>{const group=node('div','','info-group');pairs.forEach(([label,value])=>fillPair(group,label,value));return group;}));
 }
 function changeText(quote) {
-  if(!finite(quote?.change_native) || !finite(quote?.change_fraction)) return 'Unavailable';
+  if(!finite(quote?.change_native) || !finite(quote?.change_fraction)) return NA;
   const sign=quote.change_native>=0?'+':'';
   return `${sign}${decimal(quote.change_native)} (${sign}${percent(quote.change_fraction)})`;
 }
@@ -85,7 +95,7 @@ async function loadContext(clientId) {
   $('review-panel').hidden=true;setInvitation(false);
   state.context=null;
   $('client-select').disabled=true;$('market-search').disabled=true;$('scenario-select').disabled=true;$('scenario-cards').replaceChildren();state.recent=[];
-  $('account-name').textContent='Loading account…';
+  $('account-name').textContent=L('Chargement du compte…','Loading account…');
   ['account-total','account-invested','account-cash'].forEach(id=>$(id).textContent='—');
   document.querySelectorAll('[data-open-side]').forEach(button=>button.disabled=true);
   inlineError('page-error-text','');$('page-error').hidden=true;
@@ -93,16 +103,16 @@ async function loadContext(clientId) {
     const context=await api('/api/context?client_id='+encodeURIComponent(clientId));
     if(token!==state.accountLoad)return;
     state.context=context;
-    $('account-name').textContent=context.client.name || 'Balanced demonstration';
-    $('account-profile').textContent=context.client.profile+' profile';
+    $('account-name').textContent=context.client.name || L('Démonstration équilibrée','Balanced demonstration');
+    $('account-profile').textContent=L('Profil : ',' profile')+profileFr(context.client.profile);
     $('account-total').textContent=money(context.account.total_cad);
     $('account-invested').textContent=money(context.account.invested_cad);
     $('account-cash').textContent=money(context.account.cash_cad);
-    $('snapshot-label').textContent='Account snapshot · '+dateLabel(context.client.holdings_as_of)+' · 00:00 UTC';
+    $('snapshot-label').textContent=L('Instantané du compte · ','Account snapshot · ')+dateLabel(context.client.holdings_as_of)+' · 00:00 UTC';
     $('user-avatar').textContent=(context.first_name || 'S').slice(0,1);
-    $('client-select').replaceChildren(...context.clients.map(id=>{const option=node('option',id==='demo_balanced'?'Balanced demo':id[0].toUpperCase()+id.slice(1));option.value=id;return option;}));
+    $('client-select').replaceChildren(...context.clients.map(id=>{const option=node('option',id==='demo_balanced'?L('Démo équilibrée','Balanced demo'):id[0].toUpperCase()+id.slice(1));option.value=id;return option;}));
     $('client-select').value=context.client.client_id;$('client-select').disabled=false;
-    $('scenario-select').replaceChildren(node('option','Select a scenario'),...(DEMOS[context.client.client_id]||[]).map(([ticker,amount],i)=>{const option=node('option',`Buy ${ticker} · ${money(amount)}`);option.value=String(i);return option;}));
+    $('scenario-select').replaceChildren(node('option',L('Choisir un scénario','Select a scenario')),...(DEMOS[context.client.client_id]||[]).map(([ticker,amount],i)=>{const option=node('option',L(`Achat ${ticker} · ${money(amount)}`,`Buy ${ticker} · ${money(amount)}`));option.value=String(i);return option;}));
     $('scenario-select').options[0].value='';$('scenario-select').value='';$('scenario-select').disabled=false;renderScenarioCards();
     $('market-search').disabled=false;
     if(!context.assets[state.selectedAsset])state.selectedAsset=context.tickers[0];
@@ -111,79 +121,94 @@ async function loadContext(clientId) {
     if(token!==state.accountLoad)return;
     inlineError('page-error-text',error.message);$('page-error').hidden=false;
     $('client-select').disabled=false;
-    announce('Account data could not be loaded.');
+    announce(L('Les données du compte n’ont pas pu être chargées.','Account data could not be loaded.'));
   }
 }
 
 function renderHoldings() {
   const ctx=state.context;
   const rows=ctx.holdings.map(h=>{
-    const button=node('button',h.ticker,'text-button');button.type='button';button.setAttribute('aria-label',`View ${h.name} quote`);
+    const button=node('button',h.ticker,'text-button');button.type='button';button.setAttribute('aria-label',L(`Voir la cote de ${h.name}`,`View ${h.name} quote`));
     button.addEventListener('click',()=>{state.selectedAsset=h.ticker;showPage('markets');renderQuote();$('asset-name').scrollIntoView({block:'nearest'});});
     return [button,h.name,decimal(h.units,4),h.currency,money(h.value_cad),percent(h.weight)];
   });
-  rows.push(['Cash','CAD cash ledger','—','CAD',money(ctx.account.cash_cad),percent(ctx.account.cash_cad/ctx.account.total_cad)]);
-  $('holdings-table').replaceChildren(makeTable(['Asset','Name','Units','Listing currency','Value (CAD)','Portfolio weight'],rows));
-  const profile=node('div');profile.append(node('p',`${ctx.client.profile} · ${ctx.client.horizon_years}-year horizon`),node('p','Objectives: '+ctx.client.objectives.join(', ').replaceAll('_',' ')));
+  rows.push([L('Encaisse','Cash'),L('Solde en espèces CAD','CAD cash ledger'),'—','CAD',money(ctx.account.cash_cad),percent(ctx.account.cash_cad/ctx.account.total_cad)]);
+  $('holdings-table').replaceChildren(makeTable([L('Titre','Asset'),L('Nom','Name'),L('Unités','Units'),L('Devise de cotation','Listing currency'),L('Valeur (CAD)','Value (CAD)'),L('Poids au portefeuille','Portfolio weight')],rows));
+  const profile=node('div');profile.append(node('p',L(`${profileFr(ctx.client.profile)} · horizon de ${ctx.client.horizon_years} ans`,`${ctx.client.profile} · ${ctx.client.horizon_years}-year horizon`)),node('p',L('Objectifs : ','Objectives: ')+ctx.client.objectives.join(', ').replaceAll('_',' ')));
   const goals=node('div');
-  (ctx.client.goals||[]).forEach(goal=>goals.append(node('p',goal.name+' · '+(goal.type==='one_off'?money(goal.amount_cad)+' by '+dateLabel(goal.target_date):money(goal.amount_cad_per_year)+'/year from '+dateLabel(goal.start_date)))));
-  if(!goals.children.length)goals.append(node('p','No dated goals are stored for this demo account.'));
+  (ctx.client.goals||[]).forEach(goal=>goals.append(node('p',goal.name+' · '+(goal.type==='one_off'?money(goal.amount_cad)+L(' d’ici le ',' by ')+dateLabel(goal.target_date):money(goal.amount_cad_per_year)+L('/an à compter du ','/year from ')+dateLabel(goal.start_date)))));
+  if(!goals.children.length)goals.append(node('p',L('Aucun objectif daté n’est enregistré pour ce compte de démonstration.','No dated goals are stored for this demo account.')));
   const esg=ctx.client.preferences.esg;
-  if(esg?.excluded_sectors?.length)profile.append(node('p','Excluded sectors: '+esg.excluded_sectors.join(', ')));
+  if(esg?.excluded_sectors?.length)profile.append(node('p',L('Secteurs exclus : ','Excluded sectors: ')+esg.excluded_sectors.join(', ')));
   $('profile-details').replaceChildren(profile,goals);
 }
 function showPage(page) {
   $('market-view').hidden=page!=='markets';$('holdings-view').hidden=page!=='holdings';
-  $('page-title').textContent=page==='markets'?'Market quote':'My holdings';
+  $('page-title').textContent=page==='markets'?L('Cote','Market quote'):L('Mes avoirs','My holdings');
   ['markets','holdings'].forEach(key=>{const button=$('nav-'+key);button.classList.toggle('active',key===page);if(key===page)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');});
   if(page==='markets')renderChart();
 }
 function renderQuote() {
   const ctx=state.context,t=state.selectedAsset,a=ctx.assets[t],q=ctx.quotes[t],holding=ctx.holdings.find(h=>h.ticker===t);
+  const history=(ctx.price_history[t]||[]).filter(p=>finite(p.close_cad)),closes=history.map(p=>p.close_cad);
   $('market-search').value=t;
-  $('asset-name').textContent=a.name;$('asset-ticker').textContent=`${t} · ${a.currency} · ${classes[a.asset_class]}`;
-  $('asset-market').textContent=a.market || a.currency;
+  $('asset-name').textContent=`${t} ${a.name}`+(a.market?` (${a.market})`:'');
+  $('asset-ticker').textContent=`${a.currency} · ${classes[a.asset_class]}`;
   $('quote-currency').textContent=q?'· '+q.currency:'';
-  $('quote-price').textContent=q?decimal(q.close_native):'Unavailable';setChange($('quote-change'),q);
-  $('quote-volume').textContent=finite(q?.volume)?new Intl.NumberFormat('en-CA').format(q.volume):'Unavailable';
+  $('quote-price').textContent=q?decimal(q.close_native):NA;setChange($('quote-change'),q);
+  const volume=finite(q?.volume)?new Intl.NumberFormat(LOCALE).format(q.volume):NA;
+  $('quote-volume').textContent=volume;
   $('quote-date').textContent=dateLabel(q?.price_source_date);
   document.querySelectorAll('[data-open-side]').forEach(button=>{button.disabled=!q || (button.dataset.openSide==='sell' && !(holding?.units>0));});
   infoGroups($('quote-information'),[
-    [['Open',finite(q?.open_native)?decimal(q.open_native)+' '+a.currency:null],['Previous observed close',finite(q?.previous_close_native)?decimal(q.previous_close_native)+' '+a.currency:null],['Session low / high',finite(q?.low_native)&&finite(q?.high_native)?`${decimal(q.low_native)} / ${decimal(q.high_native)} ${a.currency}`:null]],
-    [['Asset class',classes[a.asset_class]],['Listing / market',a.market||'Unavailable'],['Sector / exposure',a.sector||'Unavailable']],
-    [['Value per unit in CAD',q?money(q.close_cad):'Unavailable'],['FX to CAD',q?decimal(q.fx_to_cad,4)+' CAD per '+a.currency:'Unavailable'],['FX source date',a.currency==='CAD'?'Not required · CAD asset':dateLabel(q?.fx_source_date)]]
+    [[L('Ouverture','Open'),finite(q?.open_native)?decimal(q.open_native)+' '+a.currency:null],[L('Fermeture précédente','Previous close'),finite(q?.previous_close_native)?decimal(q.previous_close_native)+' '+a.currency:null],[L('Bas/Haut (jour)','Day low / high'),finite(q?.low_native)&&finite(q?.high_native)?`${decimal(q.low_native)} - ${decimal(q.high_native)}`:null]],
+    [['Volume',volume],[L(`Bas/Haut (${closes.length} obs., CAD)`,`Low / high (${closes.length} obs., CAD)`),closes.length>1?`${decimal(Math.min(...closes))} - ${decimal(Math.max(...closes))}`:null],[L('Devise de cotation','Listing currency'),a.currency]],
+    [[L('Catégorie d’actif','Asset class'),classes[a.asset_class]],[L('Marché','Market'),a.market||NA],[L('Secteur','Sector'),a.sector||NA]],
+    [[L('Valeur par unité en CAD','Value per unit in CAD'),q?money(q.close_cad):NA],[L('Taux de change','FX to CAD'),q?decimal(q.fx_to_cad,4)+L(' CAD / ',' CAD per ')+a.currency:NA],[L('Date du taux de change','FX source date'),a.currency==='CAD'?L('Non requis (CAD)','Not required (CAD)'):dateLabel(q?.fx_source_date)]]
   ]);
   infoGroups($('position-information'),[
-    [['Units held',decimal(holding?.units||0,4)],['Market value (CAD)',money(holding?.value_cad||0)]],
-    [['Portfolio weight',percent(holding?.weight||0)],['Available cash',money(ctx.account.cash_cad)]],
-    [['Profile',ctx.client.profile],['Holdings as of',dateLabel(ctx.client.holdings_as_of)]]
+    [[L('Unités détenues','Units held'),decimal(holding?.units||0,4)],[L('Valeur marchande (CAD)','Market value (CAD)'),money(holding?.value_cad||0)],[L('Poids au portefeuille','Portfolio weight'),percent(holding?.weight||0)]],
+    [[L('Encaisse disponible','Available cash'),money(ctx.account.cash_cad)],[L('Profil','Profile'),profileFr(ctx.client.profile)],[L('Avoirs en date du','Holdings as of'),dateLabel(ctx.client.holdings_as_of)]]
   ]);
-  const history=ctx.price_history[t]||[];
-  $('history-table').replaceChildren(history.length?makeTable(['Observation date','Closing price (CAD)'],history.slice(-12).reverse().map(p=>[dateLabel(p.date),money(p.close_cad)])):node('p','Price history is unavailable in this snapshot.','empty-state'));
-  $('quote-source').textContent='Source: AlphaForge starter dataset · Yahoo Finance prices · Bank of Canada FX. '+(q?.price_age_days>0?'The last available price is carried forward. ':'')+'No bid/ask, analyst ratings or execution quotes are supplied.';
+  renderPerformance(history);
+  $('history-table').replaceChildren(history.length?makeTable([L('Date d’observation','Observation date'),L('Cours de clôture (CAD)','Closing price (CAD)')],history.slice(-12).reverse().map(p=>[dateLabel(p.date),money(p.close_cad)])):node('p',L('L’historique des cours n’est pas disponible dans cet instantané.','Price history is unavailable in this snapshot.'),'empty-state'));
+  $('quote-source').textContent=L('Source : jeu de données AlphaForge · cours Yahoo Finance · taux de change de la Banque du Canada. ','Source: AlphaForge starter dataset · Yahoo Finance prices · Bank of Canada FX. ')+(q?.price_age_days>0?L('Le dernier cours disponible est reporté. ','The last available price is carried forward. '):'')+L('Aucun cours acheteur/vendeur, aucune recommandation d’analyste ni cote d’exécution ne sont fournis.','No bid/ask, analyst ratings or execution quotes are supplied.');
   renderChart();
+}
+// Returns over completed source observations only; periods the history cannot cover are left out.
+function renderPerformance(points) {
+  const box=$('performance-list'),last=points.at(-1)?.close_cad,spans=[[L('5J','5D'),5],['1M',21],['3M',63]];
+  const rows=spans.filter(([,n])=>points.length>n).map(([label,n])=>[label,last/points[points.length-1-n].close_cad-1]);
+  if(points.length>1&&!spans.some(([,n])=>n===points.length-1))rows.push([`${points.length} obs.`,last/points[0].close_cad-1]);
+  if(!rows.length){box.replaceChildren(node('p',L('Le rendement n’est pas disponible dans cet instantané.','Performance is unavailable in this snapshot.'),'empty-state'));return;}
+  const scale=Math.max(...rows.map(row=>Math.abs(row[1])),1e-4);
+  box.replaceChildren(...rows.map(([label,value])=>{
+    const row=node('div','','performance-row'),track=node('span','','performance-bar'),bar=node('i','',value>=0?'up':'down');
+    bar.style.width=Math.max(4,Math.abs(value)/scale*100)+'%';track.append(bar);
+    row.append(node('span',label),node('strong',(value>=0?'+':'')+percent(value),value>=0?'positive':'negative'),track);return row;
+  }));
 }
 function renderChart() {
   if(!state.context)return;
   const points=(state.context.price_history[state.selectedAsset]||[]).filter(p=>finite(p.close_cad));
-  if(points.length<2){$('price-chart').replaceChildren(node('p','A price chart is unavailable in this historical snapshot.','empty-state'));$('chart-period').textContent='';return;}
+  if(points.length<2){$('price-chart').replaceChildren(node('p',L('Le graphique n’est pas disponible dans cet instantané historique.','A price chart is unavailable in this historical snapshot.'),'empty-state'));$('chart-period').textContent='';return;}
   const width=Math.max(300,$('price-chart').clientWidth||900),height=200,left=64,right=15,top=12,bottom=27;
   const prices=points.map(p=>p.close_cad),lo=Math.min(...prices),hi=Math.max(...prices),pad=Math.max((hi-lo)*.12,.01);
   const min=lo-pad,max=hi+pad,x=i=>left+i*(width-left-right)/(points.length-1),y=p=>top+(max-p)*(height-top-bottom)/(max-min);
-  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.classList.add('price-svg');svg.setAttribute('role','img');svg.setAttribute('aria-label',`${state.selectedAsset} historical CAD closing prices from ${points[0].date} to ${points.at(-1).date}. Lowest ${money(lo)}, highest ${money(hi)}.`);
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.classList.add('price-svg');svg.setAttribute('role','img');svg.setAttribute('aria-label',L(`Cours de clôture historiques en CAD de ${state.selectedAsset}, du ${points[0].date} au ${points.at(-1).date}. Plus bas ${money(lo)}, plus haut ${money(hi)}.`,`${state.selectedAsset} historical CAD closing prices from ${points[0].date} to ${points.at(-1).date}. Lowest ${money(lo)}, highest ${money(hi)}.`));
   const part=(tag,attrs,value)=>{const el=document.createElementNS(ns,tag);for(const[k,v]of Object.entries(attrs))el.setAttribute(k,v);if(value!==undefined)el.textContent=value;svg.append(el);return el;};
-  [0,.5,1].forEach(r=>{const value=max-r*(max-min),at=y(value);part('line',{x1:left,x2:width-right,y1:at,y2:at,stroke:'#e6eef3'});part('text',{x:left-10,y:at+4,'text-anchor':'end'},decimal(value));});
+  [0,.5,1].forEach(r=>{const value=max-r*(max-min),at=y(value);part('line',{x1:left,x2:width-right,y1:at,y2:at,stroke:'#e6e6e6'});part('text',{x:left-10,y:at+4,'text-anchor':'end'},decimal(value));});
   const path=points.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(2)} ${y(p.close_cad).toFixed(2)}`).join(' ');
-  part('path',{d:path+` L ${x(points.length-1)} ${height-bottom} L ${left} ${height-bottom} Z`,fill:'#edf6fc'});
-  part('path',{d:path,fill:'none',stroke:'#187fac','stroke-width':'2','stroke-linejoin':'round'});
-  part('circle',{cx:x(points.length-1),cy:y(points.at(-1).close_cad),r:3.5,fill:'#187fac'});
+  part('path',{d:path+` L ${x(points.length-1)} ${height-bottom} L ${left} ${height-bottom} Z`,fill:'#fdeced'});
+  part('path',{d:path,fill:'none',stroke:'#e41c23','stroke-width':'2','stroke-linejoin':'round'});
+  part('circle',{cx:x(points.length-1),cy:y(points.at(-1).close_cad),r:3.5,fill:'#e41c23'});
   part('text',{x:left,y:height-5},dateLabel(points[0].date));part('text',{x:width-right,y:height-5,'text-anchor':'end'},dateLabel(points.at(-1).date));
-  $('price-chart').replaceChildren(svg);$('chart-period').textContent=`${points.length} source observations · ${dateLabel(points[0].date)} – ${dateLabel(points.at(-1).date)}`;
+  $('price-chart').replaceChildren(svg);$('chart-period').textContent=`${points.length} observations · ${dateLabel(points[0].date)} – ${dateLabel(points.at(-1).date)}`;
 }
 function selectTab(tab) {
   state.tab=tab;
-  ['overview','history','position'].forEach(key=>{const selected=key===tab;$(key+'-panel').hidden=!selected;$('tab-'+key).setAttribute('aria-selected',String(selected));$('tab-'+key).tabIndex=selected?0:-1;});
-  $('chart-section').hidden=tab==='position';renderChart();
+  ['overview','history'].forEach(key=>{const selected=key===tab;$(key+'-panel').hidden=!selected;$('tab-'+key).setAttribute('aria-selected',String(selected));$('tab-'+key).tabIndex=selected?0:-1;});
+  renderChart();
 }
 
 function setInvitation(visible) {
@@ -201,12 +226,12 @@ function invalidate(forget=true) {
 }
 function draftRequest() {
   const ticker=resolveAsset($('ticket-asset').value),amount=Number($('amount').value);
-  if(!ticker)throw new Error('Choose an asset from the provided ticker list.');
-  if(!finite(amount)||amount<=0)throw new Error('Enter a CAD amount greater than zero.');
+  if(!ticker)throw new Error(L('Choisissez un titre dans la liste fournie.','Choose an asset from the provided ticker list.'));
+  if(!finite(amount)||amount<=0)throw new Error(L('Entrez un montant en CAD supérieur à zéro.','Enter a CAD amount greater than zero.'));
   const q=state.context.quotes[ticker];
-  if(!q)throw new Error('No usable historical quote is available for this asset.');
+  if(!q)throw new Error(L('Aucun cours historique utilisable n’est disponible pour ce titre.','No usable historical quote is available for this asset.'));
   const available=state.side==='buy'?state.context.account.cash_cad:(state.context.holdings.find(h=>h.ticker===ticker)?.value_cad||0);
-  if(amount>available+1e-8)throw new Error(state.side==='buy'?`This trade costs ${money(amount)}, but only ${money(available)} is available in cash.`:`Your holding is worth ${money(available)}. You cannot sell more than you hold.`);
+  if(amount>available+1e-8)throw new Error(state.side==='buy'?L(`Cette transaction coûte ${money(amount)}, mais l’encaisse disponible est de ${money(available)}.`,`This trade costs ${money(amount)}, but only ${money(available)} is available in cash.`):L(`Votre position vaut ${money(available)}. Vous ne pouvez pas vendre plus que ce que vous détenez.`,`Your holding is worth ${money(available)}. You cannot sell more than you hold.`));
   return {client_id:state.context.client.client_id,decision_date:state.context.client.holdings_as_of,ticker,side:state.side,amount_cad:amount};
 }
 function openTicket(side=state.side, ticker=state.selectedAsset, amount='', resume=false) {
@@ -214,7 +239,7 @@ function openTicket(side=state.side, ticker=state.selectedAsset, amount='', resu
   state.returnFocus=document.activeElement;
   if(!resume){invalidate();state.side=side;$('ticket-asset').value=ticker;$('amount').value=amount;}
   $('ticket-review-slot').append($('review-panel'));
-  $('ticket-account-name').textContent=(state.context.client.name||'Balanced demo')+' · CAD simulation';
+  $('ticket-account-name').textContent=(state.context.client.name||L('Démo équilibrée','Balanced demo'))+L(' · Simulation CAD',' · CAD simulation');
   $('ticket-cash').textContent=money(state.context.account.cash_cad);
   updateTicketQuote();
   if(!$('trade-dialog').open)$('trade-dialog').showModal();
@@ -231,27 +256,27 @@ function closeTicket() {
 function updateTicketQuote() {
   if(!state.context)return;
   const ticker=resolveAsset($('ticket-asset').value),a=state.context.assets[ticker],q=state.context.quotes[ticker];
-  $('ticket-title').textContent=state.side==='buy'?'Buy':'Sell';
+  $('ticket-title').textContent=state.side==='buy'?L('Achat','Buy'):L('Vente','Sell');
   $('side-buy').setAttribute('aria-pressed',String(state.side==='buy'));$('side-sell').setAttribute('aria-pressed',String(state.side==='sell'));
-  $('ticket-title').style.color=state.side==='sell'?'var(--red)':'var(--blue-dark)';
-  $('ticket-asset-name').textContent=a?a.name:'Choose a ticker or company from the list.';
-  $('ticket-category').textContent=a?classes[a.asset_class]:'Provided asset universe';
-  $('ticket-quote-symbol').textContent=a?`${ticker} · ${a.currency}`:'Quote unavailable';
-  $('ticket-quote-price').textContent=q?decimal(q.close_native)+' '+q.currency:'Unavailable';setChange($('ticket-quote-change'),q);
+  $('ticket-title').style.color=state.side==='sell'?'#1a1a1a':'var(--blue)';
+  $('ticket-asset-name').textContent=a?a.name:L('Choisissez un symbole ou une société dans la liste.','Choose a ticker or company from the list.');
+  $('ticket-category').textContent=a?classes[a.asset_class]:L('Univers d’actifs fourni','Provided asset universe');
+  $('ticket-quote-symbol').textContent=a?`${ticker} · ${a.currency}`:L('Cote non disponible','Quote unavailable');
+  $('ticket-quote-price').textContent=q?decimal(q.close_native)+' '+q.currency:NA;setChange($('ticket-quote-change'),q);
   const details=[];
-  if(q){details.push(['CAD value / unit',money(q.close_cad)]);if(finite(q.volume))details.push(['Source volume',new Intl.NumberFormat('en-CA').format(q.volume)]);if(finite(q.low_native)&&finite(q.high_native))details.push(['Session low / high',decimal(q.low_native)+' / '+decimal(q.high_native)]);details.push(['FX to CAD',decimal(q.fx_to_cad,4)]);const holding=state.context.holdings.find(h=>h.ticker===ticker);details.push(['Units held',decimal(holding?.units||0,4)]);if(state.side==='sell')details.push(['Holding value',money(holding?.value_cad||0)]);}
+  if(q){details.push([L('Valeur CAD / unité','CAD value / unit'),money(q.close_cad)]);if(finite(q.volume))details.push(['Volume',new Intl.NumberFormat(LOCALE).format(q.volume)]);if(finite(q.low_native)&&finite(q.high_native))details.push([L('Bas/Haut (jour)','Day low / high'),decimal(q.low_native)+' / '+decimal(q.high_native)]);details.push([L('Taux de change','FX to CAD'),decimal(q.fx_to_cad,4)]);const holding=state.context.holdings.find(h=>h.ticker===ticker);details.push([L('Unités détenues','Units held'),decimal(holding?.units||0,4)]);if(state.side==='sell')details.push([L('Valeur de la position','Holding value'),money(holding?.value_cad||0)]);}
   $('ticket-quote-details').replaceChildren(...details.map(([label,value])=>{const group=node('div');group.append(node('dt',label),node('dd',value));return group;}));
-  $('ticket-quote-date').textContent=q?'Historical close · '+dateLabel(q.price_source_date):'A usable dated quote is required';
+  $('ticket-quote-date').textContent=q?L('Clôture historique · ','Historical close · ')+dateLabel(q.price_source_date):L('Un cours daté utilisable est requis','A usable dated quote is required');
   const amount=Number($('amount').value);
-  $('unit-estimate').textContent=q&&amount>0?`Estimated units: ${decimal(amount/q.close_cad,6)} · valued at ${money(q.close_cad)} CAD per unit.`:'Enter a CAD amount to see estimated units.';
+  $('unit-estimate').textContent=q&&amount>0?L(`Unités estimées : ${decimal(amount/q.close_cad,6)} · à ${money(q.close_cad)} CAD l’unité.`,`Estimated units: ${decimal(amount/q.close_cad,6)} · valued at ${money(q.close_cad)} CAD per unit.`):L('Entrez un montant en CAD pour voir le nombre d’unités estimé.','Enter a CAD amount to see estimated units.');
   syncButtons();
 }
 function syncButtons() {
   const record=state.record,busy=state.evaluating||state.deciding;
   $('submit-trade').disabled=busy||!!record;
-  $('submit-trade').textContent=state.evaluating?'Evaluating…':record?(record.result.verdict==='red'?'Trade paused':isTerminal(record)?'Order complete':'Review required'):'Submit';
+  $('submit-trade').textContent=state.evaluating?L('Évaluation…','Evaluating…'):record?(record.result.verdict==='red'?L('Transaction suspendue','Trade paused'):isTerminal(record)?L('Ordre terminé','Order complete'):L('Révision requise','Review required')):L('Soumettre','Submit');
   $('submit-trade').className='button '+(state.side==='sell'?'red':'blue');
-  $('cancel-trade').disabled=state.deciding;$('cancel-trade').textContent=isTerminal(state.record)?'Close':'Cancel';
+  $('cancel-trade').disabled=state.deciding;$('cancel-trade').textContent=isTerminal(state.record)?L('Fermer','Close'):L('Annuler','Cancel');
   ['amount','ticket-asset','side-buy','side-sell'].forEach(id=>$(id).disabled=state.deciding);
   $('send-reason').disabled=state.reviewing||state.deciding||!record||isTerminal(record)||!!state.pendingMessage||state.chat?.messages.filter(m=>m.role==='user').at(-1)?.status==='failed';
   $('send-reason').textContent=state.reviewing?'Replying…':'Send';
@@ -264,7 +289,7 @@ function syncButtons() {
 function ticketEdited() {
   const shouldRefresh=!!state.record||state.evaluating||state.autoEvaluate;
   invalidate();state.autoEvaluate=shouldRefresh;updateTicketQuote();
-  if(shouldRefresh){showTicketStatus('Checking revised trade…','Your previous result is no longer valid.','');state.timer=setTimeout(()=>{try{draftRequest();evaluateTrade();}catch(error){inlineError('ticket-error',error.message);$('ticket-status').hidden=true;}},500);}
+  if(shouldRefresh){showTicketStatus(L('Vérification de la transaction révisée…','Checking revised trade…'),L('Votre résultat précédent n’est plus valide.','Your previous result is no longer valid.'),'');state.timer=setTimeout(()=>{try{draftRequest();evaluateTrade();}catch(error){inlineError('ticket-error',error.message);$('ticket-status').hidden=true;}},500);}
 }
 function showTicketStatus(title,message,color) {
   $('ticket-status').className='ticket-status '+color;$('ticket-status').replaceChildren(node('strong',title),node('span',message));$('ticket-status').hidden=false;
@@ -276,7 +301,7 @@ async function evaluateTrade() {
   inlineError('ticket-error','');
   const token=++state.evaluation;state.autoEvaluate=false;state.evaluating=true;state.record=null;
   state.evaluationController=new AbortController();setInvitation(false);$('review-panel').hidden=true;
-  showTicketStatus('Evaluating this trade…','Checking your stored profile, goals and preferences.','');syncButtons();
+  showTicketStatus(L('Évaluation de la transaction…','Evaluating this trade…'),L('Vérification de votre profil, de vos objectifs et de vos préférences enregistrés.','Checking your stored profile, goals and preferences.'),'');syncButtons();
   try {
     const record=await api('/api/evaluate',request,state.evaluationController.signal);
     if(token!==state.evaluation)return;
@@ -294,22 +319,22 @@ async function evaluateTrade() {
   }catch(error){
     if(token!==state.evaluation||error.name==='AbortError')return;
     state.evaluating=false;state.record=null;
-    showTicketStatus('Trade not evaluated','No approval or confirmation was recorded. Please try again.','');
+    showTicketStatus(L('Transaction non évaluée','Trade not evaluated'),L('Aucune approbation ni confirmation n’a été enregistrée. Veuillez réessayer.','No approval or confirmation was recorded. Please try again.'),'');
     inlineError('ticket-error',friendly(error.message));
   }finally{if(token===state.evaluation){state.evaluating=false;syncButtons();}}
 }
 function renderResult() {
   const record=state.record;if(!record)return;
   const r=record.result;
-  if(record.stage==='cancelled')showTicketStatus('Order cancelled','No order was placed.','');
-  else if(record.stage==='simulation_continued')showTicketStatus(r.verdict==='red'?'Order submitted · risk acknowledged':'✓ Order submitted',r.verdict==='red'?'The check result stays red. Demo only: no real order was placed.':(r.verdict==='yellow'?'You reviewed the heads-up and confirmed.':'Second Look checked this trade against your profile and found nothing to flag.')+' Demo only: no real order was placed and your holdings stay the same.',r.verdict||'');
-  else if(r.verdict==='red')showTicketStatus('Red · trade paused','Review the flagged risks before deciding how to continue.','red');
+  if(record.stage==='cancelled')showTicketStatus(L('Ordre annulé','Order cancelled'),L('Aucun ordre n’a été passé.','No order was placed.'),'');
+  else if(record.stage==='simulation_continued')showTicketStatus(r.verdict==='red'?L('Ordre soumis · risque reconnu','Order submitted · risk acknowledged'):L('✓ Ordre soumis','✓ Order submitted'),r.verdict==='red'?L('Le résultat de la vérification reste rouge. Démo seulement : aucun ordre réel n’a été passé.','The check result stays red. Demo only: no real order was placed.'):(r.verdict==='yellow'?L('Vous avez pris connaissance de l’avis et confirmé.','You reviewed the heads-up and confirmed.'):L('Second Look a vérifié cette transaction par rapport à votre profil et n’a rien relevé.','Second Look checked this trade against your profile and found nothing to flag.'))+L(' Démo seulement : aucun ordre réel n’a été passé et vos avoirs restent inchangés.',' Demo only: no real order was placed and your holdings stay the same.'),r.verdict||'');
+  else if(r.verdict==='red')showTicketStatus(L('Rouge · transaction suspendue','Red · trade paused'),L('Examinez les risques signalés avant de décider de la suite.','Review the flagged risks before deciding how to continue.'),'red');
   else if(r.verdict==='yellow'){
-    showTicketStatus('Yellow · confirmation required',r.reasons.join(' '),'yellow');
-    const confirm=node('button',state.deciding?'Confirming…':'Confirm order','button blue compact');confirm.type='button';confirm.id='confirm-yellow';confirm.disabled=state.deciding;confirm.addEventListener('click',()=>decision('confirm'));
+    showTicketStatus(L('Jaune · confirmation requise','Yellow · confirmation required'),r.reasons.join(' '),'yellow');
+    const confirm=node('button',state.deciding?L('Confirmation…','Confirming…'):L('Confirmer l’ordre','Confirm order'),'button blue compact');confirm.type='button';confirm.id='confirm-yellow';confirm.disabled=state.deciding;confirm.addEventListener('click',()=>decision('confirm'));
     $('ticket-status').append(node('div','','confirmation-action'));$('ticket-status').lastChild.append(confirm);
     setInvitation(false);$('review-panel').hidden=true;
-  }else{showTicketStatus('Manual review required',r.reasons.join(' '),'');setInvitation(false);$('review-panel').hidden=true;}
+  }else{showTicketStatus(L('Révision manuelle requise','Manual review required'),r.reasons.join(' '),'');setInvitation(false);$('review-panel').hidden=true;}
   if(r.verdict==='red'&&!$('review-panel').hidden)renderReview();
   syncButtons();
 }
@@ -555,7 +580,7 @@ async function decision(action) {
     const record=await api(`/api/simulations/${id}/decision`,{decision:action,...(action==='proceed'?{risk_acknowledged:true}:{})});
     if(token!==state.evaluation||state.record?.simulation_id!==id)return;
     state.record=record;setInvitation(false);renderResult();
-    announce(record.stage==='cancelled'?'Order cancelled.':'Order submitted. Demo only: no real order was placed.');
+    announce(record.stage==='cancelled'?L('Ordre annulé.','Order cancelled.'):L('Ordre soumis. Démo seulement : aucun ordre réel n’a été passé.','Order submitted. Demo only: no real order was placed.'));
     if(action==='cancel')closeTicket();
   }catch(error){inlineError($('review-panel').hidden?'ticket-error':'review-error',error.message);}
   finally{state.deciding=false;syncButtons();if($('confirm-yellow'))$('confirm-yellow').disabled=false;}
@@ -574,8 +599,8 @@ function reviseTrade() {
 // closes, 90-day history, stored drawdown history and stored preferences. It never
 // predicts a verdict; the rule engine decides after "Submit".
 const PICKER_GROUPS = [
-  ['all','All'],['ca','Canadian stocks'],['us','U.S. stocks'],['funds','Funds (ETFs)'],
-  ['bonds','Bonds'],['gold','Gold'],['crypto','Crypto']
+  ['all',L('Tous','All')],['ca',L('Actions canadiennes','Canadian stocks')],['us',L('Actions américaines','U.S. stocks')],['funds',L('Fonds (FNB)','Funds (ETFs)')],
+  ['bonds',L('Obligations','Bonds')],['gold',L('Or','Gold')],['crypto','Crypto']
 ];
 state.recent = [];
 function assetGroupKey(a) {
@@ -587,7 +612,7 @@ function assetGroupKey(a) {
   if(String(a.instrument_type||'').startsWith('etf')) return 'funds';
   return a.currency==='CAD' ? 'ca' : 'us';
 }
-const assetTypeLabel = a => ({crypto:'Crypto',bonds:a?.asset_class==='cash'?'Cash-like fund':'Bond fund',gold:'Gold',funds:'Stock fund',ca:'Stock',us:'Stock'})[assetGroupKey(a)] || '';
+const assetTypeLabel = a => ({crypto:'Crypto',bonds:a?.asset_class==='cash'?L('Fonds de liquidités','Cash-like fund'):L('Fonds d’obligations','Bond fund'),gold:L('Or','Gold'),funds:L('Fonds d’actions','Stock fund'),ca:L('Action','Stock'),us:L('Action','Stock')})[assetGroupKey(a)] || '';
 function pushRecent(ticker) {
   if(!ticker) return;
   state.recent=[ticker,...state.recent.filter(t=>t!==ticker)].slice(0,5);
@@ -617,20 +642,20 @@ function sparkline(points) {
 }
 function assetHeadsUps(ticker, a) {
   const ctx=state.context, esg=ctx.client.preferences?.esg||{}, limits=ctx.profile_limits||{}, tags=[];
-  if((esg.excluded_tickers||[]).includes(ticker)) tags.push(['On your avoid list','warn']);
-  else if(a.sector && (esg.excluded_sectors||[]).includes(a.sector)) tags.push(['Sector you asked to avoid','warn']);
+  if((esg.excluded_tickers||[]).includes(ticker)) tags.push([L('Sur votre liste d’exclusion','On your avoid list'),'warn']);
+  else if(a.sector && (esg.excluded_sectors||[]).includes(a.sector)) tags.push([L('Secteur que vous souhaitez éviter','Sector you asked to avoid'),'warn']);
   if(a.instrument_type==='crypto' || a.is_crypto) {
-    if(finite(limits.crypto_max)) tags.push([limits.crypto_max===0?'Crypto · not part of your profile':`Crypto · max ${percent(limits.crypto_max)} of your portfolio`,'warn']);
-    else tags.push(['Crypto · has its own limit in your profile','info']);
+    if(finite(limits.crypto_max)) tags.push([limits.crypto_max===0?L('Crypto · hors de votre profil','Crypto · not part of your profile'):L(`Crypto · max. ${percent(limits.crypto_max)} de votre portefeuille`,`Crypto · max ${percent(limits.crypto_max)} of your portfolio`),'warn']);
+    else tags.push([L('Crypto · limite distincte dans votre profil','Crypto · has its own limit in your profile'),'info']);
   }
   return tags;
 }
 function worstDropText(a) {
   const hz=a.horizon;
   if(!hz || !finite(hz.max_drawdown) || hz.max_drawdown>-0.005) return '';
-  const drop=`Worst drop since Nov 2021: ${(hz.max_drawdown*100).toFixed(0)}%`;
-  if(hz.recovered && finite(hz.recovery_months)) return `${drop} · back to its high after ${Math.round(hz.recovery_months)} months`;
-  if(hz.recovered===false) return `${drop} · not yet back to its high`;
+  const drop=L(`Pire baisse depuis nov. 2021 : ${(hz.max_drawdown*100).toFixed(0)}\u00a0%`,`Worst drop since Nov 2021: ${(hz.max_drawdown*100).toFixed(0)}%`);
+  if(hz.recovered && finite(hz.recovery_months)) return L(`${drop} · retour au sommet après ${Math.round(hz.recovery_months)} mois`,`${drop} · back to its high after ${Math.round(hz.recovery_months)} months`);
+  if(hz.recovered===false) return L(`${drop} · pas encore revenu au sommet`,`${drop} · not yet back to its high`);
   return drop;
 }
 function scoreAsset(ticker, a, query) {
@@ -645,10 +670,10 @@ function scoreAsset(ticker, a, query) {
   return 0;
 }
 function attachPicker(input, onPick) {
-  const listbox=node('div','','picker');listbox.id=input.id+'-listbox';listbox.setAttribute('role','listbox');listbox.setAttribute('aria-label','Assets');listbox.hidden=true;
-  const chips=node('div','','picker-chips');chips.setAttribute('role','group');chips.setAttribute('aria-label','Filter by type');
+  const listbox=node('div','','picker');listbox.id=input.id+'-listbox';listbox.setAttribute('role','listbox');listbox.setAttribute('aria-label',L('Titres','Assets'));listbox.hidden=true;
+  const chips=node('div','','picker-chips');chips.setAttribute('role','group');chips.setAttribute('aria-label',L('Filtrer par type','Filter by type'));
   const results=node('div','','picker-results');
-  const close=node('button','Close','picker-close text-button');close.type='button';
+  const close=node('button',L('Fermer','Close'),'picker-close text-button');close.type='button';
   const head=node('div','','picker-head');head.append(chips,close);
   const foot=node('p','','picker-foot');
   listbox.append(head,results,foot);
@@ -685,7 +710,7 @@ function attachPicker(input, onPick) {
     meta.append(node('span',[a.sector,assetTypeLabel(a)].filter(Boolean).join(' · ')));
     main.append(title,meta);
     const tags=node('div','','picker-tags');
-    if(held)tags.append(node('span','You own · '+money(held.value_cad),'tag own'));
+    if(held)tags.append(node('span',L('En portefeuille · ','You own · ')+money(held.value_cad),'tag own'));
     assetHeadsUps(ticker,a).forEach(([label,kind])=>tags.append(node('span',label,'tag '+kind)));
     const drop=worstDropText(a);if(drop)tags.append(node('span',drop,'tag history'));
     if(tags.children.length)main.append(tags);
@@ -693,9 +718,9 @@ function attachPicker(input, onPick) {
     if(q){
       price.append(node('strong',decimal(q.close_native)+' '+q.currency));
       if(finite(q.change_fraction)){const up=q.change_fraction>=0;price.append(node('span',`${up?'▲ +':'▼ '}${percent(q.change_fraction)}`,'pill '+(up?'up':'down')));}
-    } else price.append(node('span','No usable quote','muted'));
+    } else price.append(node('span',L('Aucun cours utilisable','No usable quote'),'muted'));
     const spark=sparkline(ctx.price_history?.[ticker]);
-    const label=[a.name,ticker,a.market,a.sector,q?`last close ${decimal(q.close_native)} ${q.currency}`:'no usable quote',finite(q?.change_fraction)?`change ${percent(q.change_fraction)}`:'',held?'you own '+money(held.value_cad):'',...assetHeadsUps(ticker,a).map(t=>t[0]),drop].filter(Boolean).join(', ');
+    const label=[a.name,ticker,a.market,a.sector,q?L(`dernière clôture ${decimal(q.close_native)} ${q.currency}`,`last close ${decimal(q.close_native)} ${q.currency}`):L('aucun cours utilisable','no usable quote'),finite(q?.change_fraction)?L(`variation ${percent(q.change_fraction)}`,`change ${percent(q.change_fraction)}`):'',held?L('en portefeuille ','you own ')+money(held.value_cad):'',...assetHeadsUps(ticker,a).map(t=>t[0]),drop].filter(Boolean).join(', ');
     option.setAttribute('aria-label',label);
     option.append(badge,main,spark||node('span','','spark'),price);
     option.addEventListener('click',()=>pick(ticker));
@@ -711,32 +736,32 @@ function attachPicker(input, onPick) {
     const sections=[];
     if(query){
       const hits=pool.map(t=>[t,scoreAsset(t,ctx.assets[t],query)]).filter(([,s])=>s>0).sort((x,y)=>y[1]-x[1]||ctx.assets[x[0]].name.localeCompare(ctx.assets[y[0]].name)).map(([t])=>t);
-      sections.push([`${hits.length} result${hits.length===1?'':'s'}`,hits]);
+      sections.push([L(`${hits.length} résultat${hits.length===1?'':'s'}`,`${hits.length} result${hits.length===1?'':'s'}`),hits]);
     } else {
       const owned=ctx.holdings.map(h=>h.ticker).filter(t=>pool.includes(t));
       const recent=state.recent.filter(t=>pool.includes(t)&&!owned.includes(t));
       const rest=pool.filter(t=>!owned.includes(t)&&!recent.includes(t)).sort((x,y)=>ctx.assets[x].name.localeCompare(ctx.assets[y].name));
-      if(owned.length)sections.push(['You own',owned]);
-      if(recent.length)sections.push(['Recently viewed',recent]);
-      sections.push([filter==='all'?'All assets':PICKER_GROUPS.find(g=>g[0]===filter)[1],rest]);
+      if(owned.length)sections.push([L('En portefeuille','You own'),owned]);
+      if(recent.length)sections.push([L('Consultés récemment','Recently viewed'),recent]);
+      sections.push([filter==='all'?L('Tous les titres','All assets'):PICKER_GROUPS.find(g=>g[0]===filter)[1],rest]);
     }
     results.replaceChildren();options=[];
     sections.forEach(([title,tickers])=>{
       if(!tickers.length)return;
       const group=node('div','','picker-group');group.setAttribute('role','group');
-      const heading=node('p',title,'picker-section');heading.id=`${input.id}-sec-${title.replace(/\W+/g,'_')}`;group.setAttribute('aria-labelledby',heading.id);
+      const heading=node('p',title,'picker-section');heading.id=`${input.id}-sec-${title.replace(/[^\p{L}\p{N}]+/gu,'_')}`;group.setAttribute('aria-labelledby',heading.id);
       group.append(heading);
       tickers.forEach(t=>{const o=row(t,query);options.push(o);group.append(o);});
       results.append(group);
     });
     if(!options.length){
       const empty=node('div','','picker-empty');
-      empty.append(node('strong',query?`No match for “${input.value.trim()}”.`:'No assets in this group.'),node('span',`This demo covers the ${ctx.tickers.length} assets in the provided data. Try a ticker (NVDA), a company (Royal Bank) or a sector (Energy).`));
+      empty.append(node('strong',query?L(`Aucun résultat pour « ${input.value.trim()} ».`,`No match for “${input.value.trim()}”.`):L('Aucun titre dans ce groupe.','No assets in this group.')),node('span',L(`Cette démo couvre les ${ctx.tickers.length} titres des données fournies. Essayez un symbole (NVDA), une société (Royal Bank) ou un secteur (Energy).`,`This demo covers the ${ctx.tickers.length} assets in the provided data. Try a ticker (NVDA), a company (Royal Bank) or a sector (Energy).`)));
       results.append(empty);
     }
-    foot.textContent='Historical closes · '+dateLabel(Object.values(ctx.quotes)[0]?.price_source_date)+' · not real-time quotes. The check, not this list, decides green/yellow/red.';
+    foot.textContent=L('Clôtures historiques · ','Historical closes · ')+dateLabel(Object.values(ctx.quotes)[0]?.price_source_date)+L(' · cours non en temps réel. C’est la vérification, et non cette liste, qui détermine vert/jaune/rouge.',' · not real-time quotes. The check, not this list, decides green/yellow/red.');
     setActive(query?0:-1,false);
-    announce(options.length?`${options.length} assets listed.`:'No matching assets.');
+    announce(options.length?L(`${options.length} titres affichés.`,`${options.length} assets listed.`):L('Aucun titre correspondant.','No matching assets.'));
   }
   function show() {
     if(!state.context||input.disabled)return;
@@ -777,8 +802,8 @@ function renderScenarioCards() {
   box.replaceChildren(...demos.map(([ticker,amount])=>{
     const a=ctx.assets[ticker],button=node('button','','scenario-card');button.type='button';
     button.append(node('span',initials(a.name,ticker,a),'asset-badge small g-'+assetGroupKey(a)),node('span','',''));
-    button.lastChild.append(node('strong',`Buy ${ticker}`),node('small',money(amount)));
-    button.setAttribute('aria-label',`Demo: buy ${a.name} (${ticker}) for ${money(amount)}. Opens a filled trade ticket.`);
+    button.lastChild.append(node('strong',L(`Achat ${ticker}`,`Buy ${ticker}`)),node('small',money(amount)));
+    button.setAttribute('aria-label',L(`Démo : achat de ${a.name} (${ticker}) pour ${money(amount)}. Ouvre un billet d’ordre prérempli.`,`Demo: buy ${a.name} (${ticker}) for ${money(amount)}. Opens a filled trade ticket.`));
     button.addEventListener('click',()=>{state.selectedAsset=ticker;pushRecent(ticker);renderQuote();openTicket('buy',ticker,amount);});
     return button;
   }));
@@ -788,12 +813,12 @@ const ticketPicker=attachPicker($('ticket-asset'),ticker=>{$('ticket-asset').dis
 
 // Functional navigation and keyboard behavior; no decorative product controls.
 $('nav-markets').addEventListener('click',()=>showPage('markets'));
+$('nav-quote').addEventListener('click',()=>{showPage('markets');$('market-search').focus();$('market-search').select();});
 $('nav-holdings').addEventListener('click',()=>showPage('holdings'));
-$('view-holdings').addEventListener('click',()=>showPage('holdings'));
 $('back-to-markets').addEventListener('click',()=>showPage('markets'));
 $('client-select').addEventListener('change',()=>{const id=$('client-select').value;const url=new URL(location.href);url.searchParams.set('client',id);history.replaceState(null,'',url);loadContext(id);});
 $('retry-context').addEventListener('click',()=>loadContext(new URLSearchParams(location.search).get('client')||'robert'));
-$('market-search').addEventListener('change',()=>{const ticker=resolveAsset($('market-search').value);if(ticker){state.selectedAsset=ticker;renderQuote();}else{announce('Choose a ticker from the provided list.');$('market-search').value=state.selectedAsset;}});
+$('market-search').addEventListener('change',()=>{const ticker=resolveAsset($('market-search').value);if(ticker){state.selectedAsset=ticker;renderQuote();}else{announce(L('Choisissez un symbole dans la liste fournie.','Choose a ticker from the provided list.'));$('market-search').value=state.selectedAsset;}});
 $('scenario-select').addEventListener('change',()=>{const index=$('scenario-select').value;if(index==='')return;const[ticker,amount]=DEMOS[state.context.client.client_id][Number(index)];state.selectedAsset=ticker;renderQuote();openTicket('buy',ticker,amount);$('scenario-select').value='';});
 document.querySelectorAll('[data-open-side]').forEach(button=>button.addEventListener('click',()=>openTicket(button.dataset.openSide)));
 $('close-ticket').addEventListener('click',closeTicket);
@@ -813,11 +838,60 @@ $('refresh-conversation').addEventListener('click',refreshConversation);
 $('risk-checkbox').addEventListener('change',syncButtons);
 $('proceed-red').addEventListener('click',()=>decision('proceed'));
 $('cancel-review').addEventListener('click',()=>decision('cancel'));
-const tabs=['overview','history','position'];
+const tabs=['overview','history'];
 tabs.forEach((tab,index)=>{
   $('tab-'+tab).addEventListener('click',()=>selectTab(tab));
   $('tab-'+tab).addEventListener('keydown',event=>{let next;if(event.key==='ArrowRight')next=(index+1)%tabs.length;if(event.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;if(event.key==='Home')next=0;if(event.key==='End')next=tabs.length-1;if(next!==undefined){event.preventDefault();selectTab(tabs[next]);$('tab-'+tabs[next]).focus();}});
 });
 let resizeFrame;
 window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(renderChart);});
+
+// Static page text is written in French; in English each known string is swapped in place.
+const EN_TEXT = {
+ 'Courtage direct · Simulation':'Direct Brokerage · Simulation','Aller à l’information de marché':'Skip to market information',
+ 'Banque Nationale Courtage direct · accueil de la simulation':'National Bank Direct Brokerage · simulation home',
+ 'BANQUE':'NATIONAL','NATIONALE':'BANK','COURTAGE DIRECT':'DIRECT BROKERAGE','Investisseur fictif':'Fictional investor','Chargement…':'Loading…',
+ 'Navigation principale':'Main navigation','Marchés':'Markets','Mes avoirs':'My holdings','Achat':'Buy','Vente':'Sell','Cote':'Quote',
+ 'Chargement de l’instantané historique…':'Loading historical snapshot…','Données historiques · pas en temps réel':'Historical data · not real time',
+ 'Réessayer':'Try again','Cote du titre sélectionné':'Selected asset quote',
+ 'Rechercher un symbole, une société ou un secteur':'Search ticker, company or sector','Essayer une transaction démo':'Try a demo trade',
+ 'Choisir un scénario':'Select a scenario','Chargement des données de marché…':'Loading your market data…','Cote quotidienne historique':'Historical daily quote',
+ 'Dernier prix':'Last price','Variation du jour':'Change','Vol.':'Vol.','Date du cours':'Price date',
+ 'Information clé sur la cote':'Key quote information','Ma position':'My position','Information sur la cote':'Quote information',
+ 'Sommaire':'Summary','Historique des cours':'Price history','Rendement':'Performance','Calculé à partir des cours de clôture en CAD.':'Calculated from CAD closing prices.',
+ 'Graphique des cours historiques':'Historical price chart','Graphique':'Chart','Chargement du graphique historique.':'Historical chart data is loading.',
+ 'Observations complètes en CAD. Aucune observation future ni estimation d’analyste n’est incluse.':'Completed source observations in CAD. No future observations or analyst estimates are included.',
+ 'Source : jeu de données AlphaForge · cours Yahoo Finance · taux de change de la Banque du Canada.':'Source: AlphaForge starter dataset · Yahoo Finance prices · Bank of Canada FX.',
+ 'Sommaire du compte':'Account summary','Compte de simulation CAD':'CAD simulation account','Profil d’investisseur enregistré':'Stored investor profile',
+ 'Valeur totale du compte':'Total account value','Valeur investie':'Invested value','Encaisse disponible':'Available cash','Vos avoirs':'Your holdings',
+ 'Positions enregistrées, évaluées en CAD à la date de l’instantané.':'Stored positions, valued in CAD at the account snapshot.',
+ 'Retour à la cote →':'Back to quote →','Profil, objectifs et préférences enregistrés':'Stored profile, goals and preferences',
+ 'Second Look · Démonstration hackathon':'Second Look · Hackathon demonstration',
+ 'Simulation non officielle. Comptes fictifs. Aucun ordre réel n’est passé.':'Unofficial simulation. Fictional accounts. No real orders are placed.',
+ 'ORDRE · DÉMO':'ORDER · DEMO','Fermer le billet d’ordre':'Close trade ticket','Compte':'Account','CAD · simulation au comptant':'CAD · cash-funded simulation',
+ 'Encaisse':'Cash','Sens de la transaction':'Trade direction','Univers d’actifs fourni':'Provided asset universe','Titre':'Asset','· symbole ou société':'· ticker or company',
+ 'Montant de la transaction':'Trade amount','Entrez un montant en CAD pour voir le nombre d’unités estimé.':'Enter a CAD amount to see estimated units.',
+ 'Type de prix':'Order type','Au marché':'Market','Exécuté au dernier cours de clôture (démo)':'Filled at the last closing price (demo)',
+ 'Payé à même l’encaisse. Unités fractionnaires; sans frais ni marge dans cette démo.':'Paid from cash. Fractional units; no fees or margin in this demo.',
+ 'Sommaire de la cote':'Trade quote summary','Annuler':'Cancel','Soumettre':'Submit'
+};
+function translateStatic() {
+  document.documentElement.lang = LANG;
+  if (LANG !== 'en') return;
+  document.title = EN_TEXT[document.title] || document.title;
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+    const key = text.nodeValue.trim(), value = EN_TEXT[key];
+    if (value) text.nodeValue = text.nodeValue.replace(key, value);
+  }
+  document.querySelectorAll('[placeholder],[aria-label],[title]').forEach(element => {
+    ['placeholder','aria-label','title'].forEach(name => { const value = EN_TEXT[element.getAttribute(name)]; if (value) element.setAttribute(name, value); });
+  });
+}
+translateStatic();
+$('lang-toggle').textContent = L('English', 'Français');
+$('lang-toggle').lang = L('en', 'fr');
+$('lang-toggle').addEventListener('click', () => {
+  const url = new URL(location.href); url.searchParams.set('lang', L('en', 'fr')); location.assign(url);
+});
 loadContext(new URLSearchParams(location.search).get('client')||'robert');
