@@ -23,7 +23,7 @@ def main():
     from botocore.config import Config
     from strands import Agent
     from strands.models import BedrockModel
-    session = boto3.Session(profile_name=args.profile) if args.profile else boto3.Session()
+    session = boto3.Session(profile_name=args.profile, region_name=config.AWS_REGION) if args.profile else boto3.Session(region_name=config.AWS_REGION)
     creds = session.get_credentials()
     print(json.dumps({'region': config.AWS_REGION, 'model_id': config.MODEL_ID,
                       'credentials_found': bool(creds), 'credential_provider': getattr(creds, 'method', None)}))
@@ -47,8 +47,7 @@ def main():
         return {'aws_request_id': result['ResponseMetadata']['RequestId']}
     check('bedrock_no_tools', model_request)
     def strands_request():
-        model = BedrockModel(model_id=config.MODEL_ID, region_name=config.AWS_REGION,
-                             boto_session=session, boto_client_config=settings)
+        model = BedrockModel(model_id=config.MODEL_ID, boto_session=session, boto_client_config=settings)
         result = Agent(model=model, system_prompt='Reply only OK.', callback_handler=None)('Connection check.')
         return {'response_received': bool(str(result).strip())}
     check('strands_no_tools', strands_request)

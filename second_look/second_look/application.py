@@ -1,6 +1,10 @@
 """Shared local/AWS workflow. Trusted profiles and numerical verdicts stay fixed."""
 import copy
-import fcntl
+try:  # file locks: fcntl on Linux/macOS (Lambda), msvcrt on Windows
+    import fcntl
+except ImportError:  # pragma: no cover - Windows
+    fcntl = None
+    import msvcrt
 import hashlib
 import json
 import logging
@@ -68,11 +72,20 @@ class FileStore:
         path = self._path(key)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.with_suffix('.lock').open('a') as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX)
+            _lock(lock)
             if self.load_versioned(key)[1] != version:
                 raise StateConflict('Session changed. Reload and retry.')
             self.save(key, value)
             return self.load_versioned(key)[1]
+
+
+def _lock(handle):
+    """Exclusive lock until the file is closed (portable)."""
+    if fcntl is not None:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+    else:
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
 
 
 class ProjectStore(FileStore):
