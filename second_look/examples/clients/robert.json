@@ -1,10 +1,10 @@
 {
   "client_id": "robert",
   "name": "Robert",
-  "age": 63,
-  "occupation": "health care worker",
+  "age": 59,
+  "occupation": "healthcare professional",
   "retirement_date": "2027-07-01",
-  "description": "Robert, 63, health care worker, retires on 2027-07-01. Conservative investor with about CAD 3,000,000 saved; from retirement he needs CAD 70,000 a year (indexed to inflation) from the portfolio for 30 years. Fictional persona.",
+  "description": "Robert, 59, healthcare professional, retires on 2027-07-01. Conservative investor with about CAD 3,000,000 saved; from retirement he needs CAD 70,000 a year (indexed to inflation) from the portfolio for 30 years. Fictional persona.",
   "stated_preferences": [
     "established companies",
     "little interest in crypto"
