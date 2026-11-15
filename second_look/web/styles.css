@@ -565,3 +565,13 @@ body { border-top: 4px solid var(--blue); }
 .viz-card.expanded svg {max-width:540px}
 .review-spectrum .viz-head .spectrum-title {margin:0}
 .review-spectrum .spectrum-reading {margin-top:8px}
+
+/* compact red-review header: status pill + trade on one line, the reason as the only headline */
+.review-heading {align-items:center;gap:12px}
+.review-head-text {min-width:0}
+.review-meta-row {display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.review-kicker {display:inline-block;background:var(--red-soft);color:#9f2636;border:1px solid #efc6c9;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;letter-spacing:.2px;text-transform:none}
+.review-kicker::before {content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#c4283a;margin-right:6px;vertical-align:1px}
+#pending-trade-summary {margin:0;font-size:12px}
+.review-heading .rule-summary {font-size:15px;font-weight:600;margin:6px 0 0;line-height:1.35;color:var(--text)}
+.review-panel .exact-numbers {margin:6px 0 12px}

@@ -354,14 +354,14 @@ function renderReview() {
   const checks=r.alerts.filter(c=>c.severity==='red');
   $('red-summary').textContent=plainHeadline(r,request);
   renderVisuals(r,request);
-  $('pending-trade-summary').textContent=`${request.side==='buy'?'Buy':'Sell'} ${request.ticker} · ${money(request.amount_cad)} CAD · ${dateLabel(request.decision_date)}. Original verdict: Red.`;
+  $('pending-trade-summary').textContent=`${request.side==='buy'?'Buy':'Sell'} ${request.ticker} · ${money(request.amount_cad)} · ${dateLabel(request.decision_date)}`;
   const rows=checks.filter(c=>finite(c.before)&&finite(c.after)&&finite(c.limit)).map(c=>{const format=c.unit==='hhi_index'?v=>decimal(v,3):percent;return [exposureName(c),format(c.before),format(c.after),(c.bound==='min'?'Minimum ':'Maximum ')+format(c.limit)];});
   $('exposure-table').replaceChildren(makeTable(['Flagged measure','Before','After','Limit'],rows));
   renderSpectrum(r.classification);
   $('reason-form').hidden=isTerminal(record);
   renderConversation(record);
   const terminal=isTerminal(record);
-  document.querySelector('.review-kicker').textContent=terminal?'SECOND LOOK · '+(record.stage==='cancelled'?'SIMULATION CANCELLED':'RISK ACKNOWLEDGED'):'SECOND LOOK · TRADE PAUSED';
+  document.querySelector('.review-kicker').textContent=terminal?(record.stage==='cancelled'?'Simulation cancelled':'Risk acknowledged'):'Trade paused';
   $('risk-actions').hidden=terminal;$('review-terminal').hidden=!terminal;
   $('review-terminal').textContent=record.stage==='cancelled'?'Order cancelled. Your holdings are unchanged.':'You acknowledged the risks and submitted the order. The check result stays red. Demo only: no real order was placed.';
   syncButtons();
@@ -626,8 +626,12 @@ function esgCard(r,request) {
   return card;
 }
 
+// The chart tiles are switched off for the demo: the one-line summary, "Where your mix sits" and the
+// chat already explain the pause. Set to true to bring the tiles (and their charts) back.
+const SHOW_VISUAL_TILES=false;
 function renderVisuals(r,request) {
   const root=$('review-visuals');root.replaceChildren();
+  root.hidden=!SHOW_VISUAL_TILES;if(!SHOW_VISUAL_TILES)return;
   const cards=[concentrationCard(r,request),goalsCard(r),esgCard(r,request),worstFallCard(r,request),allocationCard(r)].filter(Boolean);
   // Red cards first, so the reason for the pause is the first thing on screen.
   const rank=card=>card.classList.contains('red')?0:card.classList.contains('yellow')?1:2;
