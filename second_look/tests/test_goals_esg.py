@@ -255,3 +255,13 @@ class PolicyTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class MessageFormatTests(unittest.TestCase):
+    def test_limits_and_tickers_display_exactly(self):
+        from second_look.esg import pct
+        from second_look.rules import message
+        self.assertEqual((pct(0.035), pct(0.05), pct(0.0)), ('3.5%', '5%', '0%'))
+        c = {'rule': 'single_stock.NVDA', 'unit': 'weight', 'bound': 'max', 'before': 0.04, 'after': 0.14, 'limit': 0.1}
+        self.assertTrue(message(c).startswith('NVDA position:'))
+        self.assertTrue(message(dict(c, rule='single_stock.XIU.TO')).startswith('XIU.TO position:'))

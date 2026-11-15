@@ -51,8 +51,8 @@ def message(c):
     """Plain-language line for an allocation / concentration check (goal and ESG rules write their own)."""
     parts = c['rule'].split('.') + ['']
     name = {'allocation': f"{LABELS.get(parts[1], parts[1])} share",
-            'single_stock': f"{'.'.join(parts[1:])} position", 'crypto': 'Crypto share',
-            'hhi': 'Concentration (HHI)', 'sector': f"{'.'.join(parts[1:])} sector share",
+            'single_stock': f"{'.'.join(p for p in parts[1:] if p)} position", 'crypto': 'Crypto share',
+            'hhi': 'Concentration (HHI)', 'sector': f"{'.'.join(p for p in parts[1:] if p)} sector share",
             'liquid_cash_reserve': 'Cash reserve'}.get(parts[0], c['rule'])
     fmt = (lambda v: f'{v:.3f}') if c['unit'] == 'hhi_index' else (lambda v: f'{v:.1%}')
     bound = 'maximum' if c['bound'] == 'max' else 'minimum'

@@ -24,6 +24,11 @@ def _alert(rule, severity, before, after, limit, effect, message, **extra):
             'severity': severity, 'resolved': False, 'unit': 'weight', 'source': SOURCE, 'message': message, **extra}
 
 
+def pct(value):
+    """3.5% stays 3.5%, 5% shows as 5% (a limit must never be rounded in the message)."""
+    return f'{value:.1%}'.replace('.0%', '%')
+
+
 def excluded_share(sector_weights, sectors):
     return sum(sector_weights.get(s, 0.0) for s in sectors)
 
@@ -82,7 +87,7 @@ def esg_check(preferences, policy, assets, trade, metrics_before, metrics_after)
                 checks.append(_alert('esg.fund_lookthrough.' + ticker, 'yellow', share, share, limit,
                                      'creates' if w_b <= EPS else 'worsens',
                                      f"{ticker} holds {share:.1%} in {', '.join(sectors)}, above your "
-                                     f"{limit:.0%} limit (issuer fact sheet as of {src.get('as_of', 'unknown date')}).",
+                                     f"{pct(limit)} limit (issuer fact sheet as of {src.get('as_of', 'unknown date')}).",
                                      fund_excluded_share=share, fact_sheet=src.get('source'),
                                      fact_sheet_as_of=src.get('as_of'), subject='fund'))
     # 4. Portfolio level: total look-through exposure to excluded sectors rises above the limit -> yellow.
@@ -94,7 +99,7 @@ def esg_check(preferences, policy, assets, trade, metrics_before, metrics_after)
             checks.append(_alert('esg.portfolio_lookthrough', 'yellow', p_b, p_a, limit,
                                  'creates' if p_b <= limit + EPS else 'worsens',
                                  f"Your whole portfolio would hold {p_a:.1%} in {', '.join(sectors)} "
-                                 f'(was {p_b:.1%}), above your {limit:.0%} limit.', subject='portfolio'))
+                                 f'(was {p_b:.1%}), above your {pct(limit)} limit.', subject='portfolio'))
         elif p_a < p_b - EPS and p_b > limit + EPS:
             checks.append(_alert('esg.portfolio_lookthrough', 'none', p_b, p_a, limit, 'improves',
                                  f"Your exposure to {', '.join(sectors)} falls from {p_b:.1%} to {p_a:.1%}.",
