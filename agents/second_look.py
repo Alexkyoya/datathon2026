@@ -262,7 +262,7 @@ def save_run(result):
 
 
 
-def review_red(ctx, rc, reason, shocks, profile_tools=None, news_tools=None, data_tools=None, alternative_tool=None, on_unavailable=None):
+def review_red(ctx, rc, reason, shocks, profile_tools=None, news_tools=None, data_tools=None, alternative_tool=None, on_unavailable=None, summarize=True):
     """Shared initial specialist/coordinator analysis, reused by persisted chat sessions."""
     # The three specialists don't depend on each other: run them at the same time.
     t0 = time.time()
@@ -284,17 +284,20 @@ def review_red(ctx, rc, reason, shocks, profile_tools=None, news_tools=None, dat
                     raise
                 reports[name] = {'status': 'unavailable', 'diagnostic': on_unavailable(name+'_specialist', exc)}
     t1 = time.time()
-    coordinator = Agent(model=model(), system_prompt=coordinator_prompt(), tools=[alternative_tool or check_alternative],
-                        callback_handler=None)
-    prompt = (ctx + f"\nRule engine result (final verdict):\n{json.dumps(rc)}\n\n"
-              f"PROFILE AGENT REPORT:\n{reports['profile']}\n\nNEWS AGENT REPORT:\n{reports['news']}\n\n"
-              f"FINANCIAL DATA AGENT REPORT:\n{reports['data']}")
-    try:
-        out = _parse_json(str(coordinator(prompt)))
-    except Exception as exc:
-        if on_unavailable is None:
-            raise
-        out = {'status': 'unavailable', 'diagnostic': on_unavailable('initial_summary', exc)}
+    if not summarize:  # chat path: the conversational agent writes the reply from the reports
+        out = {'status': 'skipped', 'note': 'No written summary; use the specialist reports.'}
+    else:
+        coordinator = Agent(model=model(), system_prompt=coordinator_prompt(),
+                            tools=[alternative_tool or check_alternative], callback_handler=None)
+        prompt = (ctx + f"\nRule engine result (final verdict):\n{json.dumps(rc)}\n\n"
+                  f"PROFILE AGENT REPORT:\n{reports['profile']}\n\nNEWS AGENT REPORT:\n{reports['news']}\n\n"
+                  f"FINANCIAL DATA AGENT REPORT:\n{reports['data']}")
+        try:
+            out = _parse_json(str(coordinator(prompt)))
+        except Exception as exc:
+            if on_unavailable is None:
+                raise
+            out = {'status': 'unavailable', 'diagnostic': on_unavailable('initial_summary', exc)}
     out["verdict"] = "red"  # the rule engine decides, never the LLM
     out["specialist_reports"] = reports
     out["rule_check"] = rc
