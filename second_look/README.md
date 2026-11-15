@@ -196,7 +196,7 @@ endpoints, deterministic ties, distant portfolios and a perfect allocation match
 that remains red for crypto. They cover confirmation, cancellation, immutable
 agent results, partial evaluation and mocked S3/Lambda dispatch. HTTP smoke tests
 check the same workflow and optional JSON Schema validation. Desktop and mobile WebKit visual/interaction checks cover the brokerage UI; the in-app browser connector was unavailable.
-**No live AWS deployment or Bedrock/agent execution was verified.** The local component has no configured AI dispatcher; the root AWS API contains the integrated agents and must be deployed/configured separately.
+The local component has no AI dispatcher. The agents and the live AWS deployment (verified on the event account) are in the root project; see the installation guide in the root README.
 
 Real data: starter retrieval 2026-11-13, history through 2026-11-12; clients and
 trades are fictional. Limitations include assumed publication availability,

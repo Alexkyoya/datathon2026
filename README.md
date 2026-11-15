@@ -1,3 +1,57 @@
+# Second Look: a pre-trade check for self-directed investors
+
+PolyFinances Datathon 2026, AlphaForge AI challenge (National Bank x AWS). Team: Alex Zhao, Ariane Nguyen, Daniel Puente, Oliver Zhou. Simulation only: fictional clients, no real orders, not investment advice.
+
+**Live demo:** https://t7tfflhogj5caf4un4hbxqol6i0nddsl.lambda-url.us-east-1.on.aws/ (runs on the event's AWS account, which closes on November 16, 2026 at 13:59).
+
+A deterministic rule engine decides green, yellow or red for a trade against the investor's stored profile, goals and ESG preferences. On a red trade, AI agents on Amazon Bedrock explain why with dated evidence and talk it through with the investor; they never change the verdict.
+
+## Installation guide (for judges)
+
+### 1. Get the code and the environment
+
+You need Python 3.12 and [uv](https://docs.astral.sh/uv/getting-started/installation/).
+
+```sh
+git clone https://github.com/Alexkyoya/datathon2026.git
+cd datathon2026
+uv sync --locked
+```
+
+### 2. Add the starter data
+
+Copy the four CSVs from the organizers' starter zip (`prices_daily.csv`, `fx_usdcad_daily.csv`, `macro_rates.csv`, `assets_universe.csv`) into `data/`. They are not committed because of the Yahoo Finance terms.
+
+### 3. Run it locally (no AWS needed)
+
+```sh
+uv run python tests/test_tools_local.py          # tools on real data, ends with ALL GOOD
+uv run --with pytest python -m pytest tests      # rule, tools, guardrail and conversation tests
+cd second_look && uv run --project .. python -m second_look serve
+# open http://127.0.0.1:8000 for the brokerage dashboard (rules only, no AI chat)
+```
+
+### 4. Deploy the full product to AWS (us-east-1)
+
+Configure AWS credentials (`aws configure`, region `us-east-1`; never commit keys) with access to Amazon Bedrock (Claude Sonnet 5.5 and Amazon Nova models), Lambda, S3 and IAM. Then run, in order:
+
+```sh
+uv run python scripts/upload_to_s3.py       # data and profiles to S3
+uv run python scripts/deploy_lambda.py      # tools Lambda (second-look-tools)
+uv run python scripts/setup_guardrails.py   # Bedrock Guardrails, input and output
+uv run python scripts/deploy_api.py         # API Lambda with the dashboard; prints the public URL
+```
+
+All four scripts are safe to re-run. `uv run python scripts/check_chat_runtime.py` checks Bedrock access, and `uv run python scripts/evaluate_conversation.py` runs the 24 test conversations.
+
+### Demo trades to try
+
+Pick a client in the dashboard and try: Robert NVDA CAD 360,000 (red, all his cash into one stock), Robert SPY CAD 30,000 (green), Mateo XOM CAD 3,000 (red, ESG exclusion), Mateo XIU.TO CAD 5,000 (yellow, energy inside the fund), Amira ETH-USD CAD 3,000 (red, crypto cap). On a red trade, write a reason to start the conversation.
+
+The sections below are the team's working notes.
+
+---
+
 # datathon2026
 
 Use **uv** to give each teammate their own `.venv` with the same locked package
@@ -91,7 +145,7 @@ A pre-trade check for self-directed investors. Simulation only, not investment a
 - `agents/second_look.py`: agents, prompts and the green/yellow/red flow
 - `agents/universe.py`: the tickers the agents may propose, generated from `assets.json` at run time
 - `data/profiles.json`: NBF ranges, team assumptions and fictional clients (holdings, income, goals, ESG preferences)
-- `data/news_snapshot.json`: **PLACEHOLDER**, to be replaced with real official items
+- `data/news_snapshot.json`: official news items (SEC EDGAR, NVIDIA IR, Fed, Bank of Canada) dated on or before the decision date
 - `scripts/provided_universe.py`: prints the provided universe and checks every file against it (`--fix-data` strips non-provided rows from `data/`)
 - `scripts/add_asset_horizons.py`: writes each asset's worst past fall and recovery time into `assets.json`
 - `scripts/test_bedrock.py`, `scripts/upload_to_s3.py`
@@ -136,7 +190,7 @@ Manual alternative (console):
 - `GET/POST /api/simulations/{id}/conversation` restores/sends chat turns. The first message runs the existing specialists/coordinator; subsequent messages reuse their reports. See [conversation setup and contracts](second_look/CONVERSATION.md).
 - `POST /` with `{"client_id","ticker","amount_cad"[,"reason"]}` or `{"action": ...}`: the simple JSON API.
 
-The URL is public (no auth) for the demo, so keep it inside the team.
+The URL is public with no login, for the demo only; a production version would add authentication.
 
 ## Contributing to the agent pipeline
 
