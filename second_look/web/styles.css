@@ -385,23 +385,29 @@ dialog:has(.dialog-layout.with-invitation) { width: 1190px; }
 
 /* ---------------------------------------------------------------- spectrum, explained */
 .spectrum-title { margin: 0 0 4px; font-size: 15px; }
-.spectrum-intro { margin: 0 0 6px; font-size: 13px; color: var(--text); max-width: 760px; }
-.spectrum-line { position: relative; height: 92px; margin: 10px 56px 4px; }
-.spectrum-line:before { content: ''; position: absolute; left: 0; right: 0; top: 42px; height: 4px; border-radius: 2px; background: linear-gradient(90deg,#cfe8f3,#0877a9 60%,#075d88); }
-.spectrum-step { position: absolute; top: 36px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; width: 110px; text-align: center; font-size: 11px; color: var(--muted); }
+.spectrum-intro { margin: 0 0 6px; font-size: 13px; color: var(--text); max-width: 780px; }
+.spectrum-line { position: relative; height: 128px; margin: 8px 56px 0; }
+.spectrum-line:before { content: ''; position: absolute; left: 0; right: 0; top: 74px; height: 4px; border-radius: 2px; background: linear-gradient(90deg,#cfe8f3,#0877a9 60%,#075d88); }
+.spectrum-step { position: absolute; top: 69px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; width: 110px; text-align: center; font-size: 11px; color: var(--muted); }
 .spectrum-step i { width: 14px; height: 14px; border-radius: 50%; background: white; border: 2px solid #9fb6c4; margin-bottom: 6px; }
 .spectrum-step.aim i { width: 18px; height: 18px; margin-top: -2px; background: var(--text); border-color: var(--text); box-shadow: 0 0 0 4px #e3eef4; }
 .spectrum-step.aim span { color: var(--text); font-weight: 700; }
 .spectrum-step small { font-size: 10px; color: var(--text); }
-.spectrum-dot { position: absolute; top: 0; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
-.spectrum-dot span { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
-.spectrum-dot:after { content: ''; width: 2px; height: 16px; margin-top: 1px; }
-.spectrum-dot.before span { background: #e4ecf1; color: #3e6e91; }
-.spectrum-dot.before:after { background: #3e6e91; }
-.spectrum-dot.after span { background: #b72e3a; color: white; }
-.spectrum-dot.after:after { background: #b72e3a; }
-.spectrum-dot.after { top: 0; z-index: 1; }
-.spectrum-move { position: absolute; top: 40px; height: 8px; border-radius: 4px; background: rgba(183,46,58,.25); }
+.spectrum-move { position: absolute; top: 72px; height: 8px; border-radius: 4px; background: rgba(183,46,58,.22); }
+.spectrum-pin { position: absolute; top: 30px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; z-index: 2; pointer-events: none; }
+.spectrum-pin.high { top: 0; }
+.pin-label { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.pin-stem { width: 2px; flex: none; }
+.spectrum-pin .pin-stem { height: 20px; }
+.spectrum-pin.high .pin-stem { height: 50px; }
+.pin-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; margin-top: -1px; }
+.spectrum-pin.before .pin-label { background: #e4ecf1; color: #3e6e91; }
+.spectrum-pin.before .pin-stem, .spectrum-pin.before .pin-dot { background: #3e6e91; }
+.spectrum-pin.after .pin-label { background: #b72e3a; color: white; }
+.spectrum-pin.after .pin-stem, .spectrum-pin.after .pin-dot { background: #b72e3a; }
+.spectrum-pin.same .pin-label { background: #3e6e91; color: white; }
+.spectrum-pin.same .pin-stem, .spectrum-pin.same .pin-dot { background: #3e6e91; }
+.spectrum-ends { display: flex; justify-content: space-between; margin: 0 20px 4px; font-size: 11px; color: var(--muted); }
 .spectrum-reading { margin: 8px 0 6px 18px; padding: 0; font-size: 13px; }
 .spectrum-reading li { margin: 2px 0; }
 .spectrum-reading li.strong { font-weight: 600; }
@@ -409,4 +415,18 @@ dialog:has(.dialog-layout.with-invitation) { width: 1190px; }
 .spectrum-details { font-size: 12px; margin-top: 6px; }
 .spectrum-details summary { cursor: pointer; color: var(--blue-dark); }
 .spectrum-details p { margin: 6px 0 0; }
-@media (max-width: 700px) { .spectrum-line { margin: 10px 26px 4px; } .spectrum-step { width: 64px; font-size: 9px; } }
+@media (max-width: 700px) { .spectrum-line { margin: 8px 26px 0; } .spectrum-step { width: 64px; font-size: 9px; } .spectrum-ends { margin: 0 4px 4px; } }
+
+/* amount field: one focus ring around the whole control, "$" as a clean prefix */
+.amount-control { overflow: hidden; background: white; }
+.amount-control > span { align-self: stretch; display: flex; align-items: center; padding: 0 11px 0 13px; background: #f3f8fb; border-right: 1px solid #cedbe3; }
+.amount-control input:focus, .amount-control input:focus-visible { outline: none !important; box-shadow: none !important; }
+.amount-control:focus-within { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(18,109,167,.28); }
+
+.mix-change { margin: 6px 0 2px; }
+.mix-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.mix-chip { display: flex; align-items: baseline; gap: 6px; background: white; border: 1px solid #e0edf5; border-radius: 6px; padding: 5px 10px; font-size: 12px; color: var(--muted); }
+.mix-chip strong { color: var(--text); font-size: 12px; }
+.mix-chip em { font-style: normal; font-weight: 700; border-radius: 999px; padding: 0 6px; }
+.mix-chip.up { border-color: #b9dccb; } .mix-chip.up em { background: #e8f4ee; color: var(--green); }
+.mix-chip.down { border-color: #efc6c9; } .mix-chip.down em { background: var(--red-soft); color: var(--red); }

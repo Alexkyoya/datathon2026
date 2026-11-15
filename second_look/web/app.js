@@ -351,38 +351,68 @@ function renderSpectrum(c) {
   const where=p=>{
     const w=Object.entries(p.membership_weights).filter(([,v])=>v>0.02).sort((x,y)=>y[1]-x[1]);
     if(w.length===1)return `right at ${w[0][0]}`;
-    const names=steps.filter(n=>w.some(([k])=>k===n));
-    return `between ${names.join(' and ')}, closer to ${w[0][0]}`;
+    return `between ${steps.filter(n=>w.some(([k])=>k===n)).join(' and ')}, closer to ${w[0][0]}`;
   };
-  const gapB=Math.abs(c.before.score-tScore), gapA=Math.abs(c.after.score-tScore), move=c.after.score-c.before.score;
+  const vsAim=score=>{
+    const d=score-tScore, size=Math.abs(d);
+    if(size<0.1)return 'right at your aim';
+    const how=size<0.5?'a bit ':size<1?'':'much ';
+    return `${how}more ${d<0?'cautious':'adventurous'} than your aim`;
+  };
   const title=node('h4','Where your mix sits','spectrum-title');
   const intro=node('p','','spectrum-intro');
-  intro.append(document.createTextNode('We line up five model mixes from National Bank Financial (Fall 2026), from the most cautious to the most adventurous. Your profile aims for '),node('strong',target),document.createTextNode('. The dots show where your portfolio sits before and after this trade, based only on its split between cash, bonds, stocks and alternatives.'));
-  // one track: five model mixes, the profile's aim, before and after
+  intro.append(document.createTextNode('Think of this line as a dial from the most cautious mix (left) to the most adventurous (right). The five dots are model mixes from National Bank Financial (Fall 2026). Your profile aims for '),node('strong',target),document.createTextNode('. The pins show where your portfolio sits, based only on how it is split between cash, bonds, stocks and alternatives.'));
   const track=node('div','','spectrum-line');
   steps.forEach((label,i)=>{const tick=node('span','','spectrum-step'+(label===target?' aim':''));tick.style.left=(i*25)+'%';tick.append(node('i'),node('span',label));if(label===target)tick.append(node('small','Your aim'));track.append(tick);});
-  const b=c.before.normalized_score*100, a=c.after.normalized_score*100;
-  if(Math.abs(a-b)>1.5){const arrow=node('span','','spectrum-move');arrow.style.left=Math.min(a,b)+'%';arrow.style.width=Math.abs(a-b)+'%';arrow.classList.add(a>b?'right':'left');track.append(arrow);}
-  const close=Math.abs(a-b)<14;
-  [['before',b,'Before'],['after',a,'After']].forEach(([k,pos,label])=>{const dot=node('span','','spectrum-dot '+k);dot.style.left=pos+'%';const tag=node('span',label);
-    if(close){tag.style.position='relative';tag.style.left=((k==='before')===(b<=a)?-32:32)+'px';}
-    dot.append(tag);track.append(dot);});
+  const b=c.before.normalized_score*100, a=c.after.normalized_score*100, same=Math.abs(a-b)<1.5, close=Math.abs(a-b)<16;
+  if(!same){const band=node('span','','spectrum-move');band.style.left=Math.min(a,b)+'%';band.style.width=Math.abs(a-b)+'%';track.append(band);}
+  const pins=same?[['same',a,'You: before = after']]:[['before',b,'You before'],['after',a,'You after']];
+  pins.forEach(([k,pos,label],i)=>{
+    const pin=node('span','','spectrum-pin '+k+(close&&!same&&i===0?' high':''));pin.style.left=pos+'%';
+    pin.append(node('span',label,'pin-label'),node('span','','pin-stem'),node('span','','pin-dot'));track.append(pin);
+  });
+  const ends=node('div','','spectrum-ends');ends.append(node('span','← More cautious'),node('span','More adventurous →'));
+  // What actually changes in the mix: the dial can stay still while the split moves.
+  const r=state.record?.result, req=state.record?.request;
+  const mix=node('div','','mix-change');
+  if(r?.weights_before&&r?.weights_after){
+    mix.append(node('span','What changes in your mix','small-label'));
+    const row=node('div','','mix-chips');
+    [['cash','Cash'],['fixed_income','Bonds'],['equities','Stocks'],['alternatives','Alternatives']].forEach(([k,label])=>{
+      const before=r.weights_before[k]||0, after=r.weights_after[k]||0, d=(after-before)*100;
+      const chip=node('span','','mix-chip'+(Math.abs(d)>=0.05?(d>0?' up':' down'):''));
+      chip.append(node('strong',label),node('span',`${(before*100).toFixed(1)}% → ${(after*100).toFixed(1)}%`));
+      if(Math.abs(d)>=0.05)chip.append(node('em',`${d>0?'+':'−'}${Math.abs(d).toFixed(1)} pts`));
+      chip.setAttribute('aria-label',`${label}: ${(before*100).toFixed(1)} percent before, ${(after*100).toFixed(1)} percent after`);
+      row.append(chip);
+    });
+    mix.append(row);
+  }
   const reading=node('ul','','spectrum-reading');
-  reading.append(node('li',`Before: ${where(c.before)}.`),node('li',`After: ${where(c.after)}.`));
-  let verdictLine;
-  if(Math.abs(move)<0.02) verdictLine='This trade barely changes your overall mix.';
-  else verdictLine=`This trade makes your overall mix more ${move>0?'adventurous':'cautious'}, and ${gapA<gapB-0.01?`closer to your ${target} aim`:gapA>gapB+0.01?`further from your ${target} aim`:`about as close to your ${target} aim as before`}.`;
-  reading.append(node('li',verdictLine,'strong'));
+  if(same){
+    reading.append(node('li',`Your mix sits ${where(c.after)}: ${vsAim(c.after.score)}.`));
+    const share=req&&r?.portfolio_value_cad?req.amount_cad/r.portfolio_value_cad:null;
+    let why=`Your pin doesn't move on the dial`;
+    if(finite(share))why+=`: this trade is about ${(share*100).toFixed(share<0.1?1:0)}% of your ${money(r.portfolio_value_cad)} portfolio`;
+    const sideways=c.after.distance-c.before.distance;
+    if(sideways>0.005)why+=`, and it shifts money between parts of your mix that sit at the same point on the dial (see the changes above). It makes your mix match the model mixes a little less well`;
+    else if(sideways<-0.005)why+=`, but it makes your mix match the model mixes a little better`;
+    reading.append(node('li',why+'.','strong'));
+  } else {
+    reading.append(node('li',`Before: ${where(c.before)} (${vsAim(c.before.score)}).`),node('li',`After: ${where(c.after)} (${vsAim(c.after.score)}).`));
+    const move=c.after.score-c.before.score, gapB=Math.abs(c.before.score-tScore), gapA=Math.abs(c.after.score-tScore);
+    reading.append(node('li',`This trade moves your overall mix toward the ${move>0?'adventurous':'cautious'} side, ${gapA<gapB-0.01?`closer to your ${target} aim`:gapA>gapB+0.01?`further from your ${target} aim`:`about as close to your ${target} aim as before`}.`,'strong'));
+  }
   const why=node('p','','spectrum-note');
-  why.append(node('strong','Why can this look fine when a trade is flagged? '),document.createTextNode('This line only looks at the broad mix. Limits such as how much one company, one sector or crypto can be, your avoid list, and money you need for your goals are checked separately. Those checks decide the colour.'));
+  why.append(node('strong','Why can this look fine when a trade is flagged? '),document.createTextNode('This dial only looks at the broad mix. Limits such as how much one company, one sector or crypto can be, your avoid list, and money you need for your goals are checked separately. Those checks decide the colour.'));
   const details=node('details','','spectrum-details');
   details.append(node('summary','Exact numbers (for reviewers)'));
   ['before','after'].forEach(key=>{
     const m=Object.entries(c[key].membership_weights).filter(([,w])=>w>1e-10).map(([label,w])=>percent(w)+' '+label).join(' / ');
-    details.append(node('p',`${key==='before'?'Before':'After'}: ${m} · position ${c[key].score.toFixed(2)} on a 0–4 line (your aim: ${tScore}) · distance from the nearest model mix ${c[key].distance.toFixed(3)}`));
+    details.append(node('p',`${key==='before'?'Before':'After'}: ${m} · position ${c[key].score.toFixed(2)} on a 0–4 dial (your aim: ${tScore}) · distance from the nearest model mix ${c[key].distance.toFixed(3)}`));
   });
-  details.append(node('p','Percentages say how far the portfolio is between two neighbouring model mixes. They are not probabilities or a full measure of risk. Distance is how different the mix is from that point on the line (0 = identical).','muted'));
-  root.replaceChildren(title,intro,track,reading,why,details);
+  details.append(node('p','Percentages say how far the portfolio is between two neighbouring model mixes. They are not probabilities or a full measure of risk. Distance is how different the mix is from that point on the dial (0 = identical).','muted'));
+  root.replaceChildren(title,intro,track,ends,mix,reading,why,details);
 }
 function rememberTrade() {
   if(state.record?.result.verdict==='red')sessionStorage.setItem('second-look:'+state.record.request.client_id,JSON.stringify({id:state.record.simulation_id,version:state.record.assessment_input_version}));
