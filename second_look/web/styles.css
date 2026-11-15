@@ -539,3 +539,17 @@ body { border-top: 4px solid var(--blue); }
 .hist-range-after {fill:#9fc0dd}
 .hist-range-after.out {fill:#e6a7ad}
 .hist-median {fill:#20313d}
+
+/* visual review: simpler cards, extra detail behind an (i) button, no oversized chart text */
+.viz-head {display:flex;align-items:center;justify-content:space-between;gap:10px}
+.viz-info {display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 10px 3px 4px;font-size:11px;color:var(--text);cursor:pointer;flex-shrink:0}
+.viz-info:hover {border-color:var(--red)}
+.viz-info:focus-visible {outline:2px solid var(--red);outline-offset:2px}
+.viz-info-icon {width:16px;height:16px;border-radius:50%;display:grid;place-items:center;background:var(--text);color:#fff;font:italic 700 11px Georgia,serif}
+.viz-info[aria-expanded=true] .viz-info-icon {background:var(--red)}
+.viz-more {border-top:1px dashed var(--line);margin-top:10px;padding-top:8px}
+.viz-more[hidden] {display:none}
+.viz-plain {font-size:13px;margin:8px 0 0;color:var(--text)}
+.viz-note.strong {color:var(--text);font-weight:600}
+.viz-card.wide svg {max-width:540px}
+.viz-card svg {max-height:260px}
