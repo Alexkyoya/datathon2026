@@ -100,6 +100,24 @@ python scripts/place_client.py answers.json --write   # place a new client, writ
 - `place_investor` has no holdings argument; the lowest and highest answer sets reach
   Income and Maximum growth.
 
+`tests/test_bias_goals_esg.py` covers the two newer rules, which are the most likely to
+smuggle a bias back in:
+
+- The goal rule reacts to dates, not asset classes: the same 15k QQQ purchase is red when
+  an essential 30k need is 18 months away and clean when it is 4 years away. Retirement
+  installments beyond the 5-year planning horizon are reported as long-term money.
+- The goal rule is not a bond rule. For a need 23 months out, buying XBB.TO (38-month
+  recovery in the provided window) is red while buying SPY (19-month recovery, counted at
+  78% of its value) keeps the need covered. The liquidity ranking is data-derived and
+  window-dependent: in 2021-2026 the bond ETFs recovered more slowly than the broad equity
+  ETFs, TLT and GLD never regained their peak, and JNJ and XOM recovered fastest of all.
+  This is a historical stress, not a forecast, and belongs in the tech doc's limitations.
+- Goals ignore the risk profile (Income and Maximum growth get the same goal alert), a
+  flexible goal is yellow not red, and selling toward cash improves coverage.
+- ESG applies only to clients who stored a screen, never changes the numerical checks for
+  other trades, never flags a sale, and fund look-through is yellow and respects the
+  client's own tolerance (XIU.TO's 18.6% Energy is flagged at 5% and not at 24%).
+
 Two properties worth knowing for the pitch, both verified in the tests: a single
 cash-funded purchase from a compliant portfolio can move an asset class by at most the
 cash cap (20 points for Income/Conservative/Balanced), so it ends at worst 5 points over
