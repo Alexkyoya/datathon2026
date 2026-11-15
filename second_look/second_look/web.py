@@ -4,6 +4,7 @@ import uuid
 from urllib.parse import parse_qs, urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from .contracts import identifier
 from .application import ProjectStore, SecondLookApplication
 from .market import build_context
 from .conversation import ConversationService, LazyCoordinator
@@ -36,6 +37,19 @@ def make_handler(root, coordinator=None):
                     return self.send(200, chat.get(path.split('/')[-2], params['client_id'][0], params['input_version'][0]))
                 except (ValueError, KeyError, OSError) as exc:
                     return self.send(409 if isinstance(exc, StateConflict) else 400, {'error': str(exc)})
+            if path == '/api/backtest':
+                try:
+                    from .backtest import compare
+                    params = parse_qs(urlsplit(self.path).query)
+                    record = runtime.load(f"results/{identifier(params['simulation_id'][0])}.json")
+                    if record['request']['client_id'] != identifier(params['client_id'][0]):
+                        raise ValueError('This trade belongs to another client')
+                    r = record['result']
+                    return self.send(200, compare(r['position_weights_before'], r['position_weights_after'],
+                                                  record['request']['amount_cad'], r['portfolio_value_cad'],
+                                                  record['request']['decision_date'], root/'data/raw'))
+                except (OSError, ValueError, KeyError, ImportError) as exc:
+                    return self.send(503, {'error': f'Historical comparison unavailable: {exc}'})
             if self.path == '/api/context' or self.path.startswith('/api/context?'):
                 try:
                     cid = parse_qs(urlsplit(self.path).query).get('client_id', ['robert'])[0]
