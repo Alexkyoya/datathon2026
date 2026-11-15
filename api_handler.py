@@ -137,20 +137,20 @@ def _resp(code, body, content_type="application/json"):
 def _context(params):
     application, spectrum = _engine()
     cid = (params or {}).get("client_id", DEFAULT_CLIENT)
-    client = STORE.load(f"clients/{cid}.json")
-    assets = STORE.load("config/assets.json")
-    policy = STORE.load("config/policy.json")
-    refs = STORE.load("config/reference_portfolios.json")
-    clients = sorted(p.stem for p in CLIENTS.glob("*.json"))
-    info = {t: {k: a.get(k) for k in ("name", "asset_class", "instrument_type", "currency", "sector")}
-            for t, a in assets.items()}
-    return {"client": client, "clients": clients, "tickers": sorted(assets), "assets": info,
-            "references": spectrum.build_references(refs, assets, policy), "reference_config": refs}
+    clients = sorted(p.stem for p in CLIENTS.glob("*.json")) + ['demo_balanced']
+    market = importlib.import_module('sl_engine.market')
+    return market.build_context(STORE, cid, clients)
 
 
 def _run_agents(record):
     """Explain a red simulation with the agents; the record's numerical verdict never changes."""
     req = record["request"]
+    if req['side'] != 'buy' or req['decision_date'] != S.DECISION_DATE:
+        # The current agent tools assume a buy on their fixed historical date.
+        # Keep the exact deterministic result rather than explain another trade.
+        record['agent_status'] = 'unavailable'
+        record['agent_error'] = 'Personalized agent review currently supports purchases on '+S.DECISION_DATE+'. Your numerical check remains available.'
+        return record
     try:
         res = S.run(req["client_id"], req["ticker"], float(req["amount_cad"]),
                     reason=record.get("investor_reason", ""), interactive=False)
@@ -225,11 +225,18 @@ def handler(event, context=None):
             return _resp(200, app.evaluate(payload, getattr(context, "aws_request_id", None)))
         m = re.fullmatch(r"/api/simulations/([A-Za-z0-9_-]{1,128})/decision", path)
         if m:
-            if set(payload) - {"decision", "reason"} or "decision" not in payload:
-                raise ValueError("Decision accepts only decision and optional reason")
-            record = app.decide(m.group(1), payload["decision"], payload.get("reason"))
+            if set(payload) - {"decision", "reason", "risk_acknowledged"} or "decision" not in payload:
+                raise ValueError("Decision accepts decision, optional reason and risk_acknowledged")
+            record = app.decide(m.group(1), payload["decision"], payload.get("reason"), payload.get('risk_acknowledged', False))
             if payload["decision"] == "explain":
-                record = _run_agents(record)
+                reviewed = _run_agents(record)
+                # An AI request can take much longer than a UI decision. Keep a
+                # newer cancellation/acknowledgement instead of restoring the
+                # old awaiting_agents state when that request eventually ends.
+                record = STORE.load(f"results/{record['simulation_id']}.json")
+                for key in ('agent_status', 'agent_result', 'agent_trace', 'agent_error', 'agent_note'):
+                    if key in reviewed:
+                        record[key] = reviewed[key]
                 STORE.save(f"results/{record['simulation_id']}.json", record)
             return _resp(200, record)
         if path in ("/", "/api/check"):

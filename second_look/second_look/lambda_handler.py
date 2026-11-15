@@ -28,10 +28,10 @@ def handler(event, context):
         # upstream. The profile is never accepted from the proposed trade.
         path = event.get('rawPath', event.get('path', '/evaluate'))
         if path.endswith('/decision'):
-            if set(body)-{'decision', 'reason'} or 'decision' not in body:
-                raise ValueError('Decision accepts only decision and optional reason')
+            if set(body)-{'decision', 'reason', 'risk_acknowledged'} or 'decision' not in body:
+                raise ValueError('Decision accepts decision, optional reason and risk_acknowledged')
             sid = path.rstrip('/').split('/')[-2]
-            record = app.decide(sid, body['decision'], body.get('reason'))
+            record = app.decide(sid, body['decision'], body.get('reason'), body.get('risk_acknowledged', False))
         else:
             record = app.evaluate(body, getattr(context, 'aws_request_id', None))
         return {'statusCode': 200, 'headers': {'Content-Type': 'application/json'},

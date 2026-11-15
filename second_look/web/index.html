@@ -1,21 +1,87 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Second Look · Trade simulation</title><link rel="stylesheet" href="/styles.css"><script src="/app.js" defer></script></head>
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f1f8fc"><title>Second Look · Direct investing simulation</title>
+  <link rel="stylesheet" href="/styles.css"><script src="/app.js" defer></script>
+</head>
 <body>
-<header><a class="wordmark" href="/">Second Look<span> / </span></a><span>Portfolio alignment</span><span class="tag">Simulation only</span></header>
-<main>
-<section class="intro"><p class="eyebrow">A moment before the trade</p><h1>See what changes.</h1><p>Compare a proposed trade with your stored investor profile and reference allocations. Your profile stays fixed.</p></section>
-<div class="layout">
-<aside><section class="panel"><p class="eyebrow">Stored investor record · fictional</p><h2 id="profile">Loading profile…</h2><p id="client-context"></p><p id="cash"></p><p id="asof" class="muted"></p></section>
-<section class="panel"><h2>Proposed trade</h2><form id="trade-form"><label for="ticker">Asset</label><select id="ticker" name="ticker" required></select><label for="side">Direction</label><select id="side" name="side"><option value="buy">Buy</option><option value="sell">Sell</option></select><label for="amount">Amount (CAD)</label><input id="amount" name="amount" type="number" min="0.01" step="0.01" value="4000" required><button type="submit" id="evaluate">Check simulation</button></form><p class="muted">Funded from cash. Fractional units; no fees, margin or short sales.</p><p class="eyebrow">Try a demo trade</p><div class="demo-buttons"><button type="button" data-demo="green">SPY · $4,000</button><button type="button" data-demo="yellow">GLD · $14,000</button><button type="button" data-demo="red">TSLA · $12,000</button></div></section></aside>
-<div class="content">
-<section class="panel" aria-labelledby="spectrum-title"><div class="section-heading"><h2 id="spectrum-title">The allocation spectrum</h2><span class="tag">0–4 allocation score</span></div><p>Income → Conservative → Balanced → Growth → Maximum growth</p><div id="spectrum" aria-label="Ordered reference spectrum"></div><div id="positions" class="positions"><p class="muted">Check a trade to compare portfolio positions before and after.</p></div><p class="muted">Memberships describe interpolation between adjacent allocations. They are not probabilities or a complete measure of risk. Concentration, crypto and preferences are checked separately.</p></section>
-<section id="outcome" class="panel" aria-live="polite"><p class="eyebrow">Numerical check</p><h2>Ready when you are.</h2><p>Choose a trade. The rule engine uses the stored holdings and completed daily prices.</p></section>
-<section id="mismatch" class="panel" hidden><h2>Reference mismatch</h2><p id="distance"></p><p>A position on the spectrum can still be a poor match to every reference. Distance is the Euclidean difference in four class weights; no match-quality threshold is assumed.</p><div class="table-scroll"><table><thead><tr><th>Asset class</th><th>Before</th><th>After</th><th>Projected after</th><th>Residual after</th></tr></thead><tbody id="class-rows"></tbody></table></div></section>
-<section class="panel"><h2>What the references represent</h2><p id="reference-source"></p><div class="table-scroll"><table><thead><tr><th>Reference</th><th>Cash proxy</th><th>Fixed income</th><th>CA equities</th><th>US equities</th><th>Alternatives</th></tr></thead><tbody id="reference-rows"></tbody></table></div><p class="muted">ZST.TO → cash; XBB.TO → fixed income; XIU.TO and SPY → equities; GLD → alternatives. Crypto is also an alternative asset, with an independent crypto cap.</p><p class="muted">Official recommended class totals; configurable team ETF substitutions. International equity targets are redistributed proportionally to Canada and the US because no international-equity fund is supplied. Regional exposure and a broad alternatives basket are not replicated. Reference ETFs are exposure proxies, not investment recommendations.</p></section>
-<details class="panel" id="audit" hidden><summary>Calculation details and provenance</summary><pre id="audit-json"></pre></details>
-</div></div>
-<p id="error" role="alert" hidden></p>
-<footer>Fictional investor · Real historical source data · No orders are executed · Not investment advice</footer>
+<a class="skip-link" href="#main">Skip to market information</a>
+<header class="site-header">
+  <a class="brand" href="/" aria-label="Second Look home">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M9 10h17v7H16v6h15v7H9z" fill="currentColor"/><path d="m30 7 6 6-6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>SECOND LOOK<small>DIRECT INVESTING</small></span>
+  </a>
+  <div class="account-controls"><span class="simulation-badge">Simulation</span><label class="sr-only" for="client-select">Fictional investor</label><select id="client-select" aria-label="Fictional investor" disabled><option>Loading account…</option></select><span class="user-avatar" id="user-avatar" aria-hidden="true">—</span></div>
+</header>
+<div class="nav-wrap"><nav class="main-nav" aria-label="Main navigation">
+  <div class="nav-links"><button class="nav-link active" id="nav-markets" aria-current="page">Markets</button><button class="nav-link" id="nav-holdings">My holdings</button></div>
+  <div class="nav-actions"><button class="button compact blue-outline" data-open-side="buy" disabled>Buy</button><button class="button compact red-outline" data-open-side="sell" disabled>Sell</button></div>
+</nav></div>
+<main id="main" tabindex="-1">
+  <div class="page-heading"><div><p class="eyebrow">YOUR INVESTING WORKSPACE</p><h1 id="page-title">Market quote</h1></div><p class="date-stamp" id="snapshot-label">Loading historical snapshot…</p></div>
+  <section class="account-summary surface" aria-label="Account summary">
+    <div class="account-identity"><span class="small-label">CAD simulation account</span><strong id="account-name">—</strong><span id="account-profile" class="muted">Stored investor profile</span></div>
+    <div><span class="small-label">Total account value</span><strong id="account-total">—</strong><span class="muted">CAD</span></div>
+    <div><span class="small-label">Invested value</span><strong id="account-invested">—</strong><span class="muted">CAD</span></div>
+    <div><span class="small-label">Available cash</span><strong id="account-cash">—</strong><button class="text-button" id="view-holdings">View holdings <span aria-hidden="true">↗</span></button></div>
+  </section>
+  <div id="page-error" class="error-banner" role="alert" hidden><span id="page-error-text"></span><button class="text-button" id="retry-context">Try again</button></div>
+  <section id="market-view" aria-label="Selected asset quote">
+    <div class="market-toolbar"><div class="search-control"><label class="sr-only" for="market-search">Search ticker or company</label><span aria-hidden="true">⌕</span><input id="market-search" type="search" list="asset-options" placeholder="Search ticker or company" autocomplete="off" disabled><datalist id="asset-options"></datalist></div><div class="scenario-control"><label for="scenario-select">Try a demo trade</label><select id="scenario-select" disabled><option value="">Select a scenario</option></select></div></div>
+    <article class="quote-card surface">
+      <div class="quote-heading"><div class="asset-title"><span id="asset-market" class="market-badge">—</span><div><h2 id="asset-name">Loading your market data…</h2><p id="asset-ticker" class="muted">Historical daily quote</p></div></div><div class="trade-actions"><button class="button blue" data-open-side="buy" disabled>Buy</button><button class="button red" data-open-side="sell" disabled>Sell</button></div></div>
+      <div class="quote-lead"><div class="last-price"><span class="small-label">Last observed close <span id="quote-currency"></span></span><strong id="quote-price">—</strong></div><div><span class="small-label">Change vs previous observation</span><strong id="quote-change">—</strong></div><div><span class="small-label">Source volume</span><strong id="quote-volume">—</strong></div><div class="quote-time"><span class="small-label">Price observation date</span><strong id="quote-date">—</strong><span class="muted">Historical data · not real time</span></div></div>
+      <div class="quote-tabs" role="tablist" aria-label="Quote information"><button role="tab" aria-selected="true" aria-controls="overview-panel" id="tab-overview" tabindex="0">Overview</button><button role="tab" aria-selected="false" aria-controls="history-panel" id="tab-history" tabindex="-1">Price history</button><button role="tab" aria-selected="false" aria-controls="position-panel" id="tab-position" tabindex="-1">My position</button></div>
+      <div id="overview-panel" role="tabpanel" aria-labelledby="tab-overview"><h3>Key quote information</h3><div class="quote-information" id="quote-information"></div></div>
+      <div id="history-panel" role="tabpanel" aria-labelledby="tab-history" hidden><h3>Historical closing prices</h3><p class="muted">Completed source observations in CAD. No future observations or analyst estimates are included.</p><div id="history-table" class="table-scroll"></div></div>
+      <div id="position-panel" role="tabpanel" aria-labelledby="tab-position" hidden><h3>Your position</h3><div id="position-information" class="quote-information"></div></div>
+      <section class="chart-section" id="chart-section" aria-label="Historical price chart"><div class="chart-heading"><h3>Price history <span class="muted">CAD</span></h3><span class="muted" id="chart-period"></span></div><div id="price-chart"><p class="empty-state">Historical chart data is loading.</p></div></section>
+      <p class="source-note" id="quote-source">Source: AlphaForge starter dataset · Yahoo Finance prices · Bank of Canada FX.</p>
+    </article>
+  </section>
+  <section id="holdings-view" class="surface holdings-card" aria-labelledby="holdings-title" hidden><div class="section-heading"><div><h2 id="holdings-title">Your holdings</h2><p class="muted">Stored positions, valued in CAD at the account snapshot.</p></div><button class="text-button" id="back-to-markets">Back to market quote →</button></div><div id="holdings-table" class="table-scroll"></div><details class="profile-details"><summary>Stored profile, goals and preferences</summary><div id="profile-details"></div></details></section>
+  <div id="page-review-slot"></div>
+  <footer class="page-footer"><span>Second Look · Hackathon demonstration</span><span>Fictional accounts. Independent simulations. No real orders are placed.</span></footer>
 </main>
+<dialog id="trade-dialog" aria-labelledby="ticket-title">
+  <div class="dialog-layout" id="dialog-layout">
+    <article class="trade-ticket">
+      <div class="ticket-heading"><div><p class="eyebrow">SIMULATED ORDER</p><h2 id="ticket-title">Buy</h2></div><button class="icon-button" id="close-ticket" aria-label="Close trade ticket" title="Close trade ticket">×</button></div>
+      <div class="ticket-account"><div><span class="small-label">Account</span><strong id="ticket-account-name">—</strong><span class="muted">CAD · cash-funded simulation</span></div><div><span class="small-label">Available cash</span><strong id="ticket-cash">—</strong></div></div>
+      <div class="ticket-tabs"><div class="side-switch" role="group" aria-label="Trade direction"><button type="button" id="side-buy" aria-pressed="true">Buy</button><button type="button" id="side-sell" aria-pressed="false">Sell</button></div><span id="ticket-category" class="muted">Provided asset universe</span></div>
+      <div class="ticket-columns">
+        <form id="trade-form" novalidate>
+          <label for="ticket-asset">Asset <span class="muted">· ticker or company</span></label><input id="ticket-asset" type="search" list="asset-options" autocomplete="off" required><p class="field-description" id="ticket-asset-name"></p>
+          <label for="amount">Trade amount <span class="currency-tag">CAD</span></label><div class="amount-control"><span aria-hidden="true">$</span><input id="amount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" required></div><p class="field-description" id="unit-estimate">Enter a CAD amount to see estimated units.</p>
+          <label>Order valuation</label><div class="read-only-field">Historical closing price <span class="muted">Simulation</span></div><p class="field-description">Fractional units are supported. Fees, slippage and margin are excluded.</p>
+          <p id="ticket-error" class="inline-error" role="alert" hidden></p>
+        </form>
+        <aside class="ticket-quote" aria-label="Trade quote summary"><p class="small-label" id="ticket-quote-symbol">Quote</p><strong class="ticket-price" id="ticket-quote-price">—</strong><p id="ticket-quote-change"></p><dl id="ticket-quote-details"></dl><p class="historical-label" id="ticket-quote-date"></p></aside>
+      </div>
+      <div class="ticket-status" id="ticket-status" role="status" aria-live="polite" hidden></div>
+      <div class="ticket-footer"><button type="button" class="button secondary" id="cancel-trade">Cancel trade</button><button type="submit" form="trade-form" class="button blue" id="submit-trade">Check simulated trade</button></div>
+      <div id="ticket-review-slot"></div>
+    </article>
+    <aside id="agent-invite" class="agent-invitation" aria-labelledby="invite-title" hidden>
+      <button class="icon-button invite-close" id="dismiss-invite" aria-label="Dismiss agent invitation" title="Dismiss agent invitation">×</button>
+      <svg class="advisor" viewBox="0 0 132 126" role="img" aria-label="A friendly human Second Look guide smiling and waving">
+        <circle cx="63" cy="62" r="54" fill="#e9f5fc"/><path d="M26 123q0-37 33-37h14q34 0 34 37" fill="#197daa"/><path d="m50 85 16 22 15-22" fill="#fff"/><path d="M57 77h17v16q-8 13-17 0" fill="#d69b76"/>
+        <path d="M34 48q-3-37 30-37 37-3 36 39l-8 23H39z" fill="#263b4b"/><ellipse cx="65" cy="54" rx="28" ry="33" fill="#efbd97"/><path d="M37 48q5-33 29-27 19 18 32 10l-4-12-31-10-25 15z" fill="#263b4b"/><path d="M47 47q5-4 10-1m18 0q5-3 10 1" fill="none" stroke="#6b483c" stroke-width="2.3" stroke-linecap="round"/><ellipse cx="53" cy="54" rx="2.6" ry="3.3" fill="#263b4b"/><ellipse cx="79" cy="54" rx="2.6" ry="3.3" fill="#263b4b"/><path d="M59 68q7 8 15-1" fill="none" stroke="#9b4f46" stroke-width="2.6" stroke-linecap="round"/><circle cx="45" cy="63" r="4" fill="#eaa58e"/><circle cx="86" cy="63" r="4" fill="#eaa58e"/>
+        <g class="waving-hand"><path d="m101 106 9-25" fill="none" stroke="#197daa" stroke-width="16" stroke-linecap="round"/><path d="m108 81-4-13q-1-5 3-5l3 8-1-21q0-5 4-3l2 19 2-23q1-4 4-1l-1 24 5-16q3-4 5-1l-5 28q-5 14-14 6" fill="#efbd97" stroke="#d79e79" stroke-width="1"/></g>
+      </svg>
+      <h3 id="invite-title">A second look?</h3><p id="invite-message"></p><button class="button blue" id="lets-talk">Let’s talk</button><span class="small-label">Your trade remains paused.</span>
+    </aside>
+  </div>
+</dialog>
+<section id="review-panel" class="review-panel surface" aria-labelledby="review-title" hidden>
+  <div class="review-heading"><div><span class="review-kicker">SECOND LOOK · TRADE PAUSED</span><h2 id="review-title" tabindex="-1">Let’s look at what changes.</h2><p id="pending-trade-summary" class="muted"></p></div><button class="button secondary compact" id="revise-trade">Revise trade</button></div>
+  <p class="rule-summary" id="red-summary"></p><div id="exposure-table" class="table-scroll"></div>
+  <div class="review-spectrum" id="review-spectrum"></div>
+  <form id="reason-form"><label for="reason">What made you interested in this trade?</label><textarea id="reason" rows="2" maxlength="5000" placeholder="Tell us what you had in mind…" required></textarea><div class="conversation-footer"><span class="muted">Your response adds context. The red verdict stays fixed.</span><button class="button blue" id="send-reason" type="submit">Send for review</button></div></form>
+  <p id="review-error" class="inline-error" role="alert" hidden></p><div id="conversation-result" aria-live="polite"></div>
+  <div class="risk-acknowledgement" id="risk-actions"><label class="checkbox-label"><input id="risk-checkbox" type="checkbox"><span>I understand the flagged risks and want to continue this simulation.</span></label><div class="risk-buttons"><button class="button secondary" id="cancel-review">Cancel simulation</button><button class="button blue" id="proceed-red" disabled>Proceed with simulation</button></div></div>
+  <p id="review-terminal" class="terminal-note" role="status" hidden></p>
+</section>
+<div id="announcer" class="sr-only" role="status" aria-live="polite"></div>
 </body></html>

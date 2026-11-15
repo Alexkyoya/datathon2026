@@ -47,7 +47,7 @@ def build_zip():
     # dashboard + team rule engine (second_look/), bundled under sl_* names
     comp = ROOT / "second_look"
     snap = comp / "data" / "runtime" / "snapshots" / "2026-11-13.json"
-    if not snap.exists():
+    if not snap.exists() or json.loads(snap.read_text()).get('display_version') != 1:
         print("Building the price snapshot (python -m second_look demo)...")
         subprocess.run([sys.executable, "-m", "second_look", "demo"], cwd=comp, check=True)
     for src, dst, pattern in [(comp / "second_look", "sl_engine", "*.py"), (comp / "config", "sl_config", "*.json"),

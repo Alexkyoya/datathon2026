@@ -1,192 +1,445 @@
 'use strict';
-let context, current;
-const money=v=>Number(v).toLocaleString('en-CA',{style:'currency',currency:'CAD'});
-function friendly(msg){
-  if(/Insufficient cash/i.test(msg))return 'Not enough cash: purchases are paid from cash only, and nothing else is sold automatically.';
-  if(/Insufficient holdings/i.test(msg))return 'You can only sell up to what you hold. Short sales are not supported.';
-  if(/Missing asset or price/i.test(msg))return 'No price is available for this asset on the decision date, so it can\'t be checked.';
-  return msg;
-}
-// Demo trades per stored client (team personas; purchases are paid from cash).
-// robert XBB.TO: the goal rule is the reason (cash for the first retirement withdrawals moved into a slow-to-recover fund).
-// mateo XIU.TO: ESG look-through is the reason (the fund holds more Energy than his 5% limit).
-const DEMOS={robert:[['green','SPY',30000],['red','NVDA',360000],['red','XBB.TO',340000]],mateo:[['yellow','ESGV',12000],['red','XOM',3000],['yellow','XIU.TO',5000]],amira:[['green','QQQ',5000],['red','ETH-USD',3000],['red','NVDA',5000]],demo_balanced:[['green','SPY',4000],['yellow','GLD',14000],['red','TSLA',12000]]};
-const clientId=()=>new URLSearchParams(location.search).get('client')||'robert';
+
 const $ = id => document.getElementById(id);
-const pct = value => `${(value * 100).toFixed(1)}%`;
-const labels = {cash:'Cash',fixed_income:'Fixed income',equities:'Equities',alternatives:'Alternatives'};
-function text(tag, value, className) { const node=document.createElement(tag); node.textContent=value; if(className)node.className=className; return node; }
-async function api(path, payload) {
-  const response = await fetch(path, payload ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)} : {});
-  const data = await response.json();
-  if(!response.ok) throw new Error(data.error || 'Unable to complete simulation');
-  return data;
-}
-function error(err) { $('error').textContent=err.message; $('error').hidden=false; }
-function drawSpectrum(classification) {
-  const target=context.client.profile;
-  const track=text('div','', 'track');
-  context.references.forEach((ref,i)=> {const node=text('div',ref.category,`node${ref.category===target?' target':''}`);node.style.left=`${i*25}%`;track.append(node);});
-  if(classification) ['before','after'].forEach(key=>{const marker=text('div',key==='before'?'Before':'After',`marker ${key}`);marker.style.left=`${classification[key].normalized_score*100}%`;track.append(marker);});
-  $('spectrum').replaceChildren(track);
-}
-function membership(projection) {
-  return Object.entries(projection.membership_weights).filter(([,weight])=>weight>1e-10).map(([name,weight])=>`${pct(weight)} ${name}`).join(' / ');
-}
-function render(record) {
-  current=record; const r=record.result, c=r.classification;
-  drawSpectrum(c);
-  $('positions').replaceChildren(...['before','after'].map(key=>{
-    const block=text('div','', 'position');block.append(text('span',key==='before'?'Before the trade':'After the trade','eyebrow'),text('strong',membership(c[key])),text('span',`Score ${c[key].score.toFixed(3)} · ${Math.abs(c[key].score-c.target_score).toFixed(3)} from stored target`,'muted'));return block;
-  }));
-  const outcome=$('outcome');outcome.className=`panel status ${r.verdict || 'manual'}`;outcome.replaceChildren(text('p',r.verdict || 'Manual review','status-label'),text('h2',({green:'Simulation can continue.',yellow:'Review before continuing.',red:'Pause and take a second look.'})[r.verdict] || 'Required information is missing.'));
-  const reasons=text('ul','');
-  r.alerts.filter(check=>!['goal','esg'].includes(check.kind)).forEach(check=>{
-    const parts=check.rule.split('.');
-    const name=({allocation:`${labels[parts[1]] || parts[1]} allocation`,single_stock:`${parts[1]} position`,crypto:'Crypto allocation',hhi:'Position concentration (HHI)',excluded_ticker:`Excluded asset ${parts[1]}`,excluded_sector:`Excluded sector ${parts[1]}`,sector:`${parts[1]} sector`,liquid_cash_reserve:'Liquid cash reserve'})[parts[0]] || check.rule;
-    const format=check.unit==='hhi_index'?value=>value.toFixed(3):pct;
-    reasons.append(text('li',`${name}: ${format(check.before)} before → ${format(check.after)} after; ${check.bound==='max'?'maximum':'minimum'} ${format(check.limit)}. ${check.gap_after>0?'A breach remains.':'Within the warning buffer.'}`));
-  });
-  if(r.verdict==='green' && r.effect==='improves') reasons.prepend(text('li','An existing breach improves without creating or worsening another. Remaining breaches are shown below.'));
-  r.coverage.unresolved.filter(u=>!/^(goal|esg)/.test(u.rule)).forEach(u=>reasons.append(text('li',u.reason)));
-  if(!reasons.children.length) reasons.append(text('li','All evaluated limits are respected, with no near-limit warning.'));
-  outcome.append(reasons);
-  const stageLabels={simulation_continued:'Simulation continued. No real order was placed.',awaiting_confirmation:'Confirmation is required to continue this simulation.',awaiting_reason:'Explain your reason to request an agent review.',awaiting_agents:({completed:'',failed:'Agent review failed: '+(record.agent_error||'unknown error')+'. The simulation stays paused.',dispatched:'Agent review requested from the configured service.',not_configured:'Agent handoff saved. No agent service is configured locally; review remains pending.',dispatch_failed:'Agent service could not be reached. Review remains pending.'})[record.agent_status],cancelled:'Simulation cancelled.',manual_review:'Manual review is required. This result cannot continue automatically.'};
-  {const lbl=stageLabels[record.stage];if(lbl!=='')outcome.append(text('p',lbl || record.stage));}
-  const goals=goalsNote(r);if(goals)outcome.append(goals);
-  const values=esgNote(r);if(values)outcome.append(values);
-  const review=agentPanel(record);if(review)outcome.append(review);
-  if(record.stage==='awaiting_reason') {
-    const form=document.createElement('form');const label=text('label','Why do you want to make this trade?');label.htmlFor='reason';const input=document.createElement('textarea');input.id='reason';input.required=true;input.maxLength=5000;const button=text('button','Request agent review');button.type='submit';form.append(label,input,button);form.addEventListener('submit',event=>{event.preventDefault();decide('explain',input.value);});outcome.append(form);
-  }
-  if(['awaiting_confirmation','awaiting_reason'].includes(record.stage)) {
-    const row=text('div','', 'action-row');
-    if(record.stage==='awaiting_confirmation'){const confirm=text('button','Confirm simulation');confirm.addEventListener('click',()=>decide('confirm'));row.append(confirm);}
-    const cancel=text('button','Cancel simulation');cancel.addEventListener('click',()=>decide('cancel'));row.append(cancel);outcome.append(row);
-  }
-  $('mismatch').hidden=false;$('distance').textContent=`Distance before: ${c.before.distance.toFixed(4)} · after: ${c.after.distance.toFixed(4)}. Spectrum movement: ${c.movement.score_delta>=0?'+':''}${c.movement.score_delta.toFixed(3)}; change in distance from stored target: ${c.movement.change_in_distance_to_target>=0?'+':''}${c.movement.change_in_distance_to_target.toFixed(3)}.`;
-  $('class-rows').replaceChildren(...c.class_order.map(cls=>{const row=document.createElement('tr');[labels[cls],pct(r.weights_before[cls]),pct(r.weights_after[cls]),pct(c.after.projected_class_weights[cls]),pct(c.after.residual_class_weights[cls])].forEach(v=>row.append(text('td',v)));return row;}));
-  $('audit').hidden=false;$('audit-json').textContent=JSON.stringify(record,null,2);
-}
-async function evaluate() {
-  $('error').hidden=true;$('evaluate').disabled=true;
-  // An invalid new proposal must not leave an old green outcome visible.
-  drawSpectrum();$('positions').replaceChildren(text('p','Waiting for the current proposal.','muted'));$('outcome').className='panel';$('outcome').replaceChildren(text('h2','Checking this proposal…'));$('mismatch').hidden=true;$('audit').hidden=true;current=null;
-  const amt=Number($('amount').value), cash=context.client.cash_cad;
-  if($('side').value==='buy' && amt>cash){$('outcome').replaceChildren(text('h2','Not enough cash for this trade.'),text('p',`You have ${money(cash)} in cash and the trade costs ${money(amt)}. Purchases are paid from cash only; nothing else is sold automatically. Try ${money(cash)} or less.`));$('evaluate').disabled=false;return;}
-  try {render(await api('/api/evaluate',{client_id:context.client.client_id,decision_date:context.client.holdings_as_of,ticker:$('ticker').value,side:$('side').value,amount_cad:Number($('amount').value)}));}
-  catch(err){$('outcome').replaceChildren(text('h2','Proposal could not be evaluated.'),text('p',friendly(err.message)),text('p','No verdict was produced. Change the trade and check again.','muted'));}
-  finally {$('evaluate').disabled=false;}
-}
-async function decide(decision,reason) { try { $('error').hidden=true;if(decision==='explain'){$('outcome').append(text('p','The agents are reviewing your reason, the data and stress tests. The verdict above is final; this adds the explanation (about 20–40 seconds)…','muted'));document.querySelectorAll('#outcome button').forEach(b=>b.disabled=true);}render(await api(`/api/simulations/${current.simulation_id}/decision`,{decision,...(reason!==undefined?{reason}:{})})); }catch(err){error(err);} }
-async function start() {
+const state = {
+  context: null, selectedAsset: 'CNR.TO', side: 'buy', record: null,
+  evaluation: 0, accountLoad: 0, evaluating: false, deciding: false, reviewing: false,
+  evaluationController: null, reviewController: null, timer: null, autoEvaluate: false,
+  returnFocus: null, tab: 'overview'
+};
+const DEMOS = {
+  robert: [['SPY',30000],['NVDA',360000],['XBB.TO',340000]],
+  mateo: [['ESGV',12000],['XOM',3000],['XIU.TO',5000]],
+  amira: [['QQQ',5000],['ETH-USD',3000],['NVDA',5000]],
+  demo_balanced: [['SPY',4000],['GLD',14000],['TSLA',12000]]
+};
+const classes = {cash:'Cash-like', fixed_income:'Fixed income', equities:'Equities', alternatives:'Alternatives'};
+const money = value => new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:2}).format(value);
+const decimal = (value, digits=2) => Number.isFinite(value) ? new Intl.NumberFormat('en-CA',{maximumFractionDigits:digits,minimumFractionDigits:digits}).format(value) : 'Unavailable';
+const percent = value => Number.isFinite(value) ? `${(value*100).toFixed(1)}%` : 'Unavailable';
+const dateLabel = value => value ? new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'short',day:'numeric',timeZone:'UTC'}).format(new Date(value.slice(0,10)+'T00:00:00Z')) : 'Unavailable';
+const node = (tag, value='', className='') => {
+  const result=document.createElement(tag); result.textContent=value;
+  if(className) result.className=className;
+  return result;
+};
+const finite = value => typeof value==='number' && Number.isFinite(value);
+const isTerminal = record => record && ['simulation_continued','cancelled'].includes(record.stage);
+const friendly = message => {
+  if(/Insufficient cash/i.test(message)) return 'This amount exceeds your available cash. No other holding is sold automatically.';
+  if(/Insufficient holdings/i.test(message)) return 'This amount exceeds the value of the units you hold. Short sales are not supported.';
+  if(/stale|Future|Unusable|Missing asset or price/i.test(message)) return 'A usable historical quote is unavailable for this trade. It has not been evaluated.';
+  return message;
+};
+function announce(message) { $('announcer').textContent=message; }
+function inlineError(id, message) { $(id).textContent=message; $(id).hidden=!message; }
+
+async function api(path, payload, signal, timeout=20000) {
+  const controller=new AbortController(); let expired=false;
+  const abort=()=>controller.abort();
+  signal?.addEventListener('abort',abort,{once:true});
+  const timer=setTimeout(()=>{expired=true;controller.abort();},timeout);
   try {
-    context=await api('/api/context?client_id='+encodeURIComponent(clientId()));const client=context.client;
-    $('profile').textContent=`${client.name?client.name+' · ':''}Target: ${client.profile}`;clientPicker();demoButtons();$('client-context').textContent=`${client.horizon_years}-year horizon · ${client.objectives.join(', ').replaceAll('_',' ')}. Horizon and loss tolerance are context, not a new profile score.`;$('cash').textContent=`Available cash: ${client.cash_cad.toLocaleString('en-CA',{style:'currency',currency:'CAD'})}`;$('asof').textContent=`Holdings / decision date: ${client.holdings_as_of} · 00:00 UTC daily snapshot`;
-    assetPicker();selectTicker('SPY');drawSpectrum();
-    $('reference-source').textContent=`${context.reference_config.source.title}, page 1, recommended allocations. Version ${context.reference_config.version}.`;
-    $('reference-rows').replaceChildren(...context.references.map(ref=>{const row=document.createElement('tr');[ref.category,...['ZST.TO','XBB.TO','XIU.TO','SPY','GLD'].map(t=>pct(ref.ticker_weights[t]))].forEach(v=>row.append(text('td',v)));return row;}));
-  }catch(err){error(err);$('evaluate').disabled=true;}
+    const response=await fetch(path,{...(payload ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)} : {}),signal:controller.signal});
+    let data;
+    try { data=await response.json(); } catch { throw new Error('The service returned an unreadable response. Please try again.'); }
+    if(!response.ok) throw new Error(data.error || 'The request could not be completed. Please try again.');
+    return data;
+  } catch(error) {
+    if(expired) throw new Error('The request timed out. No confirmation was recorded in this view. Please retry.');
+    if(error.name==='TypeError') throw new Error('The service could not be reached. Check the connection and try again.');
+    throw error;
+  } finally {clearTimeout(timer);signal?.removeEventListener('abort',abort);}
 }
-$('trade-form').addEventListener('submit',event=>{event.preventDefault();evaluate();});
-// Readable asset list: grouped by type, "Name — TICKER (currency)".
-function assetGroup(a){
-  if(!a)return 'Other';
-  if(a.asset_class==='cash')return 'Cash-like';
-  if(a.asset_class==='fixed_income')return 'Bond funds';
-  if(a.instrument_type==='etf_equity')return 'Stock funds (ETFs)';
-  if(a.asset_class==='equities')return a.currency==='CAD'?'Canadian stocks':'U.S. stocks';
-  return a.instrument_type==='crypto'||/USD$/.test(a.name||'')?'Crypto':'Gold & alternatives';
+
+function resolveAsset(value) {
+  const text=value.trim().toLowerCase();
+  return state.context?.tickers.find(t=>t.toLowerCase()===text || state.context.assets[t].name.toLowerCase()===text);
 }
-const GROUP_ORDER=['Canadian stocks','U.S. stocks','Stock funds (ETFs)','Bond funds','Cash-like','Gold & alternatives','Crypto','Other'];
-// Two steps: pick a type of asset, then the asset itself ("NVIDIA (NVDA) · sector").
-function assetPicker(){
-  const info=context.assets||{};const groups={};
-  context.tickers.forEach(t=>{const g=assetGroup(info[t]);(groups[g]=groups[g]||[]).push(t);});
-  context.groups=groups;
-  let type=$('asset-type');
-  if(!type){
-    type=document.createElement('select');type.id='asset-type';type.setAttribute('aria-label','Type of asset');
-    const label=text('label','Type of asset');label.htmlFor='asset-type';
-    const assetLabel=document.querySelector('label[for="ticker"]');
-    assetLabel.before(label,type);
-    type.addEventListener('change',()=>fillAssets(type.value));
+function fillPair(parent,label,value) {
+  if(value===null || value===undefined) return;
+  const pair=node('div','','info-pair');pair.append(node('span',label,'small-label'),node('strong',value));parent.append(pair);
+}
+function infoGroups(container, groups) {
+  container.replaceChildren(...groups.map(pairs=>{const group=node('div','','info-group');pairs.forEach(([label,value])=>fillPair(group,label,value));return group;}));
+}
+function changeText(quote) {
+  if(!finite(quote?.change_native) || !finite(quote?.change_fraction)) return 'Unavailable';
+  const sign=quote.change_native>=0?'+':'';
+  return `${sign}${decimal(quote.change_native)} (${sign}${percent(quote.change_fraction)})`;
+}
+function setChange(element,quote) {
+  element.textContent=changeText(quote);
+  element.className=finite(quote?.change_native)?(quote.change_native>=0?'positive':'negative'):'';
+}
+function makeTable(headers, rows) {
+  const table=node('table'),thead=node('thead'),head=node('tr'),tbody=node('tbody');
+  headers.forEach(label=>{const th=node('th',label);th.scope='col';head.append(th);});thead.append(head);
+  rows.forEach(cells=>{const row=node('tr');cells.forEach(value=>{const cell=node('td');cell.append(value instanceof Node?value:document.createTextNode(String(value)));row.append(cell);});tbody.append(row);});
+  table.append(thead,tbody);return table;
+}
+
+async function loadContext(clientId) {
+  const token=++state.accountLoad;
+  invalidate(); if($('trade-dialog').open) $('trade-dialog').close();
+  $('review-panel').hidden=true;setInvitation(false);
+  state.context=null;
+  $('client-select').disabled=true;$('market-search').disabled=true;$('scenario-select').disabled=true;
+  $('account-name').textContent='Loading account…';
+  ['account-total','account-invested','account-cash'].forEach(id=>$(id).textContent='—');
+  document.querySelectorAll('[data-open-side]').forEach(button=>button.disabled=true);
+  inlineError('page-error-text','');$('page-error').hidden=true;
+  try {
+    const context=await api('/api/context?client_id='+encodeURIComponent(clientId));
+    if(token!==state.accountLoad)return;
+    state.context=context;
+    $('account-name').textContent=context.client.name || 'Balanced demonstration';
+    $('account-profile').textContent=context.client.profile+' profile';
+    $('account-total').textContent=money(context.account.total_cad);
+    $('account-invested').textContent=money(context.account.invested_cad);
+    $('account-cash').textContent=money(context.account.cash_cad);
+    $('snapshot-label').textContent='Account snapshot · '+dateLabel(context.client.holdings_as_of)+' · 00:00 UTC';
+    $('user-avatar').textContent=(context.first_name || 'S').slice(0,1);
+    $('client-select').replaceChildren(...context.clients.map(id=>{const option=node('option',id==='demo_balanced'?'Balanced demo':id[0].toUpperCase()+id.slice(1));option.value=id;return option;}));
+    $('client-select').value=context.client.client_id;$('client-select').disabled=false;
+    $('asset-options').replaceChildren(...context.tickers.map(t=>{const option=node('option');option.value=t;option.label=context.assets[t].name;return option;}));
+    $('scenario-select').replaceChildren(node('option','Select a scenario'),...(DEMOS[context.client.client_id]||[]).map(([ticker,amount],i)=>{const option=node('option',`Buy ${ticker} · ${money(amount)}`);option.value=String(i);return option;}));
+    $('scenario-select').options[0].value='';$('scenario-select').value='';$('scenario-select').disabled=false;
+    $('market-search').disabled=false;
+    if(!context.assets[state.selectedAsset])state.selectedAsset=context.tickers[0];
+    renderHoldings();renderQuote();
+  } catch(error) {
+    if(token!==state.accountLoad)return;
+    inlineError('page-error-text',error.message);$('page-error').hidden=false;
+    $('client-select').disabled=false;
+    announce('Account data could not be loaded.');
   }
-  type.replaceChildren(...GROUP_ORDER.filter(g=>groups[g]).map(g=>{const o=text('option',`${g} (${groups[g].length})`);o.value=g;return o;}));
-  fillAssets(type.value);
 }
-function fillAssets(group){
-  const info=context.assets||{};
-  $('ticker').replaceChildren(...(context.groups[group]||[]).slice()
-    .sort((x,y)=>((info[x]||{}).name||x).localeCompare((info[y]||{}).name||y)).map(t=>{
-      const a=info[t]||{};const extra=a.sector&&!/^Broad|^Sector|^Bonds|^Gold|^Crypto/.test(a.sector)?` · ${a.sector}`:'';
-      const o=text('option',`${a.name||t} (${t})${extra}`);o.value=t;return o;}));
+
+function renderHoldings() {
+  const ctx=state.context;
+  const rows=ctx.holdings.map(h=>{
+    const button=node('button',h.ticker,'text-button');button.type='button';button.setAttribute('aria-label',`View ${h.name} quote`);
+    button.addEventListener('click',()=>{state.selectedAsset=h.ticker;showPage('markets');renderQuote();$('asset-name').scrollIntoView({block:'nearest'});});
+    return [button,h.name,decimal(h.units,4),h.currency,money(h.value_cad),percent(h.weight)];
+  });
+  rows.push(['Cash','CAD cash ledger','—','CAD',money(ctx.account.cash_cad),percent(ctx.account.cash_cad/ctx.account.total_cad)]);
+  $('holdings-table').replaceChildren(makeTable(['Asset','Name','Units','Listing currency','Value (CAD)','Portfolio weight'],rows));
+  const profile=node('div');profile.append(node('p',`${ctx.client.profile} · ${ctx.client.horizon_years}-year horizon`),node('p','Objectives: '+ctx.client.objectives.join(', ').replaceAll('_',' ')));
+  const goals=node('div');
+  (ctx.client.goals||[]).forEach(goal=>goals.append(node('p',goal.name+' · '+(goal.type==='one_off'?money(goal.amount_cad)+' by '+dateLabel(goal.target_date):money(goal.amount_cad_per_year)+'/year from '+dateLabel(goal.start_date)))));
+  if(!goals.children.length)goals.append(node('p','No dated goals are stored for this demo account.'));
+  const esg=ctx.client.preferences.esg;
+  if(esg?.excluded_sectors?.length)profile.append(node('p','Excluded sectors: '+esg.excluded_sectors.join(', ')));
+  $('profile-details').replaceChildren(profile,goals);
 }
-function selectTicker(t){
-  const g=assetGroup((context.assets||{})[t]);$('asset-type').value=g;fillAssets(g);$('ticker').value=t;
+function showPage(page) {
+  $('market-view').hidden=page!=='markets';$('holdings-view').hidden=page!=='holdings';
+  $('page-title').textContent=page==='markets'?'Market quote':'My holdings';
+  ['markets','holdings'].forEach(key=>{const button=$('nav-'+key);button.classList.toggle('active',key===page);if(key===page)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');});
+  if(page==='markets')renderChart();
 }
-function clientPicker(){
-  if($('client-picker')||!context.clients)return;
-  const select=document.createElement('select');select.id='client-picker';select.setAttribute('aria-label','Stored client');
-  [...context.clients,'demo_balanced'].forEach(id=>{const o=text('option',id[0].toUpperCase()+id.slice(1).replace('_',' '));o.value=id;select.append(o);});
-  select.value=clientId();select.addEventListener('change',()=>{location.search='?client='+select.value;});
-  $('profile').before(select);
+function renderQuote() {
+  const ctx=state.context,t=state.selectedAsset,a=ctx.assets[t],q=ctx.quotes[t],holding=ctx.holdings.find(h=>h.ticker===t);
+  $('market-search').value=t;
+  $('asset-name').textContent=a.name;$('asset-ticker').textContent=`${t} · ${a.currency} · ${classes[a.asset_class]}`;
+  $('asset-market').textContent=a.market || a.currency;
+  $('quote-currency').textContent=q?'· '+q.currency:'';
+  $('quote-price').textContent=q?decimal(q.close_native):'Unavailable';setChange($('quote-change'),q);
+  $('quote-volume').textContent=finite(q?.volume)?new Intl.NumberFormat('en-CA').format(q.volume):'Unavailable';
+  $('quote-date').textContent=dateLabel(q?.price_source_date);
+  document.querySelectorAll('[data-open-side]').forEach(button=>{button.disabled=!q || (button.dataset.openSide==='sell' && !(holding?.units>0));});
+  infoGroups($('quote-information'),[
+    [['Open',finite(q?.open_native)?decimal(q.open_native)+' '+a.currency:null],['Previous observed close',finite(q?.previous_close_native)?decimal(q.previous_close_native)+' '+a.currency:null],['Session low / high',finite(q?.low_native)&&finite(q?.high_native)?`${decimal(q.low_native)} / ${decimal(q.high_native)} ${a.currency}`:null]],
+    [['Asset class',classes[a.asset_class]],['Listing / market',a.market||'Unavailable'],['Sector / exposure',a.sector||'Unavailable']],
+    [['Value per unit in CAD',q?money(q.close_cad):'Unavailable'],['FX to CAD',q?decimal(q.fx_to_cad,4)+' CAD per '+a.currency:'Unavailable'],['FX source date',a.currency==='CAD'?'Not required · CAD asset':dateLabel(q?.fx_source_date)]]
+  ]);
+  infoGroups($('position-information'),[
+    [['Units held',decimal(holding?.units||0,4)],['Market value (CAD)',money(holding?.value_cad||0)]],
+    [['Portfolio weight',percent(holding?.weight||0)],['Available cash',money(ctx.account.cash_cad)]],
+    [['Profile',ctx.client.profile],['Holdings as of',dateLabel(ctx.client.holdings_as_of)]]
+  ]);
+  const history=ctx.price_history[t]||[];
+  $('history-table').replaceChildren(history.length?makeTable(['Observation date','Closing price (CAD)'],history.slice(-12).reverse().map(p=>[dateLabel(p.date),money(p.close_cad)])):node('p','Price history is unavailable in this snapshot.','empty-state'));
+  $('quote-source').textContent='Source: AlphaForge starter dataset · Yahoo Finance prices · Bank of Canada FX. '+(q?.price_age_days>0?'The last available price is carried forward. ':'')+'No bid/ask, analyst ratings or execution quotes are supplied.';
+  renderChart();
 }
-function demoButtons(){
-  const box=document.querySelector('.demo-buttons');if(!box)return;
-  box.replaceChildren(...(DEMOS[context.client.client_id]||[]).map(([color,ticker,amount])=>{
-    const b=text('button',`${ticker} · $${amount.toLocaleString('en-CA')}`);b.type='button';b.dataset.demo=color;
-    b.addEventListener('click',()=>{selectTicker(ticker);$('amount').value=amount;$('side').value='buy';evaluate();});return b;}));
+function renderChart() {
+  if(!state.context)return;
+  const points=(state.context.price_history[state.selectedAsset]||[]).filter(p=>finite(p.close_cad));
+  if(points.length<2){$('price-chart').replaceChildren(node('p','A price chart is unavailable in this historical snapshot.','empty-state'));$('chart-period').textContent='';return;}
+  const width=Math.max(300,$('price-chart').clientWidth||900),height=200,left=64,right=15,top=12,bottom=27;
+  const prices=points.map(p=>p.close_cad),lo=Math.min(...prices),hi=Math.max(...prices),pad=Math.max((hi-lo)*.12,.01);
+  const min=lo-pad,max=hi+pad,x=i=>left+i*(width-left-right)/(points.length-1),y=p=>top+(max-p)*(height-top-bottom)/(max-min);
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.classList.add('price-svg');svg.setAttribute('role','img');svg.setAttribute('aria-label',`${state.selectedAsset} historical CAD closing prices from ${points[0].date} to ${points.at(-1).date}. Lowest ${money(lo)}, highest ${money(hi)}.`);
+  const part=(tag,attrs,value)=>{const el=document.createElementNS(ns,tag);for(const[k,v]of Object.entries(attrs))el.setAttribute(k,v);if(value!==undefined)el.textContent=value;svg.append(el);return el;};
+  [0,.5,1].forEach(r=>{const value=max-r*(max-min),at=y(value);part('line',{x1:left,x2:width-right,y1:at,y2:at,stroke:'#e6eef3'});part('text',{x:left-10,y:at+4,'text-anchor':'end'},decimal(value));});
+  const path=points.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(2)} ${y(p.close_cad).toFixed(2)}`).join(' ');
+  part('path',{d:path+` L ${x(points.length-1)} ${height-bottom} L ${left} ${height-bottom} Z`,fill:'#edf6fc'});
+  part('path',{d:path,fill:'none',stroke:'#187fac','stroke-width':'2','stroke-linejoin':'round'});
+  part('circle',{cx:x(points.length-1),cy:y(points.at(-1).close_cad),r:3.5,fill:'#187fac'});
+  part('text',{x:left,y:height-5},dateLabel(points[0].date));part('text',{x:width-right,y:height-5,'text-anchor':'end'},dateLabel(points.at(-1).date));
+  $('price-chart').replaceChildren(svg);$('chart-period').textContent=`${points.length} source observations · ${dateLabel(points[0].date)} – ${dateLabel(points.at(-1).date)}`;
 }
-const pct0=v=>`${Math.round(v*100)}%`;
-// "Your goals": shown for every verdict. Only goals whose coverage changes are listed.
-function goalsNote(r){
-  const g=r.goals;if(!g||!g.applied)return null;
-  const box=text('div','','goal-note');box.append(text('p','Your goals','eyebrow'));
-  const changed=g.installments.filter(i=>Math.abs(i.coverage_after-i.coverage_before)>1e-9);
-  const alerts=Object.fromEntries(r.alerts.filter(a=>a.kind==='goal').map(a=>[`${a.goal}|${a.date}`,a]));
-  if(!changed.length){box.append(text('p',`All ${g.installments.length} goal payments due by ${g.checked_until} stay covered after this trade.`));}
-  else{const ul=text('ul','');changed.forEach(i=>{
-    const label=`${i.goal}${i.installment?' ('+i.date.slice(0,4)+')':''}, ${money(i.amount_cad)} by ${i.date}`;
-    const li=text('li',`${label}: ${pct0(i.coverage_before)} → ${pct0(i.coverage_after)} covered.`);
-    const a=alerts[`${i.goal}|${i.date}`];if(a){li.className=a.severity;if(a.why)li.append(text('span',' '+a.why));}
-    ul.append(li);});box.append(ul);}
-  box.append(text('p','Money needed by a date only counts if the asset holding it recovered from its worst past fall in less time than is left, and at the value left after such a fall. This looks at the past; it is not a forecast.','muted'));
-  r.coverage.unresolved.filter(u=>u.rule.startsWith('goal')).forEach(u=>box.append(text('p',u.reason,'muted')));
-  return box;
+function selectTab(tab) {
+  state.tab=tab;
+  ['overview','history','position'].forEach(key=>{const selected=key===tab;$(key+'-panel').hidden=!selected;$('tab-'+key).setAttribute('aria-selected',String(selected));$('tab-'+key).tabIndex=selected?0:-1;});
+  $('chart-section').hidden=tab==='position';renderChart();
 }
-// Values (ESG) note: only when an ESG rule fires, data is missing, or the client prefers screened funds.
-function esgNote(r){
-  const e=r.esg;if(!e)return null;
-  const lines=r.alerts.filter(a=>a.kind==='esg').map(a=>a.message);
-  r.coverage.unresolved.filter(u=>u.rule.startsWith('esg')).forEach(u=>lines.push(u.reason));
-  if(e.screened_fund_note)lines.push(e.screened_fund_note);
-  if(!lines.length)return null;
-  const box=text('div','','esg-note');box.append(text('p','Your values','eyebrow'));
-  const ul=text('ul','');lines.forEach(l=>ul.append(text('li',l)));box.append(ul);return box;
+
+function setInvitation(visible) {
+  const show=visible && state.record?.result.verdict==='red' && !isTerminal(state.record);
+  $('agent-invite').hidden=!show;$('dialog-layout').classList.toggle('with-invitation',show);
 }
-function agentPanel(record){
-  const a=record.agent_result;if(!a)return null;
-  const panel=text('div','','agent-review');panel.append(text('p','Second Look review','eyebrow'));
-  const line=(title,body)=>{if(body)panel.append(text('p',title,'eyebrow'),text('p',body));};
-  line('Why it matters',a.why_it_matters||a.bad_year);
-  line('About your reason',a.your_reason||a.client_reason_response);
-  line('Your goals',a.goal_check);
-  line('Your values',a.values_check);
-  const list=(parent,title,items,fmt)=>{if(!items||!items.length)return;if(title)parent.append(text('p',title,'eyebrow'));const ul=text('ul','');items.forEach(i=>ul.append(text('li',fmt(i))));parent.append(ul);};
-  const alts=(a.alternatives||[]).filter(x=>x.rule_check_verdict!=='red');
-  if(alts.length){panel.append(text('p','You could instead','eyebrow'));const ul=text('ul','','alt-list');alts.forEach(x=>ul.append(text('li',(x.rule_check_verdict==='green'?'✓ ':'• ')+x.description)));panel.append(ul);}
-  // Everything technical stays one click away for judges and reviewers.
-  const more=document.createElement('details');more.className='agent-details';more.append(text('summary','Details, sources and assumptions'));
-  list(more,'',a.details,x=>x);
-  list(more,'News check',a.news_check,c=>`${c.claim} → ${c.type}${c.source&&c.source.name?' ('+c.source.name+(c.date?', '+c.date:'')+')':''}`);
-  list(more,'Stress tests (hypothetical, not forecasts)',(a.risk&&a.risk.scenarios)||[],s=>`${s.name}: ${typeof s.portfolio_return==='number'?pct(s.portfolio_return):s.portfolio_return}`);
-  if(a.macro_context)more.append(text('p','Rates and inflation','eyebrow'),text('p',a.macro_context));
-  list(more,'Assumptions',a.assumptions,x=>x);
-  list(more,'Sources',a.sources,x=>typeof x==='string'?x:JSON.stringify(x));
-  if(a.timing_seconds)more.append(text('p',`Agents: ${a.timing_seconds.specialists_parallel}s + ${a.timing_seconds.coordinator}s`,'muted'));
-  panel.append(more);
-  panel.append(text('p',a.disclaimer||'Simulation only. Not investment advice.','muted'));
-  return panel;
+function invalidate() {
+  clearTimeout(state.timer);state.evaluation++;state.evaluationController?.abort();state.reviewController?.abort();
+  state.record=null;state.evaluating=false;state.reviewing=false;state.autoEvaluate=false;
+  setInvitation(false);$('review-panel').hidden=true;$('risk-checkbox').checked=false;
+  inlineError('ticket-error','');inlineError('review-error','');
+  $('ticket-status').hidden=true;syncButtons();
 }
-start();
+function draftRequest() {
+  const ticker=resolveAsset($('ticket-asset').value),amount=Number($('amount').value);
+  if(!ticker)throw new Error('Choose an asset from the provided ticker list.');
+  if(!finite(amount)||amount<=0)throw new Error('Enter a CAD amount greater than zero.');
+  const q=state.context.quotes[ticker];
+  if(!q)throw new Error('No usable historical quote is available for this asset.');
+  const available=state.side==='buy'?state.context.account.cash_cad:(state.context.holdings.find(h=>h.ticker===ticker)?.value_cad||0);
+  if(amount>available+1e-8)throw new Error(state.side==='buy'?`This trade costs ${money(amount)}, but only ${money(available)} is available in cash.`:`Your holding is worth ${money(available)}. You cannot sell more than you hold.`);
+  return {client_id:state.context.client.client_id,decision_date:state.context.client.holdings_as_of,ticker,side:state.side,amount_cad:amount};
+}
+function openTicket(side=state.side, ticker=state.selectedAsset, amount='', resume=false) {
+  if(!state.context)return;
+  state.returnFocus=document.activeElement;
+  if(!resume){invalidate();state.side=side;$('ticket-asset').value=ticker;$('amount').value=amount;}
+  $('ticket-review-slot').append($('review-panel'));
+  $('ticket-account-name').textContent=(state.context.client.name||'Balanced demo')+' · CAD simulation';
+  $('ticket-cash').textContent=money(state.context.account.cash_cad);
+  updateTicketQuote();
+  if(!$('trade-dialog').open)$('trade-dialog').showModal();
+  if(resume && state.record?.result.verdict==='red')revealReview(false);
+  $('amount').focus();
+}
+function closeTicket() {
+  setInvitation(false);
+  if($('trade-dialog').open)$('trade-dialog').close();
+  $('page-review-slot').append($('review-panel'));
+  if(state.record?.result.verdict==='red'){revealReview(false);}
+  state.returnFocus?.focus?.();
+}
+function updateTicketQuote() {
+  if(!state.context)return;
+  const ticker=resolveAsset($('ticket-asset').value),a=state.context.assets[ticker],q=state.context.quotes[ticker];
+  $('ticket-title').textContent=state.side==='buy'?'Buy':'Sell';
+  $('side-buy').setAttribute('aria-pressed',String(state.side==='buy'));$('side-sell').setAttribute('aria-pressed',String(state.side==='sell'));
+  $('ticket-title').style.color=state.side==='sell'?'var(--red)':'var(--blue-dark)';
+  $('ticket-asset-name').textContent=a?a.name:'Choose a ticker or company from the list.';
+  $('ticket-category').textContent=a?classes[a.asset_class]:'Provided asset universe';
+  $('ticket-quote-symbol').textContent=a?`${ticker} · ${a.currency}`:'Quote unavailable';
+  $('ticket-quote-price').textContent=q?decimal(q.close_native)+' '+q.currency:'Unavailable';setChange($('ticket-quote-change'),q);
+  const details=[];
+  if(q){details.push(['CAD value / unit',money(q.close_cad)]);if(finite(q.volume))details.push(['Source volume',new Intl.NumberFormat('en-CA').format(q.volume)]);if(finite(q.low_native)&&finite(q.high_native))details.push(['Session low / high',decimal(q.low_native)+' / '+decimal(q.high_native)]);details.push(['FX to CAD',decimal(q.fx_to_cad,4)]);const holding=state.context.holdings.find(h=>h.ticker===ticker);details.push(['Units held',decimal(holding?.units||0,4)]);if(state.side==='sell')details.push(['Holding value',money(holding?.value_cad||0)]);}
+  $('ticket-quote-details').replaceChildren(...details.map(([label,value])=>{const group=node('div');group.append(node('dt',label),node('dd',value));return group;}));
+  $('ticket-quote-date').textContent=q?'Historical close · '+dateLabel(q.price_source_date):'A usable dated quote is required';
+  const amount=Number($('amount').value);
+  $('unit-estimate').textContent=q&&amount>0?`Estimated units: ${decimal(amount/q.close_cad,6)} · valued at ${money(q.close_cad)} CAD per unit.`:'Enter a CAD amount to see estimated units.';
+  syncButtons();
+}
+function syncButtons() {
+  const record=state.record,busy=state.evaluating||state.deciding;
+  $('submit-trade').disabled=busy||!!record;
+  $('submit-trade').textContent=state.evaluating?'Evaluating…':record?(record.result.verdict==='red'?'Trade paused':isTerminal(record)?'Simulation finished':'Review required'):'Check simulated trade';
+  $('submit-trade').className='button '+(state.side==='sell'?'red':'blue');
+  $('cancel-trade').disabled=state.deciding||state.reviewing;
+  ['amount','ticket-asset','side-buy','side-sell'].forEach(id=>$(id).disabled=state.deciding);
+  $('send-reason').disabled=state.reviewing||state.deciding||!record||record.stage!=='awaiting_reason';
+  $('send-reason').textContent=state.reviewing?'Reviewing…':'Send for review';
+  $('risk-checkbox').disabled=state.reviewing||state.deciding||isTerminal(record);
+  $('proceed-red').disabled=!$('risk-checkbox').checked||state.deciding||state.reviewing||isTerminal(record)||!record;
+  $('cancel-review').disabled=state.deciding||state.reviewing||isTerminal(record);
+  $('revise-trade').disabled=state.deciding;
+}
+function ticketEdited() {
+  const shouldRefresh=!!state.record||state.evaluating||state.autoEvaluate;
+  invalidate();state.autoEvaluate=shouldRefresh;updateTicketQuote();
+  if(shouldRefresh){showTicketStatus('Checking revised trade…','Your previous result is no longer valid.','');state.timer=setTimeout(()=>{try{draftRequest();evaluateTrade();}catch(error){inlineError('ticket-error',error.message);$('ticket-status').hidden=true;}},500);}
+}
+function showTicketStatus(title,message,color) {
+  $('ticket-status').className='ticket-status '+color;$('ticket-status').replaceChildren(node('strong',title),node('span',message));$('ticket-status').hidden=false;
+}
+async function evaluateTrade() {
+  if(state.evaluating||state.deciding)return;
+  let request;
+  try{request=draftRequest();}catch(error){inlineError('ticket-error',error.message);return;}
+  inlineError('ticket-error','');
+  const token=++state.evaluation;state.autoEvaluate=false;state.evaluating=true;state.record=null;
+  state.evaluationController=new AbortController();setInvitation(false);$('review-panel').hidden=true;
+  showTicketStatus('Evaluating this trade…','Checking your stored profile, goals and preferences.','');syncButtons();
+  try {
+    const record=await api('/api/evaluate',request,state.evaluationController.signal);
+    if(token!==state.evaluation)return;
+    state.record=record;state.evaluating=false;renderResult();
+    if(record.result.verdict==='red'){
+      const first=state.context.first_name;$('invite-title').textContent=first?`Hi, ${first}!`:'Hi there!';
+      $('invite-message').textContent='This trade appears misaligned with your investor profile. Would you like to talk about it?';
+      if($('trade-dialog').open){
+        setInvitation(true);announce('Trade paused. A Second Look invitation is available.');
+      }else{
+        $('page-review-slot').append($('review-panel'));revealReview(false);
+        announce('The pending trade was flagged red. Its explanation is available in the page.');
+      }
+    }
+  }catch(error){
+    if(token!==state.evaluation||error.name==='AbortError')return;
+    state.evaluating=false;state.record=null;
+    showTicketStatus('Trade not evaluated','No approval or confirmation was recorded. Please try again.','');
+    inlineError('ticket-error',friendly(error.message));
+  }finally{if(token===state.evaluation){state.evaluating=false;syncButtons();}}
+}
+function renderResult() {
+  const record=state.record;if(!record)return;
+  const r=record.result;
+  if(record.stage==='cancelled')showTicketStatus('Simulation cancelled','No order was placed.','');
+  else if(record.stage==='simulation_continued')showTicketStatus(r.verdict==='red'?'Risk acknowledged · simulation continued':'Simulation continued',r.verdict==='red'?'The numerical verdict remains red. No real order was placed.':'This is an independent simulated trade. Your stored holdings have not changed.',r.verdict||'');
+  else if(r.verdict==='red')showTicketStatus('Red · trade paused','Review the flagged risks before deciding how to continue.','red');
+  else if(r.verdict==='yellow'){
+    showTicketStatus('Yellow · confirmation required',r.reasons.join(' '),'yellow');
+    const confirm=node('button',state.deciding?'Confirming…':'Confirm simulation','button blue compact');confirm.type='button';confirm.id='confirm-yellow';confirm.disabled=state.deciding;confirm.addEventListener('click',()=>decision('confirm'));
+    $('ticket-status').append(node('div','','confirmation-action'));$('ticket-status').lastChild.append(confirm);
+    setInvitation(false);$('review-panel').hidden=true;
+  }else{showTicketStatus('Manual review required',r.reasons.join(' '),'');setInvitation(false);$('review-panel').hidden=true;}
+  if(r.verdict==='red'&&!$('review-panel').hidden)renderReview();
+  syncButtons();
+}
+function exposureName(check) {
+  const part=check.rule.split('.');
+  if(check.kind==='goal')return check.goal+' · '+dateLabel(check.date);
+  return ({single_stock:`${part.slice(1).join('.')} position`,crypto:'Crypto allocation',hhi:'Position concentration (HHI)',allocation:`${classes[part[1]]||part[1]} allocation`,sector:`${part.slice(1).join('.')} sector`,liquid_cash_reserve:'Liquid cash reserve'})[part[0]]||check.ticker||'ESG exposure';
+}
+function revealReview(focus) {
+  if(state.record?.result.verdict!=='red')return;
+  setInvitation(false);$('review-panel').hidden=false;renderReview();
+  if(focus){$('reason').scrollIntoView({block:'nearest',behavior:'auto'});$('reason').focus();}
+}
+function renderReview() {
+  const record=state.record,r=record.result,request=record.request;
+  if(r.verdict!=='red'){ $('review-panel').hidden=true;return; }
+  const checks=r.alerts.filter(c=>c.severity==='red');
+  const primary=checks[0];
+  if(primary?.kind==='limit'){
+    const format=primary.unit==='hhi_index'?v=>decimal(v,3):percent;
+    $('red-summary').textContent=`${exposureName(primary)}: ${format(primary.before)} before → ${format(primary.after)} after, compared with a ${primary.bound==='min'?'minimum':'maximum'} of ${format(primary.limit)}.`;
+  }else $('red-summary').textContent=primary?.message||r.reasons[0];
+  $('pending-trade-summary').textContent=`${request.side==='buy'?'Buy':'Sell'} ${request.ticker} · ${money(request.amount_cad)} CAD · ${dateLabel(request.decision_date)}. Original verdict: Red.`;
+  const rows=checks.filter(c=>finite(c.before)&&finite(c.after)&&finite(c.limit)).map(c=>{const format=c.unit==='hhi_index'?v=>decimal(v,3):percent;return [exposureName(c),format(c.before),format(c.after),(c.bound==='min'?'Minimum ':'Maximum ')+format(c.limit)];});
+  $('exposure-table').replaceChildren(makeTable(['Flagged measure','Before','After','Limit'],rows));
+  renderSpectrum(r.classification);
+  $('reason-form').hidden=record.stage!=='awaiting_reason';
+  renderConversation(record);
+  const terminal=isTerminal(record);
+  document.querySelector('.review-kicker').textContent=terminal?'SECOND LOOK · '+(record.stage==='cancelled'?'SIMULATION CANCELLED':'RISK ACKNOWLEDGED'):'SECOND LOOK · TRADE PAUSED';
+  $('risk-actions').hidden=terminal;$('review-terminal').hidden=!terminal;
+  $('review-terminal').textContent=record.stage==='cancelled'?'Simulation cancelled. Your stored holdings are unchanged.':'You explicitly acknowledged the risks and continued the simulation. The rule engine verdict remains red. No real order was placed.';
+  syncButtons();
+}
+function renderSpectrum(c) {
+  const root=$('review-spectrum');root.hidden=!c;if(!c)return;
+  root.replaceChildren(node('p',`Reference spectrum · stored target: ${c.target_profile}`,'small-label'));
+  const axis=node('div','','spectrum-axis');['Income','Conservative','Balanced','Growth','Maximum growth'].forEach(label=>axis.append(node('span',label)));root.append(axis);
+  for(const key of ['before','after']){
+    const row=node('div','','spectrum-position'),track=node('div','','position-track'),dot=node('span','','position-dot '+key);
+    dot.style.left=(c[key].normalized_score*100)+'%';track.append(dot);row.append(node('span',key==='before'?'Before':'After'),track);root.append(row);
+    const memberships=Object.entries(c[key].membership_weights).filter(([,w])=>w>1e-10).map(([label,w])=>percent(w)+' '+label).join(' / ');
+    root.append(node('p',`${key==='before'?'Before':'After'}: ${memberships} · allocation score ${c[key].score.toFixed(3)} · mismatch distance ${c[key].distance.toFixed(4)}`,'spectrum-membership'));
+  }
+  root.append(node('p','Memberships describe asset allocation, not probabilities or complete risk. A small mismatch does not override a hard limit.','muted'));
+}
+function renderConversation(record) {
+  const container=$('conversation-result');container.replaceChildren();
+  if(record.investor_reason){const message=node('div','','conversation-message');message.append(node('span','Your reason','small-label'),node('p',record.investor_reason));container.append(message);}
+  if(state.reviewing){container.append(node('p','Reviewing your reason with the available tools… The red verdict remains fixed.','backend-unavailable'));container.setAttribute('aria-busy','true');return;}
+  container.removeAttribute('aria-busy');
+  const answer=record.agent_result;
+  if(answer && record.agent_status==='completed'){
+    const article=node('article','','agent-answer');
+    const headline=answer.headline||'Personalized review';article.append(node('h3',headline));
+    const written=new Set();
+    for(const key of ['why_it_matters','your_reason','client_reason_response','goal_check','values_check'])if(typeof answer[key]==='string'&&answer[key]&&!written.has(answer[key])){written.add(answer[key]);article.append(node('p',answer[key]));}
+    const scenarios=(answer.risk?.scenarios||[]).filter(s=>finite(s.portfolio_return));
+    if(scenarios.length){const detail=node('details'),list=node('ul');detail.append(node('summary','Stress tests · hypothetical, not forecasts'));scenarios.forEach(s=>list.append(node('li',`${s.name}: ${percent(s.portfolio_return)}`)));detail.append(list);article.append(detail);}
+    const news=answer.news_check||[];
+    if(news.length){const detail=node('details'),list=node('ul');detail.append(node('summary','News evidence'));news.forEach(item=>{const row=node('li',`${item.claim} · ${item.type}. ${item.evidence||item.limitations||''} `);if(item.source?.url&&/^https?:\/\//.test(item.source.url)){const link=node('a',item.source.name||'Source');link.href=item.source.url;link.target='_blank';link.rel='noopener noreferrer';row.append(link);}list.append(row);});detail.append(list);article.append(detail);}
+    const alternatives=(answer.alternatives||[]).filter(a=>['green','yellow'].includes(a.rule_check_verdict)&&state.context.assets[a.ticker]&&finite(a.amount_cad)&&a.amount_cad>0);
+    if(alternatives.length){article.append(node('h3','Alternatives returned by the backend'));alternatives.forEach(alternative=>{const row=node('div','','alternative');row.append(node('span',alternative.description));const button=node('button','Review '+alternative.ticker,'button secondary compact');button.type='button';button.addEventListener('click',()=>{openTicket('buy',alternative.ticker,alternative.amount_cad);evaluateTrade();});row.append(button);article.append(row);});}
+    container.append(article);
+  }else if(record.agent_status!=='not_requested'){
+    const messages={not_configured:'Personalized AI review is unavailable in this local demo. Your reason is saved; the numerical explanation above remains available.',dispatched:'Your reason has been sent to the configured agent service. A completed explanation has not been returned here.',dispatch_failed:'The agent service could not be reached. Your reason is saved and the trade remains paused.',failed:record.agent_error||'The personalized review could not finish. You can revise, cancel, or acknowledge the flagged risks.',unavailable:record.agent_error||'Personalized review is unavailable for this trade.'};
+    container.append(node('p',messages[record.agent_status]||'A completed personalized review is not available.','backend-unavailable'));
+  }
+}
+async function submitReason(event) {
+  event.preventDefault();if(state.reviewing||state.deciding||state.record?.stage!=='awaiting_reason')return;
+  const reason=$('reason').value.trim();if(!reason){inlineError('review-error','Please enter what interested you in this trade.');$('reason').focus();return;}
+  const id=state.record.simulation_id,token=state.evaluation;state.reviewing=true;state.reviewController=new AbortController();inlineError('review-error','');renderReview();
+  try {
+    const record=await api(`/api/simulations/${id}/decision`,{decision:'explain',reason},state.reviewController.signal,180000);
+    if(token!==state.evaluation||state.record?.simulation_id!==id)return;
+    state.record=record;
+  }catch(error){if(token===state.evaluation&&error.name!=='AbortError')inlineError('review-error',error.message);}
+  finally{if(token===state.evaluation){state.reviewing=false;renderReview();}}
+}
+async function decision(action) {
+  if(state.deciding||state.reviewing||!state.record)return;
+  if(action==='proceed'&&!$('risk-checkbox').checked)return;
+  const id=state.record.simulation_id,token=state.evaluation;
+  state.deciding=true;inlineError('review-error','');syncButtons();
+  if($('confirm-yellow'))$('confirm-yellow').disabled=true;
+  try {
+    const record=await api(`/api/simulations/${id}/decision`,{decision:action,...(action==='proceed'?{risk_acknowledged:true}:{})});
+    if(token!==state.evaluation||state.record?.simulation_id!==id)return;
+    state.record=record;setInvitation(false);renderResult();
+    announce(record.stage==='cancelled'?'Simulation cancelled.':'Simulation continued. No real order was placed.');
+    if(action==='cancel')closeTicket();
+  }catch(error){inlineError($('review-panel').hidden?'ticket-error':'review-error',error.message);}
+  finally{state.deciding=false;syncButtons();if($('confirm-yellow'))$('confirm-yellow').disabled=false;}
+}
+function reviseTrade() {
+  const request=state.record?.request;
+  if(!request)return;
+  openTicket(request.side,request.ticker,request.amount_cad);
+  state.autoEvaluate=true;
+  announce('Revise the pending trade. A new evaluation is required.');
+}
+
+// Functional navigation and keyboard behavior; no decorative product controls.
+$('nav-markets').addEventListener('click',()=>showPage('markets'));
+$('nav-holdings').addEventListener('click',()=>showPage('holdings'));
+$('view-holdings').addEventListener('click',()=>showPage('holdings'));
+$('back-to-markets').addEventListener('click',()=>showPage('markets'));
+$('client-select').addEventListener('change',()=>{const id=$('client-select').value;const url=new URL(location.href);url.searchParams.set('client',id);history.replaceState(null,'',url);loadContext(id);});
+$('retry-context').addEventListener('click',()=>loadContext(new URLSearchParams(location.search).get('client')||'robert'));
+$('market-search').addEventListener('change',()=>{const ticker=resolveAsset($('market-search').value);if(ticker){state.selectedAsset=ticker;renderQuote();}else{announce('Choose a ticker from the provided list.');$('market-search').value=state.selectedAsset;}});
+$('scenario-select').addEventListener('change',()=>{const index=$('scenario-select').value;if(index==='')return;const[ticker,amount]=DEMOS[state.context.client.client_id][Number(index)];state.selectedAsset=ticker;renderQuote();openTicket('buy',ticker,amount);$('scenario-select').value='';});
+document.querySelectorAll('[data-open-side]').forEach(button=>button.addEventListener('click',()=>openTicket(button.dataset.openSide)));
+$('close-ticket').addEventListener('click',closeTicket);
+$('trade-dialog').addEventListener('cancel',event=>{event.preventDefault();closeTicket();});
+$('cancel-trade').addEventListener('click',()=>{if(state.record&&!isTerminal(state.record))decision('cancel');else{invalidate();closeTicket();}});
+$('trade-form').addEventListener('submit',event=>{event.preventDefault();evaluateTrade();});
+$('amount').addEventListener('input',ticketEdited);$('ticket-asset').addEventListener('input',ticketEdited);
+$('side-buy').addEventListener('click',()=>{if(state.side!=='buy'){state.side='buy';ticketEdited();}});
+$('side-sell').addEventListener('click',()=>{if(state.side!=='sell'){state.side='sell';ticketEdited();}});
+$('lets-talk').addEventListener('click',()=>revealReview(true));
+$('dismiss-invite').addEventListener('click',()=>{revealReview(false);$('review-title').focus({preventScroll:true});});
+$('revise-trade').addEventListener('click',reviseTrade);
+$('reason-form').addEventListener('submit',submitReason);
+$('risk-checkbox').addEventListener('change',syncButtons);
+$('proceed-red').addEventListener('click',()=>decision('proceed'));
+$('cancel-review').addEventListener('click',()=>decision('cancel'));
+const tabs=['overview','history','position'];
+tabs.forEach((tab,index)=>{
+  $('tab-'+tab).addEventListener('click',()=>selectTab(tab));
+  $('tab-'+tab).addEventListener('keydown',event=>{let next;if(event.key==='ArrowRight')next=(index+1)%tabs.length;if(event.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;if(event.key==='Home')next=0;if(event.key==='End')next=tabs.length-1;if(next!==undefined){event.preventDefault();selectTab(tabs[next]);$('tab-'+tabs[next]).focus();}});
+});
+let resizeFrame;
+window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(renderChart);});
+loadContext(new URLSearchParams(location.search).get('client')||'robert');

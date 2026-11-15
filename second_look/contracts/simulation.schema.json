@@ -40,13 +40,31 @@
         "not_requested",
         "not_configured",
         "dispatched",
-        "dispatch_failed"
+        "dispatch_failed",
+        "completed",
+        "failed",
+        "unavailable"
       ]
     },
     "investor_reason": {
       "type": "string",
       "minLength": 1,
       "maxLength": 5000
+    },
+    "risk_acknowledged": {
+      "type": "boolean"
+    },
+    "agent_result": {
+      "type": "object"
+    },
+    "agent_trace": {
+      "type": "array"
+    },
+    "agent_note": {
+      "type": "string"
+    },
+    "agent_error": {
+      "type": "string"
     }
   },
   "additionalProperties": false,
@@ -243,7 +261,8 @@
             "creates",
             "worsens",
             "reduces",
-            "unchanged"
+            "unchanged",
+            "improves"
           ]
         },
         "severity": {
@@ -267,7 +286,8 @@
         "unit": {
           "enum": [
             "weight",
-            "hhi_index"
+            "hhi_index",
+            "coverage"
           ]
         },
         "source": {
@@ -278,9 +298,19 @@
             "min",
             "max"
           ]
+        },
+        "kind": {
+          "enum": [
+            "limit",
+            "goal",
+            "esg"
+          ]
+        },
+        "message": {
+          "type": "string"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": true
     },
     "classification": {
       "type": "object",

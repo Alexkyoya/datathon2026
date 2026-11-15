@@ -97,6 +97,39 @@ class WorkflowTests(unittest.TestCase):
         self.store.save('snapshots/2026-11-13.json',snapshot)
         with self.assertRaises(ValueError):self.app.evaluate(self.trade())
 
+    def test_red_requires_explicit_risk_acknowledgement_and_keeps_verdict(self):
+        red=self.app.evaluate(self.trade('TSLA',12000))
+        for value in [False, None, 'yes', 1]:
+            with self.assertRaises(ValueError):
+                self.app.decide(red['simulation_id'],'proceed',risk_acknowledged=value)
+        continued=self.app.decide(red['simulation_id'],'proceed',risk_acknowledged=True)
+        self.assertEqual(continued['stage'],'simulation_continued')
+        self.assertTrue(continued['risk_acknowledged'])
+        self.assertEqual(continued['result'],red['result'])
+        self.assertEqual(continued['result']['verdict'],'red')
+        with self.assertRaises(ValueError):self.app.decide(red['simulation_id'],'proceed',risk_acknowledged=True)
+
+    def test_red_can_be_cancelled_or_acknowledged_after_agent_handoff(self):
+        for decision in ['cancel','proceed']:
+            red=self.app.evaluate(self.trade('TSLA',12000))
+            explained=self.app.decide(red['simulation_id'],'explain','My investment thesis')
+            final=self.app.decide(red['simulation_id'],decision,risk_acknowledged=decision=='proceed')
+            self.assertEqual(final['stage'],'cancelled' if decision=='cancel' else 'simulation_continued')
+            self.assertEqual(final['result'],explained['result'])
+
+    def test_current_result_and_risk_acknowledgement_match_shared_schema(self):
+        try:
+            from jsonschema import Draft202012Validator
+        except ImportError:
+            self.skipTest('Install the root locked environment for JSON Schema checks')
+        schema=json.loads((ROOT/'contracts/simulation.schema.json').read_text())
+        validator=Draft202012Validator(schema)
+        for ticker,amount in [('SPY',4000),('GLD',14000),('TSLA',12000)]:
+            record=self.app.evaluate(self.trade(ticker,amount))
+            validator.validate(record)
+            if record['result']['verdict']=='red':
+                validator.validate(self.app.decide(record['simulation_id'],'proceed',risk_acknowledged=True))
+
     def test_aws_adapter_with_mock_s3_and_existing_agent_lambda(self):
         objects={f'second-look/{p.relative_to(Path(self.temp.name)).as_posix()}':p.read_bytes() for p in Path(self.temp.name).rglob('*.json')}
         invoked=[]

@@ -94,14 +94,19 @@ class SecondLookApplication:
                                'result_sha256': hashlib.sha256(json.dumps(record,sort_keys=True,allow_nan=False).encode()).hexdigest()}))
         return record
 
-    def decide(self, simulation_id, decision, reason=None):
+    def decide(self, simulation_id, decision, reason=None, risk_acknowledged=False):
         sid = identifier(simulation_id)
         record = self.store.load(f'results/{sid}.json')
         stage = record['stage']
-        if stage not in ('awaiting_confirmation', 'awaiting_reason'):
+        if stage not in ('awaiting_confirmation', 'awaiting_reason', 'awaiting_agents', 'manual_review'):
             raise ValueError('This simulation is not awaiting a decision')
         if decision == 'cancel':
             record['stage'] = 'cancelled'
+        elif decision == 'proceed' and record['result']['verdict'] == 'red':
+            if risk_acknowledged is not True:
+                raise ValueError('Explicit risk acknowledgement is required for a red simulation')
+            record['risk_acknowledged'] = True
+            record['stage'] = 'simulation_continued'
         elif stage == 'awaiting_confirmation' and decision == 'confirm':
             record['stage'] = 'simulation_continued'
         elif stage == 'awaiting_reason' and decision == 'explain':

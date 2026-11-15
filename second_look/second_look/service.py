@@ -7,11 +7,9 @@ from .contracts import number, data_quality_limits, validate_request
 from .spectrum import load_references
 
 
-def evaluate_from_snapshot(request, client, snapshot, assets, policy, references=None):
-    validate_request(request)
-    references = load_references() if references is None else references
+def value_holdings(client, snapshot, assets, policy, day, extra_tickers=()):
+    """Share dated quote validation between the account display and trade evaluation."""
     quality = data_quality_limits(policy)
-    day = request['decision_date']
     if snapshot['decision_date'] != day or client['holdings_as_of'] != day:
         raise ValueError('Snapshot and holdings must match the decision date')
     asof = datetime.fromisoformat(snapshot['snapshot_at'].replace('Z','+00:00'))
@@ -20,7 +18,7 @@ def evaluate_from_snapshot(request, client, snapshot, assets, policy, references
         raise ValueError('Daily simulation requires decision-date 00:00 UTC snapshot')
     values = {'CASH_CAD':number(client['cash_cad'],'cash_cad')}
     used = {}
-    needed = set(client['holdings']) | {request['ticker']}
+    needed = set(client['holdings']) | set(extra_tickers)
     for ticker in sorted(needed):
         if ticker not in assets or ticker not in snapshot['quotes']:
             raise ValueError(f'Missing asset or price for {ticker}')
@@ -48,6 +46,13 @@ def evaluate_from_snapshot(request, client, snapshot, assets, policy, references
         units = number(client['holdings'].get(ticker,0),ticker+' units')
         values[ticker] = units*price
         used[ticker] = q
+    return values, used
+
+
+def evaluate_from_snapshot(request, client, snapshot, assets, policy, references=None):
+    validate_request(request)
+    references = load_references() if references is None else references
+    values, used = value_holdings(client, snapshot, assets, policy, request['decision_date'], [request['ticker']])
     result = evaluate_trade(request,client,values,assets,policy,references)
     result['input_sha256'] = {name:hashlib.sha256(json.dumps(value,sort_keys=True,allow_nan=False).encode()).hexdigest()
                               for name,value in [('assets',assets),('policy',policy),('client',client),('request',request),('snapshot',snapshot)]}

@@ -23,9 +23,13 @@ def call(path, payload=None, expected=200):
 
 def main():
     for path in ['/','/app.js','/styles.css']:assert call(path)
-    context=call('/api/context')
+    context=call('/api/context?client_id=demo_balanced')
     client=context['client']
     assert client['profile']=='Balanced'
+    assert len(context['quotes'])==31 and context['account']['total_cad']>0
+    for ticker,quote in context['quotes'].items():
+        assert quote['price_source_date'][:10]<client['holdings_as_of']
+        assert abs(quote['close_native']*quote['fx_to_cad']-quote['close_cad'])<1e-8
     records=[]
     def trade(ticker,amount):
         return {'client_id':client['client_id'],'decision_date':client['holdings_as_of'],
@@ -42,6 +46,10 @@ def main():
     explained=call(path,{'decision':'explain','reason':'Fictional demo: I expect growth.'});records.append(explained)
     assert explained['stage']=='awaiting_agents' and explained['agent_status']=='not_configured'
     assert explained['result']==red['result'] and explained['result']['verdict']=='red'
+    assert call(path,{'decision':'proceed'},400)['verdict'] is None
+    continued=call(path,{'decision':'proceed','risk_acknowledged':True});records.append(continued)
+    assert continued['stage']=='simulation_continued' and continued['risk_acknowledged'] is True
+    assert continued['result']==red['result']
     assert call('/api/evaluate',trade('SPY',15001),400)['verdict'] is None
     assert call('/api/evaluate',dict(trade('SPY',10),profile='Maximum growth'),400)['verdict'] is None
     # Full schema validation is available when the checker environment has jsonschema.
@@ -54,7 +62,7 @@ def main():
         Draft202012Validator.check_schema(schema)
         validator=Draft202012Validator(schema,format_checker=FormatChecker())
         for record in records:validator.validate(record)
-        print('All 5 HTTP response records satisfy JSON Schema v2.0')
+        print(f'All {len(records)} HTTP response records satisfy JSON Schema v2.0')
     print('PASS: static assets, stored context, green, yellow confirmation, red reason/handoff, immutable verdict, invalid funding/profile rejection')
 
 

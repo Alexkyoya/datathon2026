@@ -43,7 +43,8 @@ def test_profiles_and_clients_use_provided_tickers():
 
 def test_dashboard_demos_use_provided_tickers():
     js = (ROOT / "second_look" / "web" / "app.js").read_text(encoding="utf-8")
-    demos = re.findall(r"\['(?:green|yellow|red)','([^']+)',\d+\]", js)
+    # The UI supplies ticker/amount scenarios; only the backend assigns a color.
+    demos = re.findall(r"\['([A-Z][A-Z0-9.-]*)',\s*\d+\]", js)
     assert len(demos) >= 12
     assert outside_universe(demos, PROVIDED) == []
 

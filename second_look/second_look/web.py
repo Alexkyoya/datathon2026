@@ -1,9 +1,10 @@
 """Local frontend adapter over the same application service used by Lambda."""
 import json
+from urllib.parse import parse_qs, urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from .application import ProjectStore, SecondLookApplication
-from .spectrum import build_references
+from .market import build_context
 
 
 def make_handler(root):
@@ -26,28 +27,18 @@ def make_handler(root):
         def do_GET(self):
             if self.path == '/api/context' or self.path.startswith('/api/context?'):
                 try:
-                    # optional ?client_id=robert|mateo|amira (default: demo_balanced)
-                    query = dict(p.split('=', 1) for p in self.path.partition('?')[2].split('&') if '=' in p)
-                    cid = query.get('client_id', 'demo_balanced')
-                    if not cid.replace('_', '').isalnum():
-                        raise ValueError('Invalid client_id')
-                    client = runtime.load(f'clients/{cid}.json')
-                    assets = runtime.load('config/assets.json')
-                    policy = runtime.load('config/policy.json')
-                    refs = runtime.load('config/reference_portfolios.json')
-                    info = {t: {k: a.get(k) for k in ('name', 'asset_class', 'instrument_type', 'currency', 'sector')}
-                            for t, a in assets.items()}
-                    return self.send(200, {'client': client, 'tickers': sorted(assets), 'assets': info,
-                                          'references': build_references(refs, assets, policy),
-                                          'reference_config': refs})
+                    cid = parse_qs(urlsplit(self.path).query).get('client_id', ['robert'])[0]
+                    clients = [p.stem for p in (root/'examples/clients').glob('*.json')] + ['demo_balanced']
+                    return self.send(200, build_context(runtime, cid, clients))
                 except (OSError, ValueError, KeyError) as exc:
                     return self.send(503, {'error': f'Run python -m second_look demo first: {exc}'})
             files = {'/': ('index.html', 'text/html; charset=utf-8'),
                      '/app.js': ('app.js', 'text/javascript; charset=utf-8'),
                      '/styles.css': ('styles.css', 'text/css; charset=utf-8')}
-            if self.path not in files:
+            path = urlsplit(self.path).path
+            if path not in files:
                 return self.send(404, {'error': 'Not found'})
-            name, kind = files[self.path]
+            name, kind = files[path]
             self.send(200, (web/name).read_bytes(), kind)
 
         def do_POST(self):
@@ -62,10 +53,10 @@ def make_handler(root):
                 if self.path == '/api/evaluate':
                     record = app.evaluate(payload)
                 elif self.path.startswith('/api/simulations/') and self.path.endswith('/decision'):
-                    if set(payload)-{'decision', 'reason'} or 'decision' not in payload:
-                        raise ValueError('Decision accepts only decision and optional reason')
+                    if set(payload)-{'decision', 'reason', 'risk_acknowledged'} or 'decision' not in payload:
+                        raise ValueError('Decision accepts decision, optional reason and risk_acknowledged')
                     sid = self.path.split('/')[-2]
-                    record = app.decide(sid, payload['decision'], payload.get('reason'))
+                    record = app.decide(sid, payload['decision'], payload.get('reason'), payload.get('risk_acknowledged', False))
                 else:
                     return self.send(404, {'error': 'Not found'})
                 self.send(200, record)

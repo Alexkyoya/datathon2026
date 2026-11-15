@@ -28,6 +28,48 @@ If that checker environment has `jsonschema`, it also validates response records
 against `contracts/simulation.schema.json`. No third-party library is needed in
 Lambda's rules/service/application imports; local cleaning uses pandas/numpy.
 
+## Brokerage-style simulation
+
+The quote page uses the stored account, holdings and historical snapshot. It has
+functional Markets/My holdings navigation, a ticker/company search and a single
+Buy/Sell ticket. The latest source close, volume and OHLC are shown only when
+present. The chart uses up to 90 completed source observations in CAD. No bid/ask,
+analyst rating or real-time quote is fabricated.
+
+Run `demo` once after pulling this interface update to regenerate the snapshot's
+optional display fields. Open http://127.0.0.1:8000; Robert is the default fictional
+investor. The scenario selector also offers Mateo, Amira and Balanced demo trades
+when their account is selected. There is no questionnaire.
+
+Green continues the independent simulation. Yellow requests confirmation with no
+agent character or conversation. Only red shows the human guide's invitation.
+“Let's talk” opens the explanation and focuses the reason input; dismissing the
+invitation shows a quiet explanation without focusing that input. Closing the
+ticket preserves the red review in the page and does not approve anything.
+Editing an evaluated ticket invalidates its result and evaluates the revised
+trade. Revising, cancelling and explicitly acknowledging risk are separate actions.
+
+The numerical explanation and spectrum work offline. Local personalized AI is
+unconfigured, so submitting a reason saves it and displays an explicit unavailable
+state. The root AWS API can return real agent results through the same UI.
+Its existing agent flow supports buys on its configured historical date; other
+trade/date combinations retain the numerical result with an unavailable AI state.
+No deployment is performed by this interface change.
+
+The five-field trade request is unchanged. The decision route additionally accepts
+`{"decision":"proceed","risk_acknowledged":true}` for a paused red simulation.
+The server requires a literal boolean acknowledgement, preserves `result.verdict`
+and records `risk_acknowledged`; no order is executed. All three adapters share
+this decision behavior. The context response adds `account`, `holdings`, `quotes`
+and optional `price_history`, using the same dated valuation as the rule engine.
+
+Verification: `../.venv/bin/python -m unittest discover -s tests -v`, plus the
+running-server check `../.venv/bin/python tests/verify_http.py`. The optional
+`tests/verify_ui_macos.swift` harness exercises the rendered desktop/mobile flow,
+close behavior, red-only invitation, both invitation actions, edits, duplicates,
+failed requests and acknowledgement. It saves screenshots under `dist/` when
+called with that output directory; no test calls AWS.
+
 ## One implementation per responsibility
 
 - `second_look/cleaning.py`: validates raw prices/FX, aligns and converts to CAD.
@@ -151,10 +193,8 @@ missing observations, reference totals/ranges, exact matches, interpolation,
 endpoints, deterministic ties, distant portfolios and a perfect allocation match
 that remains red for crypto. They cover confirmation, cancellation, immutable
 agent results, partial evaluation and mocked S3/Lambda dispatch. HTTP smoke tests
-check the same workflow and optional JSON Schema validation. Browser visual QA
-could not run because the in-app browser connection failed in this session.
-**No live AWS deployment or Bedrock/agent execution was verified.** No existing
-agent implementation was supplied; an explanation remains pending until connected.
+check the same workflow and optional JSON Schema validation. Desktop and mobile WebKit visual/interaction checks cover the brokerage UI; the in-app browser connector was unavailable.
+**No live AWS deployment or Bedrock/agent execution was verified.** The local component has no configured AI dispatcher; the root AWS API contains the integrated agents and must be deployed/configured separately.
 
 Real data: starter retrieval 2026-11-13, history through 2026-11-12; clients and
 trades are fictional. Limitations include assumed publication availability,
