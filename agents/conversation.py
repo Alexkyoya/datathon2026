@@ -322,7 +322,8 @@ class ConversationalCoordinator:
                                        if k not in ('rule_check', 'client_reason')}},
             'user_stated_not_account_facts': {'planned_contribution': state['planned_contribution']},
             'knowledge_index': [{'id': c['id'], 'title': c['title']} for c in self.knowledge['cards'] if c['runtime_enabled']],
-            'latest_investor_message': state['messages'][-1]['text']}
+            'latest_investor_message': state['messages'][-1]['text'],
+            'interface_language': state.get('language', 'en')}
         # This key exists only in the explicit development evaluation runner.
         if 'evaluation_context' in state:
             context['fictional_evaluation_context_not_account_updates'] = state['evaluation_context']
@@ -334,7 +335,11 @@ class ConversationalCoordinator:
                  'evidence_ids': list(state['evidence']), 'specialist_reports_supplied': bool(state['initial_analysis'].get('specialist_reports'))}
         state.setdefault('context_audits', []).append(audit)
         diagnostics.emit('conversation_context', request_id, **audit)
-        agent = Agent(model=self._model(record, 'conversation', state), system_prompt=self.prompt, messages=copy.deepcopy(history),
+        # The client reads the interface in this language; replies must match it even if earlier turns used another.
+        prompt = self.prompt + {'fr': '\n\nInterface language: Canadian French. Write assistant_message entirely in natural '
+            'Canadian French (vous), whatever language earlier turns used. Placeholders stay unchanged; the backend formats them.',
+            'en': '\n\nInterface language: English. Write assistant_message in English.'}[state.get('language', 'en')]
+        agent = Agent(model=self._model(record, 'conversation', state), system_prompt=prompt, messages=copy.deepcopy(history),
                       tools=[get_current_assessment, get_portfolio_exposure, behavioral_reference,
                              retrieve_evidence, recalculate_candidate, simulate_future_cash_plan, simulate_market_scenario],
                       tool_executor=SequentialToolExecutor(), hooks=[budget], callback_handler=None)
@@ -359,7 +364,7 @@ class ConversationalCoordinator:
                 # Reconstruct public history + verified tool evidence rather than
                 # replaying provider-signed thinking blocks from the rejected turn.
                 context['user_stated_not_account_facts']['planned_contribution'] = state['planned_contribution']
-                repair = Agent(model=self._model(record, 'response_repair', state), system_prompt=self.prompt,
+                repair = Agent(model=self._model(record, 'response_repair', state), system_prompt=prompt,
                                messages=copy.deepcopy(history), callback_handler=None)
                 answer = str(repair(json.dumps({'context': context, 'previous_invalid_output': answer,
                     'validation_error': str(exc), 'correction_instruction':
