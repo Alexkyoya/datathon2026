@@ -15,16 +15,18 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import config  # noqa: E402
 
-BLOCKED_INPUT = ("I can't work with that message. Please tell me in your own words why you want to make "
-                 "this trade. Never share card numbers, insurance numbers, passwords or other identifiers here.")
+BLOCKED_INPUT = ("I can't act on that message. I can't change the check result, place a trade or handle personal "
+                 "identifiers such as card numbers. You can revise the trade, cancel it, or acknowledge the risks "
+                 "and proceed with the buttons on screen, or tell me in your own words what you have in mind.")
 BLOCKED_OUTPUT = ("I can't say what an investment will be worth in the future, and no return is guaranteed. "
                   "The check above is based on your profile and past data only. Tell me what you would like "
                   "to look at next.")
 MESSAGES = {
     "en": {"INPUT": BLOCKED_INPUT, "OUTPUT": BLOCKED_OUTPUT},
-    "fr": {"INPUT": ("Je ne peux pas traiter ce message. Expliquez-moi dans vos mots pourquoi vous voulez faire "
-                     "cette transaction. Ne partagez jamais ici de numéro de carte, d'assurance sociale, de mot de "
-                     "passe ou d'autre identifiant."),
+    "fr": {"INPUT": ("Je ne peux pas donner suite à ce message. Je ne peux pas modifier le résultat de la "
+                     "vérification, passer une transaction ni traiter des identifiants personnels comme un numéro "
+                     "de carte. Vous pouvez réviser la transaction, l'annuler, ou reconnaître les risques et "
+                     "continuer avec les boutons à l'écran, ou me dire dans vos mots ce que vous avez en tête."),
            "OUTPUT": ("Je ne peux pas dire ce que vaudra un placement dans le futur, et aucun rendement n'est "
                       "garanti. La vérification ci-dessus repose seulement sur votre profil et sur des données "
                       "passées. Dites-moi ce que vous aimeriez examiner ensuite.")},

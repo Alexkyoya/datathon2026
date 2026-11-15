@@ -94,10 +94,10 @@ def main():
                 print(f"{case['id']}: {outcome['seconds']}s {'ok' if 'response' in outcome else 'ERROR'}", flush=True)
                 report['results'].append(outcome)
         report['status'] = 'awaiting_human_review' if report['live_model_verified'] else 'unavailable'
-    Path(args.output).write_text(json.dumps(report, indent=2, default=str)+'\n')
     times = [r['seconds'] for r in report.get('results', []) if 'seconds' in r]
     if times:
         report['average_seconds'] = round(sum(times) / len(times), 1)
+    Path(args.output).write_text(json.dumps(report, indent=2, default=str)+'\n')
     print(json.dumps({k: report[k] for k in ('status', 'live_model_verified', 'aws_credentials_available', 'cases_requested')}))
     if times:
         print('Average reply time:', report['average_seconds'], 's over', len(times), 'cases')
