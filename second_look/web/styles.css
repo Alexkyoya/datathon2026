@@ -553,3 +553,15 @@ body { border-top: 4px solid var(--blue); }
 .viz-note.strong {color:var(--text);font-weight:600}
 .viz-card.wide svg {max-width:540px}
 .viz-card svg {max-height:260px}
+
+/* compact tiles; a tile opens to full width when its charts are shown */
+.review-visuals {grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.viz-card.expanded {grid-column:1/-1}
+.viz-card .viz-headline {margin-bottom:6px}
+.viz-card .viz-big {margin:4px 0 2px}
+.viz-card .viz-big strong {font-size:30px}
+.viz-list {margin:6px 0 0;padding-left:18px;font-size:13px}
+.viz-list li {margin:2px 0}
+.viz-card.expanded svg {max-width:540px}
+.review-spectrum .viz-head .spectrum-title {margin:0}
+.review-spectrum .spectrum-reading {margin-top:8px}
