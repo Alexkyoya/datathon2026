@@ -26,3 +26,17 @@ DATA_DIR = os.getenv("DATA_DIR", os.path.join(os.path.dirname(__file__), "data")
 # Chat speed: skip the coordinator's written summary before the first chat reply (the chat never shows it;
 # the chat agent still gets the three specialist reports and can check alternatives itself).
 CHAT_FAST_START = os.getenv("CHAT_FAST_START", "1") == "1"
+
+# Amazon Bedrock Guardrails (scripts/setup_guardrails.py creates them and writes guardrails.json).
+# Empty = guardrails off.
+_GR = {}
+try:
+    with open(os.path.join(os.path.dirname(__file__), "guardrails.json")) as _f:
+        import json as _json
+        _GR = _json.load(_f)
+except (OSError, ValueError):
+    pass
+GUARDRAIL_INPUT_ID = os.getenv("GUARDRAIL_INPUT_ID", _GR.get("input", {}).get("id", ""))
+GUARDRAIL_INPUT_VERSION = os.getenv("GUARDRAIL_INPUT_VERSION", _GR.get("input", {}).get("version", ""))
+GUARDRAIL_OUTPUT_ID = os.getenv("GUARDRAIL_OUTPUT_ID", _GR.get("output", {}).get("id", ""))
+GUARDRAIL_OUTPUT_VERSION = os.getenv("GUARDRAIL_OUTPUT_VERSION", _GR.get("output", {}).get("version", ""))

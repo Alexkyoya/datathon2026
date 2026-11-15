@@ -12,6 +12,17 @@ from strands.hooks.events import BeforeModelCallEvent
 
 ROOT = Path(__file__).resolve().parents[1]
 
+try:  # Bedrock Guardrails; a missing module or config means "off"
+    import guardrails as G
+except ImportError:  # pragma: no cover
+    G = None
+
+
+def _guard(text, source):
+    if G is None:
+        return {'blocked': False, 'status': 'not_configured'}
+    return G.check(text, source)
+
 
 def engine_module(name):
     import sys
@@ -92,6 +103,8 @@ class ConversationalCoordinator:
     def initial(self, record, inputs, reason):
         """The same three specialists and coordinator, bound to the actual dashboard account."""
         S = self.coordinator
+        if _guard(reason, 'INPUT')['blocked']:
+            return {}  # nothing analysed; respond() answers with the blocked-input message
         req, rc = record['request'], record['result']
         facts = {}
         diagnostics = engine_module('diagnostics')
@@ -208,6 +221,12 @@ class ConversationalCoordinator:
     def respond(self, record, inputs, state, bridge):
         diagnostics = engine_module('diagnostics')
         request_id = record.get('_chat_request_id', 'standalone')
+        verdict = _guard(state['messages'][-1]['text'], 'INPUT')
+        if verdict['status'] != 'not_configured':
+            state.setdefault('guardrail_events', []).append({'source': 'INPUT', **verdict})
+        if verdict['blocked']:
+            diagnostics.emit('guardrail_blocked_input', request_id, policies=verdict.get('policies'))
+            return json.dumps({'assistant_message': G.BLOCKED_INPUT, 'evidence_refs': []})
         model_calls = 0
         def budget(event: BeforeModelCallEvent):
             nonlocal model_calls
@@ -324,7 +343,13 @@ class ConversationalCoordinator:
         # corrects JSON/evidence formatting; it cannot alter the Python verdict.
         for attempt in range(3):
             try:
-                engine_module('conversation').render_answer(answer, state['evidence'])
+                text, _ = engine_module('conversation').render_answer(answer, state['evidence'])
+                verdict = _guard(text, 'OUTPUT')
+                if verdict['status'] != 'not_configured':
+                    state.setdefault('guardrail_events', []).append({'source': 'OUTPUT', **verdict})
+                if verdict['blocked']:
+                    diagnostics.emit('guardrail_blocked_output', request_id, policies=verdict.get('policies'))
+                    return json.dumps({'assistant_message': G.BLOCKED_OUTPUT, 'evidence_refs': []})
                 return answer
             except diagnostics.AnswerValidationError as exc:
                 diagnostics.emit('response_validation_rejected', request_id, attempt=attempt,

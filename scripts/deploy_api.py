@@ -47,6 +47,8 @@ def build_zip():
                     "--python-version", "3.12", "--only-binary", ":all:", sdk, boto], check=True)
     shutil.copy(ROOT / "config.py", BUILD)
     shutil.copy(ROOT / "api_handler.py", BUILD)
+    if (ROOT / "guardrails.json").exists():  # created by scripts/setup_guardrails.py
+        shutil.copy(ROOT / "guardrails.json", BUILD)
     # dashboard + team rule engine (second_look/), bundled under sl_* names
     comp = ROOT / "second_look"
     snap = comp / "data" / "runtime" / "snapshots" / "2026-11-13.json"
@@ -62,7 +64,7 @@ def build_zip():
                 shutil.copy(f, BUILD / dst / f.name)
     shutil.copy(comp / "examples" / "client.json", BUILD / "sl_clients" / "demo_balanced.json")
     (BUILD / "agents").mkdir(exist_ok=True)
-    for f in ("second_look.py", "tools.py", "universe.py", "conversation.py"):
+    for f in ("second_look.py", "tools.py", "universe.py", "conversation.py", "guardrails.py"):
         shutil.copy(ROOT / "agents" / f, BUILD / "agents")
     kit = BUILD/'second_look_conversation_kit'
     kit.mkdir(exist_ok=True)
@@ -82,6 +84,7 @@ def role_arn():
     policy = {"Version": "2012-10-17", "Statement": [
         {"Effect": "Allow", "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream",
                                        "bedrock:Converse", "bedrock:ConverseStream"], "Resource": "*"},
+        {"Effect": "Allow", "Action": "bedrock:ApplyGuardrail", "Resource": "*"},
         {"Effect": "Allow", "Action": "lambda:InvokeFunction",
          "Resource": f"arn:aws:lambda:{config.AWS_REGION}:{account}:function:{config.LAMBDA_NAME}"},
         {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject"],
