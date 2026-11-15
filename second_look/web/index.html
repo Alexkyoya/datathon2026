@@ -47,14 +47,14 @@
 <dialog id="trade-dialog" aria-labelledby="ticket-title">
   <div class="dialog-layout" id="dialog-layout">
     <article class="trade-ticket">
-      <div class="ticket-heading"><div><p class="eyebrow">SIMULATED ORDER</p><h2 id="ticket-title">Buy</h2></div><button class="icon-button" id="close-ticket" aria-label="Close trade ticket" title="Close trade ticket">×</button></div>
+      <div class="ticket-heading"><div><p class="eyebrow">ORDER · DEMO</p><h2 id="ticket-title">Buy</h2></div><button class="icon-button" id="close-ticket" aria-label="Close trade ticket" title="Close trade ticket">×</button></div>
       <div class="ticket-account"><div><span class="small-label">Account</span><strong id="ticket-account-name">—</strong><span class="muted">CAD · cash-funded simulation</span></div><div><span class="small-label">Available cash</span><strong id="ticket-cash">—</strong></div></div>
       <div class="ticket-tabs"><div class="side-switch" role="group" aria-label="Trade direction"><button type="button" id="side-buy" aria-pressed="true">Buy</button><button type="button" id="side-sell" aria-pressed="false">Sell</button></div><span id="ticket-category" class="muted">Provided asset universe</span></div>
       <div class="ticket-columns">
         <form id="trade-form" novalidate>
           <label for="ticket-asset">Asset <span class="muted">· ticker or company</span></label><input id="ticket-asset" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ticket-asset-listbox" placeholder="Search ticker, company or sector" autocomplete="off" spellcheck="false" required><p class="field-description" id="ticket-asset-name"></p>
           <label for="amount">Trade amount <span class="currency-tag">CAD</span></label><div class="amount-control"><span aria-hidden="true">$</span><input id="amount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" required></div><p class="field-description" id="unit-estimate">Enter a CAD amount to see estimated units.</p>
-          <label>Order valuation</label><div class="read-only-field">Historical closing price <span class="muted">Simulation</span></div><p class="field-description">Fractional units are supported. Fees, slippage and margin are excluded.</p>
+          <label>Order type</label><div class="read-only-field">Market <span class="muted">Filled at the last closing price (demo)</span></div><p class="field-description">Paid from cash. Fractional units; no fees or margin in this demo.</p>
           <p id="ticket-error" class="inline-error" role="alert" hidden></p>
         </form>
         <aside class="ticket-quote" aria-label="Trade quote summary"><p class="small-label" id="ticket-quote-symbol">Quote</p><strong class="ticket-price" id="ticket-quote-price">—</strong><p id="ticket-quote-change"></p><dl id="ticket-quote-details"></dl><p class="historical-label" id="ticket-quote-date"></p></aside>
