@@ -68,28 +68,28 @@
       <div id="ticket-review-slot"></div>
     </article>
     <aside id="agent-invite" class="agent-invitation" aria-labelledby="invite-title" hidden>
-      <button class="icon-button invite-close" id="dismiss-invite" aria-label="Dismiss agent invitation" title="Dismiss agent invitation">×</button>
-      <svg class="advisor" viewBox="0 0 132 126" role="img" aria-label="A friendly human Second Look guide smiling and waving">
+      <button class="icon-button invite-close" id="dismiss-invite" aria-label="Fermer l’invitation" title="Fermer l’invitation">×</button>
+      <svg class="advisor" viewBox="0 0 132 126" role="img" aria-label="Un guide Second Look souriant qui salue">
         <circle cx="63" cy="62" r="54" fill="#fdeced"/><path d="M26 123q0-37 33-37h14q34 0 34 37" fill="#e41c23"/><path d="m50 85 16 22 15-22" fill="#fff"/><path d="M57 77h17v16q-8 13-17 0" fill="#d69b76"/>
         <path d="M34 48q-3-37 30-37 37-3 36 39l-8 23H39z" fill="#263b4b"/><ellipse cx="65" cy="54" rx="28" ry="33" fill="#efbd97"/><path d="M37 48q5-33 29-27 19 18 32 10l-4-12-31-10-25 15z" fill="#263b4b"/><path d="M47 47q5-4 10-1m18 0q5-3 10 1" fill="none" stroke="#6b483c" stroke-width="2.3" stroke-linecap="round"/><ellipse cx="53" cy="54" rx="2.6" ry="3.3" fill="#263b4b"/><ellipse cx="79" cy="54" rx="2.6" ry="3.3" fill="#263b4b"/><path d="M59 68q7 8 15-1" fill="none" stroke="#9b4f46" stroke-width="2.6" stroke-linecap="round"/><circle cx="45" cy="63" r="4" fill="#eaa58e"/><circle cx="86" cy="63" r="4" fill="#eaa58e"/>
         <g class="waving-hand"><path d="m101 106 9-25" fill="none" stroke="#e41c23" stroke-width="16" stroke-linecap="round"/><path d="m108 81-4-13q-1-5 3-5l3 8-1-21q0-5 4-3l2 19 2-23q1-4 4-1l-1 24 5-16q3-4 5-1l-5 28q-5 14-14 6" fill="#efbd97" stroke="#d79e79" stroke-width="1"/></g>
       </svg>
-      <h3 id="invite-title">A second look?</h3><p id="invite-message"></p><button class="button blue" id="lets-talk">Let’s talk</button><span class="small-label">Your trade remains paused.</span>
+      <h3 id="invite-title">Un deuxième regard?</h3><p id="invite-message"></p><button class="button blue" id="lets-talk">Parlons-en</button><span class="small-label">Votre transaction reste suspendue.</span>
     </aside>
   </div>
 </dialog>
-<section id="review-panel" class="review-panel surface" aria-labelledby="review-title" lang="en" hidden>
-  <div class="review-heading"><div><span class="review-kicker">SECOND LOOK · TRADE PAUSED</span><h2 id="review-title" tabindex="-1">Let’s look at what changes.</h2><p id="pending-trade-summary" class="muted"></p></div><button class="button secondary compact" id="revise-trade">Revise trade</button></div>
-  <h3>Current trade assessment</h3>
+<section id="review-panel" class="review-panel surface" aria-labelledby="review-title" hidden>
+  <div class="review-heading"><div><span class="review-kicker">SECOND LOOK · TRANSACTION SUSPENDUE</span><h2 id="review-title" tabindex="-1">Regardons ce qui change.</h2><p id="pending-trade-summary" class="muted"></p></div><button class="button secondary compact" id="revise-trade">Réviser la transaction</button></div>
+  <h3>Évaluation actuelle de la transaction</h3>
   <p class="rule-summary" id="red-summary"></p><div id="exposure-table" class="table-scroll"></div>
   <div class="review-spectrum" id="review-spectrum"></div>
-  <h3>Talk with Second Look</h3>
-  <div id="conversation-result" role="log" aria-live="polite" aria-label="Conversation with Second Look"></div>
+  <h3>Discuter avec Second Look</h3>
+  <div id="conversation-result" role="log" aria-live="polite" aria-label="Conversation avec Second Look"></div>
   <div id="conversation-scenarios"></div>
-  <form id="reason-form"><label id="reason-label" for="reason">What made you interested in this trade?</label><textarea id="reason" rows="2" maxlength="5000" placeholder="Tell us what you had in mind…" required></textarea><div class="conversation-footer"><span class="muted">Enter to send · Shift+Enter for a new line. Chat never executes a trade.</span><button class="button blue" id="send-reason" type="submit">Send</button></div></form>
+  <form id="reason-form"><label id="reason-label" for="reason">Qu’est-ce qui vous a intéressé dans cette transaction?</label><textarea id="reason" rows="2" maxlength="5000" placeholder="Dites-nous ce que vous aviez en tête…" required></textarea><div class="conversation-footer"><span class="muted">Entrée pour envoyer · Maj+Entrée pour un saut de ligne. La discussion n’exécute jamais de transaction.</span><button class="button blue" id="send-reason" type="submit">Envoyer</button></div></form>
   <p id="review-error" class="inline-error" role="alert" hidden></p>
-  <div class="conversation-retry"><button id="retry-reply" class="button secondary compact" hidden>Retry saved message</button><button id="refresh-conversation" class="text-button" hidden>Refresh conversation</button></div>
-  <div class="risk-acknowledgement" id="risk-actions"><label class="checkbox-label"><input id="risk-checkbox" type="checkbox"><span>I understand the flagged risks and want to submit this order anyway.</span></label><div class="risk-buttons"><button class="button secondary" id="cancel-review">Cancel simulation</button><button class="button blue" id="proceed-red" disabled>Proceed with simulation</button></div></div>
+  <div class="conversation-retry"><button id="retry-reply" class="button secondary compact" hidden>Réessayer le message enregistré</button><button id="refresh-conversation" class="text-button" hidden>Actualiser la conversation</button></div>
+  <div class="risk-acknowledgement" id="risk-actions"><label class="checkbox-label"><input id="risk-checkbox" type="checkbox"><span>Je comprends les risques signalés et souhaite soumettre cet ordre quand même.</span></label><div class="risk-buttons"><button class="button secondary" id="cancel-review">Annuler la simulation</button><button class="button blue" id="proceed-red" disabled>Poursuivre la simulation</button></div></div>
   <p id="review-terminal" class="terminal-note" role="status" hidden></p>
 </section>
 <div id="announcer" class="sr-only" role="status" aria-live="polite"></div>

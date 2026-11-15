@@ -12,6 +12,7 @@ from .diagnostics import AnswerValidationError, emit, failure
 
 log = logging.getLogger(__name__)
 TERMINAL = ('cancelled', 'simulation_continued')
+LANGUAGES = ('en', 'fr')
 
 
 class LazyCoordinator:
@@ -40,7 +41,22 @@ def evidence(ref, data, record, status='verified_current', method='Python rule e
             'input_version': record['assessment_input_version'], 'data_status': status, 'data': data}
 
 
-def render_answer(answer, facts):
+def format_figure(value, style, language='en'):
+    """Display a verified figure in the interface language (fr-CA uses a space for thousands and a decimal comma)."""
+    text = {'percent': lambda: f'{value:.1%}', 'cad': lambda: f'CAD {value:,.2f}',
+            'number': lambda: f'{value:,.4f}'.rstrip('0').rstrip('.')}[style]()
+    if language != 'fr':
+        return text
+    nbsp = ' '
+    text = text.replace(',', nbsp).replace('.', ',')
+    if style == 'percent':
+        return text[:-1] + nbsp + '%'
+    if style == 'cad':
+        return text[4:] + nbsp + '$'
+    return text
+
+
+def render_answer(answer, facts, language='en'):
     """Resolve numeric placeholders from evidence. Reject invented IDs and literal figures."""
     if isinstance(answer, str):
         answer = answer.strip()
@@ -87,8 +103,7 @@ def render_answer(answer, facts):
             return value[:10]
         if isinstance(value, bool) or not isinstance(value, (float, int)):
             raise AnswerValidationError('This reference is not a number.', 'invalid_evidence_type')
-        return {'percent': lambda: f'{value:.1%}', 'cad': lambda: f'CAD {value:,.2f}',
-                'number': lambda: f'{value:,.4f}'.rstrip('0').rstrip('.')}[style]()
+        return format_figure(value, style, language)
     rendered = token.sub(replace, text)
     if '[[' in rendered or ']]' in rendered:
         raise AnswerValidationError('Use complete evidence placeholders.', 'invalid_placeholder')
@@ -136,9 +151,12 @@ class ConversationService:
         return self.public(record, state)
 
     def send(self, sid, payload, request_id=None):
-        if not isinstance(payload, dict) or set(payload) != {
-                'client_id', 'input_version', 'message_id', 'expected_revision', 'message'}:
+        required = {'client_id', 'input_version', 'message_id', 'expected_revision', 'message'}
+        if not isinstance(payload, dict) or not required <= set(payload) <= required | {'language'}:
             raise ValueError('Chat requires client_id, input_version, message_id, expected_revision and message')
+        language = payload.get('language', 'en')
+        if language not in LANGUAGES:
+            raise ValueError('language must be en or fr')
         mid, message = identifier(payload['message_id']), payload['message']
         if not isinstance(message, str) or not 1 <= len(message.strip()) <= 5000:
             raise ValueError('Enter a message of 1 to 5000 characters')
@@ -171,6 +189,7 @@ class ConversationService:
             old.pop('error', None)
             old.pop('diagnostic', None)
         state['status'], state['lease_until'] = 'busy', time.time()+660
+        state['language'] = language  # the reply follows the interface the client is using now
         etag = self.store.compare_and_swap(key, state, etag)
         request_id = request_id or uuid.uuid4().hex
         stage = 'context_loading'
@@ -197,7 +216,7 @@ class ConversationService:
             tools = ConversationTools(self.store, turn_record, inputs, state, self.coordinator, checkpoint, mid)
             answer = self.coordinator.respond(turn_record, inputs, state, tools)
             stage = 'response_validation'
-            text, refs = render_answer(answer, state['evidence'])
+            text, refs = render_answer(answer, state['evidence'], language)
             current = self.store.load(f'results/{sid}.json')
             check_account_version(self.store, current)
             if current['stage'] in TERMINAL or current.get('superseded_by'):
@@ -220,10 +239,16 @@ class ConversationService:
             item = next(m for m in state['messages'] if m['id'] == mid)
             item['status'] = 'failed'
             item['diagnostic'] = diagnostic
-            description = ('The AI reply could not be verified.' if isinstance(exc, AnswerValidationError) else
-                           'The AI model could not reply.' if stage in ('initial_analysis', 'model_invocation') else
-                           'The saved context could not be loaded.')
-            item['error'] = description+' Your message is saved. Retry this message. Reference: '+request_id
+            kind = ('verify' if isinstance(exc, AnswerValidationError) else
+                    'model' if stage in ('initial_analysis', 'model_invocation') else 'context')
+            item['error'] = {
+                'en': {'verify': 'The AI reply could not be verified.', 'model': 'The AI model could not reply.',
+                       'context': 'The saved context could not be loaded.'}[kind]
+                      + ' Your message is saved. Retry this message. Reference: ',
+                'fr': {'verify': 'La réponse de l’IA n’a pas pu être vérifiée.', 'model': 'Le modèle d’IA n’a pas pu répondre.',
+                       'context': 'Le contexte enregistré n’a pas pu être chargé.'}[kind]
+                      + ' Votre message est enregistré. Réessayez ce message. Référence : ',
+            }[language] + request_id
         checkpoint()
         return self.public(self.store.load(f'results/{sid}.json'), state)
 
