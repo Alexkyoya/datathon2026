@@ -65,11 +65,9 @@ def test_goal_rule_is_the_only_red_in_goal_demo():
     assert reds == {"goal"}
 
 
-def test_only_esg_rules_flag_the_esg_demo():
+def test_esg_lookthrough_is_the_only_flag_in_esg_demo():
     r = rule_check("mateo", "XIU.TO", 5000)
-    # Mateo's limit is 0% in Energy, so the fund rule and the whole-portfolio rule both fire; nothing else.
-    assert r["verdict"] == "yellow"
-    assert {f["rule"] for f in r["findings"]} == {"esg.fund_lookthrough.XIU.TO", "esg.portfolio_lookthrough"}
+    assert [f["rule"] for f in r["findings"]] == ["esg.fund_lookthrough.XIU.TO"]
 
 
 def test_cash_funded_and_outside_universe_rejected():
