@@ -483,14 +483,16 @@ function plainHeadline(r,request) {
   const reds=r.alerts.filter(c=>c.severity==='red');
   const c=reds[0];if(!c)return r.reasons[0]||'';
   const [kind,...rest]=c.rule.split('.');
+  const prof=profileFr(r.profile);
   let text;
-  if(kind==='single_stock')text=`${rest.join('.')} alone would make up ${pct0(c.after)} of everything you own. Your ${r.profile} profile caps any single company at ${pct0(c.limit)}.`;
-  else if(kind==='crypto')text=`Crypto would be ${pct0(c.after)} of your portfolio. Your ${r.profile} profile allows ${c.limit>0?pct0(c.limit):'none'}.`;
-  else if(kind==='allocation')text=`${classes[rest[0]]||rest[0]} would be ${pct0(c.after)}, ${c.bound==='min'?'below the minimum':'above the maximum'} of ${pct0(c.limit)} for your ${r.profile} profile.`;
-  else if(kind==='goal')text=`This trade uses money you need by ${dateLabel(c.date)} for "${c.goal}". After it, only ${pct0(c.after)} of that need stays covered.`;
-  else if(kind==='hhi')text='Your portfolio would depend on a few large positions.';
+  if(kind==='single_stock')text=L(`${rest.join('.')} représenterait à lui seul ${pct0(c.after)} de tout ce que vous possédez. Votre profil ${prof} limite chaque société à ${pct0(c.limit)}.`,`${rest.join('.')} alone would make up ${pct0(c.after)} of everything you own. Your ${r.profile} profile caps any single company at ${pct0(c.limit)}.`);
+  else if(kind==='crypto')text=c.limit>0?L(`La cryptomonnaie représenterait ${pct0(c.after)} de votre portefeuille. Votre profil ${prof} en permet au plus ${pct0(c.limit)}.`,`Crypto would be ${pct0(c.after)} of your portfolio. Your ${r.profile} profile allows ${pct0(c.limit)}.`):L(`La cryptomonnaie représenterait ${pct0(c.after)} de votre portefeuille. Votre profil ${prof} n'en prévoit pas.`,`Crypto would be ${pct0(c.after)} of your portfolio. Your ${r.profile} profile allows none.`);
+  else if(kind==='allocation')text=L(`${classes[rest[0]]||rest[0]} : ${pct0(c.after)}, ${c.bound==='min'?'sous le minimum':'au-dessus du maximum'} de ${pct0(c.limit)} pour votre profil ${prof}.`,`${classes[rest[0]]||rest[0]} would be ${pct0(c.after)}, ${c.bound==='min'?'below the minimum':'above the maximum'} of ${pct0(c.limit)} for your ${r.profile} profile.`);
+  else if(kind==='goal')text=L(`Cette transaction utilise de l'argent dont vous avez besoin d'ici le ${dateLabel(c.date)} pour « ${c.goal} ». Après la transaction, seulement ${pct0(c.after)} de ce besoin reste couvert.`,`This trade uses money you need by ${dateLabel(c.date)} for "${c.goal}". After it, only ${pct0(c.after)} of that need stays covered.`);
+  else if(kind==='hhi')text=L('Votre portefeuille dépendrait de quelques grosses positions.','Your portfolio would depend on a few large positions.');
   else text=c.message||r.reasons[0]||'';
-  return reds.length>1?`${text} ${reds.length-1} more ${reds.length===2?'issue is':'issues are'} shown below.`:text;
+  const more=reds.length-1;
+  return more>0?`${text} ${L(`${more} autre${more>1?'s':''} point${more>1?'s':''} ${more>1?'sont indiqués':'est indiqué'} ci-dessous.`,`${more} more ${more===1?'issue is':'issues are'} shown below.`)}`:text;
 }
 
 // Card: concentration in one company or in crypto, as a big number against the cap.
