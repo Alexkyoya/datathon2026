@@ -60,7 +60,7 @@
         <aside class="ticket-quote" aria-label="Trade quote summary"><p class="small-label" id="ticket-quote-symbol">Quote</p><strong class="ticket-price" id="ticket-quote-price">—</strong><p id="ticket-quote-change"></p><dl id="ticket-quote-details"></dl><p class="historical-label" id="ticket-quote-date"></p></aside>
       </div>
       <div class="ticket-status" id="ticket-status" role="status" aria-live="polite" hidden></div>
-      <div class="ticket-footer"><button type="button" class="button secondary" id="cancel-trade">Cancel trade</button><button type="submit" form="trade-form" class="button blue" id="submit-trade">Check simulated trade</button></div>
+      <div class="ticket-footer"><button type="button" class="button secondary" id="cancel-trade">Cancel</button><button type="submit" form="trade-form" class="button blue" id="submit-trade">Submit</button></div>
       <div id="ticket-review-slot"></div>
     </article>
     <aside id="agent-invite" class="agent-invitation" aria-labelledby="invite-title" hidden>
@@ -85,7 +85,7 @@
   <form id="reason-form"><label id="reason-label" for="reason">What made you interested in this trade?</label><textarea id="reason" rows="2" maxlength="5000" placeholder="Tell us what you had in mind…" required></textarea><div class="conversation-footer"><span class="muted">Enter to send · Shift+Enter for a new line. Chat never executes a trade.</span><button class="button blue" id="send-reason" type="submit">Send</button></div></form>
   <p id="review-error" class="inline-error" role="alert" hidden></p>
   <div class="conversation-retry"><button id="retry-reply" class="button secondary compact" hidden>Retry saved message</button><button id="refresh-conversation" class="text-button" hidden>Refresh conversation</button></div>
-  <div class="risk-acknowledgement" id="risk-actions"><label class="checkbox-label"><input id="risk-checkbox" type="checkbox"><span>I understand the flagged risks and want to continue this simulation.</span></label><div class="risk-buttons"><button class="button secondary" id="cancel-review">Cancel simulation</button><button class="button blue" id="proceed-red" disabled>Proceed with simulation</button></div></div>
+  <div class="risk-acknowledgement" id="risk-actions"><label class="checkbox-label"><input id="risk-checkbox" type="checkbox"><span>I understand the flagged risks and want to submit this order anyway.</span></label><div class="risk-buttons"><button class="button secondary" id="cancel-review">Cancel simulation</button><button class="button blue" id="proceed-red" disabled>Proceed with simulation</button></div></div>
   <p id="review-terminal" class="terminal-note" role="status" hidden></p>
 </section>
 <div id="announcer" class="sr-only" role="status" aria-live="polite"></div>
