@@ -3,8 +3,8 @@
 Two separate guardrails, applied with the ApplyGuardrail API (not inside the model call, so tool
 results and our own JSON context are never filtered or redacted):
   - INPUT guardrail: the investor's own text. Prompt attacks, abusive content, personal identifiers.
-  - OUTPUT guardrail: the text shown to the investor. Abusive content and price predictions /
-    guaranteed returns (a denied topic).
+  - OUTPUT guardrail: the text shown to the investor. Abusive or harmful content.
+    (A "price predictions" denied topic was dropped: it also blocked correct risk warnings.)
 Turned off when no guardrail is configured. If the guardrail service fails, the chat continues and
 the failure is logged (fail-open), so a demo never stops on a guardrail outage.
 """

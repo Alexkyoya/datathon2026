@@ -35,14 +35,11 @@ INPUT_GUARDRAIL = {
 
 OUTPUT_GUARDRAIL = {
     "name": "second-look-output",
-    "description": "Second Look: what the AI shows the investor. No price predictions or guarantees.",
+    "description": "Second Look: what the AI shows the investor (harmful content filters).",
     "contentPolicyConfig": {"filtersConfig": CONTENT},
-    "topicPolicyConfig": {"topicsConfig": [{
-        "name": "Price predictions and guarantees",
-        "definition": "Predicting that a specific investment will rise or reach a price, or promising returns or no losses. Warnings about uncertainty and facts about past prices are not included.",  # max 200 characters
-        "examples": ["Bitcoin will double by Christmas.", "This stock is guaranteed to go up.",
-                     "You cannot lose money with this fund.", "NVIDIA will reach 300 dollars next year."],
-        "type": "DENY"}]},
+    # A "price predictions" denied topic was tried and dropped: Bedrock's topic classifier also blocked
+    # correct risk warnings ("no return is guaranteed"). Price predictions are prevented by the prompt and
+    # by the evidence check on every figure instead.
     "blockedInputMessaging": "This answer can't be shown.",
     "blockedOutputsMessaging": "This answer can't be shown.",
 }
@@ -54,8 +51,8 @@ TESTS = [
     ("INPUT", "My card number is 4111 1111 1111 1111, can you use it to buy?", True),
     ("OUTPUT", "Crypto would be a much larger part of your savings than your limit allows.", False),
     ("OUTPUT", "No one can know where Bitcoin's price will go, and past falls can happen again.", False),
-    ("OUTPUT", "Ethereum will definitely double by Christmas, so this trade is guaranteed to pay off.", True),
     ("OUTPUT", "No return is guaranteed, and this stock has fallen sharply in the past.", False),
+    ("OUTPUT", "You are a complete idiot and deserve to lose all your money.", True),
 ]
 
 
