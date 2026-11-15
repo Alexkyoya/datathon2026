@@ -352,11 +352,8 @@ function renderReview() {
   const record=state.record,r=record.result,request=record.request;
   if(r.verdict!=='red'){ $('review-panel').hidden=true;return; }
   const checks=r.alerts.filter(c=>c.severity==='red');
-  const primary=checks[0];
-  if(primary?.kind==='limit'){
-    const format=primary.unit==='hhi_index'?v=>decimal(v,3):percent;
-    $('red-summary').textContent=`${exposureName(primary)}: ${format(primary.before)} before → ${format(primary.after)} after, compared with a ${primary.bound==='min'?'minimum':'maximum'} of ${format(primary.limit)}.`;
-  }else $('red-summary').textContent=primary?.message||r.reasons[0];
+  $('red-summary').textContent=plainHeadline(r,request);
+  renderVisuals(r,request);
   $('pending-trade-summary').textContent=`${request.side==='buy'?'Buy':'Sell'} ${request.ticker} · ${money(request.amount_cad)} CAD · ${dateLabel(request.decision_date)}. Original verdict: Red.`;
   const rows=checks.filter(c=>finite(c.before)&&finite(c.after)&&finite(c.limit)).map(c=>{const format=c.unit==='hhi_index'?v=>decimal(v,3):percent;return [exposureName(c),format(c.before),format(c.after),(c.bound==='min'?'Minimum ':'Maximum ')+format(c.limit)];});
   $('exposure-table').replaceChildren(makeTable(['Flagged measure','Before','After','Limit'],rows));
@@ -439,6 +436,177 @@ function renderSpectrum(c) {
   details.append(node('p','Percentages say how far the portfolio is between two neighbouring model mixes. They are not probabilities or a full measure of risk. Distance is how different the mix is from that point on the dial (0 = identical).','muted'));
   root.replaceChildren(title,intro,track,ends,mix,reading,why,details);
 }
+// ---------------------------------------------------------------------------------------------
+// Visual red review. Every figure below comes from the rule engine result or the stored asset
+// data (worst past fall per asset, from the provided prices). No model text is involved, so the
+// visuals appear the moment a trade is flagged red, before any conversation starts.
+// ---------------------------------------------------------------------------------------------
+const SVG_NS='http://www.w3.org/2000/svg';
+const svgEl=(tag,attrs={},text)=>{const el=document.createElementNS(SVG_NS,tag);for(const [k,v] of Object.entries(attrs))el.setAttribute(k,String(v));if(text!==undefined)el.textContent=text;return el;};
+const pct0=value=>finite(value)?`${Math.round(value*100)}%`:'—';
+const months=value=>!finite(value)?'—':value<0.5?'now':value<1.5?'about a month':value<24?`${Math.round(value)} months`:`${(value/12).toFixed(1)} years`;
+const clamp01=value=>Math.min(1,Math.max(0,value));
+const classLimits=r=>{const limits={};r.checks.filter(c=>c.rule.startsWith('allocation.')).forEach(c=>{const [,cls,bound]=c.rule.split('.');(limits[cls]??={})[bound]=c.limit;});return limits;};
+const ruleAlerts=(r,prefix)=>r.alerts.filter(c=>c.rule.startsWith(prefix)&&c.severity!=='none');
+
+function vizCard(kicker,headline,tone='',wide=false) {
+  const card=node('section','','viz-card'+(tone?' '+tone:'')+(wide?' wide':''));
+  card.append(node('span',kicker,'small-label'),node('p',headline,'viz-headline'));
+  return card;
+}
+function legend(items) {
+  const wrap=node('div','','viz-legend');
+  items.forEach(([color,label])=>{const item=node('span');const swatch=node('i');swatch.style.background=color;item.append(swatch,document.createTextNode(label));wrap.append(item);});
+  return wrap;
+}
+
+// One plain sentence for the top of the review, built from the first red alert.
+function plainHeadline(r,request) {
+  const reds=r.alerts.filter(c=>c.severity==='red');
+  const c=reds[0];if(!c)return r.reasons[0]||'';
+  const [kind,...rest]=c.rule.split('.');
+  let text;
+  if(kind==='single_stock')text=`${rest.join('.')} alone would make up ${pct0(c.after)} of everything you own. Your ${r.profile} profile caps any single company at ${pct0(c.limit)}.`;
+  else if(kind==='crypto')text=`Crypto would be ${pct0(c.after)} of your portfolio. Your ${r.profile} profile allows ${c.limit>0?pct0(c.limit):'none'}.`;
+  else if(kind==='allocation')text=`${classes[rest[0]]||rest[0]} would be ${pct0(c.after)}, ${c.bound==='min'?'below the minimum':'above the maximum'} of ${pct0(c.limit)} for your ${r.profile} profile.`;
+  else if(kind==='goal')text=`This trade uses money you need by ${dateLabel(c.date)} for "${c.goal}". After it, only ${pct0(c.after)} of that need stays covered.`;
+  else if(kind==='hhi')text='Your portfolio would depend on a few large positions.';
+  else text=c.message||r.reasons[0]||'';
+  return reds.length>1?`${text} ${reds.length-1} more ${reds.length===2?'issue is':'issues are'} shown below.`:text;
+}
+
+// Card: concentration in one company or in crypto, as a big number against the cap.
+function concentrationCard(r,request) {
+  const stock=ruleAlerts(r,'single_stock.'+request.ticker)[0],crypto=ruleAlerts(r,'crypto')[0];
+  const c=stock||crypto;if(!c)return null;
+  const label=stock?request.ticker:'Crypto';
+  const tone=c.severity==='red'?'red':'yellow';
+  const card=vizCard(stock?'One company':'Crypto cap',stock?`${label} would be ${pct0(c.after)} of everything you own.`:`Crypto would be ${pct0(c.after)} of your portfolio.`,tone);
+  const big=node('div','','viz-big');big.append(node('strong',pct0(c.after)),node('span',c.limit>0?`limit ${pct0(c.limit)} · ${(c.after/c.limit).toFixed(1)}× over`:'your profile allows none'));card.append(big);
+  const scale=Math.max(c.after,c.limit,0.01)*1.25,W=300,x0=4;
+  const svg=svgEl('svg',{viewBox:'0 0 320 54',role:'img','aria-label':`${label} ${pct0(c.before)} before, ${pct0(c.after)} after, limit ${pct0(c.limit)}`});
+  svg.append(svgEl('rect',{x:x0,y:8,width:W,height:16,rx:4,class:'viz-track'}));
+  svg.append(svgEl('rect',{x:x0,y:8,width:clamp01(c.after/scale)*W,height:16,rx:4,class:'viz-after out'}));
+  if(c.before>1e-9)svg.append(svgEl('line',{x1:x0+clamp01(c.before/scale)*W,x2:x0+clamp01(c.before/scale)*W,y1:4,y2:28,class:'viz-before'}));
+  const capX=x0+clamp01(c.limit/scale)*W;
+  svg.append(svgEl('line',{x1:capX,x2:capX,y1:2,y2:32,class:'viz-cap'}));
+  svg.append(svgEl('text',{x:Math.min(capX+4,W-40),y:46,class:'viz-cap-label'},`limit ${pct0(c.limit)}`));
+  svg.append(svgEl('text',{x:x0,y:46,class:'viz-tick'},'0%'));
+  card.append(svg,legend([['#20313d','before'],['var(--red)','after this trade'],['var(--red)','dashed: your limit']]));
+  if(finite(r.hhi_after)&&r.hhi_after>r.hhi_before+1e-9)card.append(node('p',`Overall concentration (HHI) rises from ${decimal(r.hhi_before,2)} to ${decimal(r.hhi_after,2)}; above ${decimal(0.25,2)} counts as concentrated.`,'viz-note'));
+  return card;
+}
+
+// Card: each asset class before and after, drawn against the allowed range for the profile.
+function allocationCard(r) {
+  const limits=classLimits(r);
+  const rows=Object.keys(classes).filter(cls=>limits[cls]);
+  const breached=rows.filter(cls=>{const a=r.weights_after[cls]||0;return a<limits[cls].min-1e-9||a>limits[cls].max+1e-9;});
+  const card=vizCard('Where your money sits',breached.length?`${breached.map(cls=>classes[cls]).join(' and ')} would be outside the range for your ${r.profile} profile.`:`Every asset class stays inside the range for your ${r.profile} profile.`,breached.length?'red':'',true);
+  const H=rows.length*30+8,x0=96,W=186;
+  const svg=svgEl('svg',{viewBox:`0 0 360 ${H}`,role:'img','aria-label':'Asset classes before and after the trade against the allowed ranges'});
+  rows.forEach((cls,i)=>{
+    const y=i*30+4,lo=limits[cls].min??0,hi=limits[cls].max??1,b=r.weights_before[cls]||0,a=r.weights_after[cls]||0,out=a<lo-1e-9||a>hi+1e-9;
+    svg.append(svgEl('text',{x:0,y:y+15,class:'viz-label'},classes[cls]));
+    svg.append(svgEl('rect',{x:x0,y:y+4,width:W,height:16,rx:3,class:'viz-track'}));
+    svg.append(svgEl('rect',{x:x0+lo*W,y:y+4,width:Math.max(0,(hi-lo)*W),height:16,rx:3,class:'viz-band'}));
+    svg.append(svgEl('rect',{x:x0,y:y+8,width:clamp01(a)*W,height:8,rx:2,class:'viz-after'+(out?' out':'')}));
+    svg.append(svgEl('line',{x1:x0+clamp01(b)*W,x2:x0+clamp01(b)*W,y1:y+1,y2:y+23,class:'viz-before'}));
+    svg.append(svgEl('text',{x:x0+W+8,y:y+16,class:'viz-value'+(out?' out':'')},`${pct0(b)} → ${pct0(a)}`));
+  });
+  card.append(svg,legend([['#cfe6d8','allowed range'],['#20313d','before'],['#3a6ea5','after'],['var(--red)','after, outside the range']]));
+  card.append(node('p','Ranges: National Bank Financial model portfolios (Fall 2026) for your stored profile.','viz-note'));
+  return card;
+}
+
+// Card: what a repeat of this asset's worst past fall would do to the money in this trade,
+// and how long the asset took to recover, with the client's own upcoming needs on the timeline.
+function worstFallCard(r,request) {
+  if(request.side!=='buy')return null;
+  const asset=state.context?.assets?.[request.ticker],h=asset?.horizon;
+  if(!h||!finite(h.max_drawdown))return null;
+  const amount=request.amount_cad,loss=-h.max_drawdown*amount,left=amount-loss;
+  const recovered=h.recovered&&finite(h.recovery_months);
+  const card=vizCard('If its worst past fall happened again',`${request.ticker} once fell ${pct0(-h.max_drawdown)}. On this trade that is ${money(loss)} gone at the lowest point.`,'red',true);
+  const big=node('div','','viz-big');big.append(node('strong',money(loss)),node('span',recovered?`and ${months(h.recovery_months)} to get back to even`:'and it had not recovered by the end of the data'));card.append(big);
+  // Money bars: what you put in vs what would be left at the bottom.
+  const W=200,x0=112,svg=svgEl('svg',{viewBox:'0 0 360 58',role:'img','aria-label':`${money(amount)} invested; ${money(left)} left after a ${pct0(-h.max_drawdown)} fall`});
+  svg.append(svgEl('text',{x:0,y:16,class:'viz-label'},'You put in'));
+  svg.append(svgEl('rect',{x:x0,y:5,width:W,height:16,rx:3,class:'viz-keep'}));
+  svg.append(svgEl('text',{x:x0+W+8,y:17,class:'viz-value'},money(amount)));
+  svg.append(svgEl('text',{x:0,y:44,class:'viz-label'},'At the bottom'));
+  svg.append(svgEl('rect',{x:x0,y:33,width:W,height:16,rx:3,class:'viz-track'}));
+  svg.append(svgEl('rect',{x:x0,y:33,width:clamp01(left/amount)*W,height:16,rx:3,class:'viz-keep'}));
+  svg.append(svgEl('rect',{x:x0+clamp01(left/amount)*W,y:33,width:clamp01(loss/amount)*W,height:16,rx:3,class:'viz-loss'}));
+  svg.append(svgEl('text',{x:x0+W+8,y:45,class:'viz-value out'},money(left)));
+  card.append(svg);
+  // Recovery timeline with the client's dated needs.
+  const needs=(r.goals?.installments||[]).filter(i=>finite(i.months_to_goal)).slice(0,4);
+  const span=Math.max(recovered?h.recovery_months:36,...needs.map(n=>n.months_to_goal),12)*1.15;
+  const tl=svgEl('svg',{viewBox:'0 0 360 64',role:'img','aria-label':'Recovery time compared with when you need the money'});
+  tl.append(svgEl('defs'));tl.firstChild.innerHTML='<pattern id="viz-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="6" fill="#d9a2a7"/></pattern>';
+  const tx0=4,TW=332;
+  tl.append(svgEl('text',{x:tx0,y:11,class:'viz-label'},recovered?`Time ${request.ticker} needed to recover: ${months(h.recovery_months)}`:`${request.ticker} had not recovered after ${months(span/1.15)} of data`));
+  tl.append(svgEl('rect',{x:tx0,y:34,width:TW,height:12,rx:3,class:'viz-track'}));
+  tl.append(svgEl('rect',{x:tx0,y:34,width:clamp01((recovered?h.recovery_months:span)/span)*TW,height:12,rx:3,class:'viz-recovery'+(recovered?'':' open')}));
+  [0,12,24,36,48,60].filter(m=>m<=span).forEach(m=>{const x=tx0+(m/span)*TW;tl.append(svgEl('line',{x1:x,x2:x,y1:46,y2:50,class:'viz-axis'}));tl.append(svgEl('text',{x:x-(m?8:0),y:60,class:'viz-tick'},m?`${m/12}y`:'today'));});
+  needs.forEach((n,i)=>{const x=tx0+clamp01(n.months_to_goal/span)*TW;tl.append(svgEl('line',{x1:x,x2:x,y1:26,y2:50,class:'viz-goal'}));tl.append(svgEl('circle',{cx:x,cy:23,r:6,class:'viz-goal-dot'}));tl.append(svgEl('text',{x:x,y:26,'text-anchor':'middle',class:'viz-goal-number'},String(i+1)));});
+  card.append(tl);
+  if(needs.length){const list=node('ol','','viz-needs');needs.forEach(n=>{const item=node('li',`${n.goal} · ${months(n.months_to_goal)}${n.months_to_goal<(recovered?h.recovery_months:Infinity)?' · before '+request.ticker+' would be back to even':''}`);list.append(item);});card.append(list);}
+  card.append(node('p',`Worst fall and recovery measured on the provided prices, ${h.window||'2021-2026'}. A past fall is not a forecast; the next one can be smaller or larger.${needs.length?' Orange marks: dates you told us you need money.':''}`,'viz-note'));
+  return card;
+}
+
+// Card: coverage of each upcoming money need, before and after the trade.
+function goalsCard(r) {
+  const g=r.goals;if(!g?.applied||!g.installments?.length)return null;
+  const rows=g.installments.slice(0,6),flagged=g.installments.filter(i=>i.flagged);
+  const card=vizCard('Money you said you need',flagged.length?`${flagged.length} of your ${g.installments.length} upcoming needs would no longer be fully covered.`:'All your upcoming needs stay covered after this trade.',flagged.length?(flagged.some(i=>i.severity==='red')?'red':'yellow'):'',true);
+  const monthYear=value=>new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'short',timeZone:'UTC'}).format(new Date(value.slice(0,10)+'T00:00:00Z'));
+  const x0=170,W=130,svg=svgEl('svg',{viewBox:`0 0 360 ${rows.length*28+6}`,role:'img','aria-label':'Goal coverage before and after the trade'});
+  rows.forEach((i,k)=>{
+    const y=k*28+4,label=`${i.goal} · ${monthYear(i.date)}`;
+    svg.append(svgEl('text',{x:0,y:y+15,class:'viz-label'},label.length>30?label.slice(0,29)+'…':label));
+    svg.append(svgEl('rect',{x:x0,y:y+3,width:W,height:7,rx:2,class:'viz-cover-before'}));
+    svg.append(svgEl('rect',{x:x0,y:y+3,width:clamp01(i.coverage_before)*W,height:7,rx:2,class:'viz-cover-before'}));
+    svg.append(svgEl('rect',{x:x0,y:y+12,width:W,height:7,rx:2,class:'viz-track'}));
+    svg.append(svgEl('rect',{x:x0,y:y+12,width:clamp01(i.coverage_after)*W,height:7,rx:2,class:'viz-cover-after'+(i.flagged?' out':'')}));
+    svg.append(svgEl('text',{x:x0+W+8,y:y+16,class:'viz-value'+(i.flagged?' out':'')},`${pct0(i.coverage_before)} → ${pct0(i.coverage_after)}`));
+  });
+  card.append(svg,legend([['#c9d7e0','covered before'],['#3a6ea5','covered after'],['var(--red)','no longer covered']]));
+  card.append(node('p',`Covered means held in cash or in assets that recovered from their worst past fall within the time left. Checked until ${dateLabel(g.checked_until)}; later needs are long-term money.`,'viz-note'));
+  return card;
+}
+
+// Card: ESG preference conflicts (excluded company, excluded sector, or a fund's share in excluded sectors).
+function esgCard(r,request) {
+  const alerts=ruleAlerts(r,'esg.');if(!alerts.length)return null;
+  const worst=alerts.find(c=>c.severity==='red')||alerts[0];
+  const card=vizCard('Your values',worst.message,worst.severity==='red'?'red':'yellow');
+  const fund=alerts.find(c=>c.rule.startsWith('esg.fund_lookthrough.')||c.rule==='esg.portfolio_lookthrough');
+  if(fund&&finite(fund.after)&&finite(fund.limit)){
+    const scale=Math.max(fund.after,fund.limit,0.01)*1.3,W=300,x0=4;
+    const svg=svgEl('svg',{viewBox:'0 0 320 48',role:'img','aria-label':`Excluded-sector share ${pct0(fund.after)} against your limit ${pct0(fund.limit)}`});
+    svg.append(svgEl('rect',{x:x0,y:6,width:W,height:16,rx:4,class:'viz-track'}));
+    svg.append(svgEl('rect',{x:x0,y:6,width:clamp01(fund.after/scale)*W,height:16,rx:4,class:'viz-after out'}));
+    const capX=x0+clamp01(fund.limit/scale)*W;svg.append(svgEl('line',{x1:capX,x2:capX,y1:0,y2:30,class:'viz-cap'}));
+    svg.append(svgEl('text',{x:Math.min(capX+4,W-60),y:44,class:'viz-cap-label'},`your limit ${pct0(fund.limit)}`));
+    svg.append(svgEl('text',{x:x0+clamp01(fund.after/scale)*W+6,y:18,class:'viz-value out'},pct0(fund.after)));
+    card.append(svg);
+    if(fund.fact_sheet)card.append(node('p',`Source: ${fund.fact_sheet}${fund.fact_sheet_as_of?' · as of '+dateLabel(fund.fact_sheet_as_of):''}.`,'viz-note'));
+  }
+  return card;
+}
+
+function renderVisuals(r,request) {
+  const root=$('review-visuals');root.replaceChildren();
+  const cards=[concentrationCard(r,request),goalsCard(r),esgCard(r,request),worstFallCard(r,request),allocationCard(r)].filter(Boolean);
+  // Red cards first, so the reason for the pause is the first thing on screen.
+  const rank=card=>card.classList.contains('red')?0:card.classList.contains('yellow')?1:2;
+  cards.sort((a,b)=>rank(a)-rank(b));
+  root.append(...cards);
+}
+
 function rememberTrade() {
   if(state.record?.result.verdict==='red')sessionStorage.setItem('second-look:'+state.record.request.client_id,JSON.stringify({id:state.record.simulation_id,version:state.record.assessment_input_version}));
 }
