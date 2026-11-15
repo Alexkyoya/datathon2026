@@ -1,0 +1,337 @@
+{
+  "schema_version": "1.0",
+  "usage": "Few-shot/reference examples for adaptation. Not native Bedrock messages, not model test results, and not factual context for another client. Select at most a few examples; never load tool fixtures into a live session.",
+  "role_note": "tool_result entries name numeric_fixtures.json records. The integrator must map actual trusted tool messages to the installed SDK. The examples are not an executable conversation protocol.",
+  "examples": [
+    {
+      "id": "D01",
+      "title": "Excitement becomes a concrete thesis",
+      "concept_ids": [
+        "C08",
+        "C11"
+      ],
+      "status": "Original fictional illustration, not a quotation from the report or a live model run.",
+      "context": {
+        "current_assessment": "A verified red trade assessment is already visible. No market claim is yet verified."
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "Everyone is talking about it. I want to get in before it takes off."
+        },
+        {
+          "role": "assistant",
+          "content": "What interests you about the investment itself, beyond the attention it is getting?"
+        },
+        {
+          "role": "user",
+          "content": "The company announced a contract, and I read its filing."
+        },
+        {
+          "role": "assistant",
+          "content": "That gives us something specific to examine. Which part of the filing do you think changes the investment case?"
+        }
+      ],
+      "why_this_is_useful": "The agent explores a possible attention effect, then adapts when the client supplies a concrete reason. It does not keep insisting on FOMO."
+    },
+    {
+      "id": "D02",
+      "title": "Future contribution: clarify, calculate, distinguish",
+      "concept_ids": [
+        "E01",
+        "C12"
+      ],
+      "status": "Original fictional illustration, not a quotation from the report or a live model run.",
+      "context": {
+        "available_fixture_ids": [
+          "T_CURRENT"
+        ],
+        "instruction": "Insert the referenced fixture as a tool message only at the indicated tool_result step. All figures below are fictional computed fixtures."
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "I will add cash next week, so I think the portfolio will be balanced again."
+        },
+        {
+          "role": "assistant",
+          "content": "A contribution could change the allocation. How much do you expect to add?"
+        },
+        {
+          "role": "user",
+          "content": "CAD 50,000. It is expected but not in the account yet."
+        },
+        {
+          "role": "assistant",
+          "content": "I can compare that future plan with the current trade. Would the contribution stay as cash, or do you already have a plan for investing it?"
+        },
+        {
+          "role": "user",
+          "content": "Show me what happens if it stays in cash."
+        },
+        {
+          "role": "tool_result",
+          "content": "T_DEPOSIT_CASH"
+        },
+        {
+          "role": "assistant",
+          "content": "In that hypothetical scenario, the stock position falls to 10%, which meets its 10% cap. Cash would be 40%, above the 20% maximum, and fixed income would be 20%, below the 30% minimum. The deposit alone therefore does not bring the whole portfolio within its limits. These figures assume unchanged prices; the current trade remains red until its actual inputs change."
+        },
+        {
+          "role": "user",
+          "content": "My plan is to use CAD 15,000 each to buy XBB.TO, AGG and TLT after that deposit. Can you check that too?"
+        },
+        {
+          "role": "tool_result",
+          "content": "T_DEPOSIT_ALLOCATED"
+        },
+        {
+          "role": "assistant",
+          "content": "With those specific purchases included, the hypothetical portfolio meets the limits checked by the tool. The stock weight is 10%, cash is 10%, and fixed income is 50%. This is conditional on the contribution and purchases occurring at the assumed prices. The original trade is still red on the current account snapshot, and nothing has been executed. What would you do if the contribution were delayed?"
+        }
+      ],
+      "why_this_is_useful": "A valid plan changes the explanation and scenario, not current balances. The user, not the agent, supplies the additional purchases. Full limit compliance is checked separately from verdict color."
+    },
+    {
+      "id": "D03",
+      "title": "Selling a winner can be rebalancing",
+      "concept_ids": [
+        "C05",
+        "C12"
+      ],
+      "status": "Original fictional illustration, not a quotation from the report or a live model run.",
+      "context": {
+        "current_assessment": "A flagged sell trade needs explanation; tax data is unavailable."
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "I am selling because it has gone up a lot."
+        },
+        {
+          "role": "assistant",
+          "content": "What do you want the sale to accomplish for your portfolio?"
+        },
+        {
+          "role": "user",
+          "content": "It became too large a position. I am returning to my target allocation."
+        },
+        {
+          "role": "assistant",
+          "content": "That is a rebalancing objective. I can check whether the proposed amount moves the portfolio toward your target. I cannot determine any tax consequences from the information available here."
+        }
+      ],
+      "why_this_is_useful": "A phrase resembling a disposition pattern is not enough to label the decision. The agent recognizes the stated objective without guaranteeing that the amount is appropriate."
+    },
+    {
+      "id": "D04",
+      "title": "Documented momentum strategy",
+      "concept_ids": [
+        "C09",
+        "C02"
+      ],
+      "status": "Original fictional illustration, not a quotation from the report or a live model run.",
+      "context": {
+        "current_assessment": "A rule breach remains authoritative; no strategy backtest supplied."
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "I buy assets with positive momentum. This is part of a written strategy, not an impulse."
+        },
+        {
+          "role": "assistant",
+          "content": "I understand. A strategy can explain the trade while the position still exceeds the account limit. What position-sizing rule does your strategy use?"
+        },
+        {
+          "role": "user",
+          "content": "I would like you to check a smaller amount that is within the limit."
+        },
+        {
+          "role": "assistant",
+          "content": "What CAD amount would you like me to check?"
+        }
+      ],
+      "why_this_is_useful": "The agent does not classify all momentum as irrational and does not invent a safe order size."
+    },
+    {
+      "id": "D05",
+      "title": "Respecting the choice to end the discussion",
+      "concept_ids": [],
+      "status": "Original fictional illustration, not a quotation from the report or a live model run.",
+      "context": {
+        "current_assessment": "The red assessment and risk acknowledgment control are visible; no execution tool is exposed."
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "I understand the concentration issue. I do not want to discuss my feelings. I want to proceed with the simulation."
+        },
+        {
+          "role": "assistant",
+          "content": "Understood. You can use the risk-acknowledgment control to continue the simulation. The assessment remains visible, and this chat has not submitted the trade."
+        }
+      ],
+      "why_this_is_useful": "The agent stops questioning. It does not seek another justification, hide the proceed control or claim execution."
+    },
+    {
+      "id": "D06",
+      "title": "Several funds do not settle the diversification question",
+      "concept_ids": [
+        "C10",
+        "C12"
+      ],
+      "status": "Original fictional illustration, not a quotation from the report or a live model run.",
+      "context": {
+        "tool_status": "No ETF holdings look-through data is available."
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "I divided the money equally between funds, so I am diversified."
+        },
+        {
+          "role": "assistant",
+          "content": "Equal amounts describe how you split the money, but the funds may still hold overlapping investments. Our current data does not show their underlying holdings, so I cannot verify that overlap. Would you like to look at the exposures we can check?"
+        }
+      ],
+      "why_this_is_useful": "The agent explains the limitation without attacking equal weighting or inventing overlap."
+    },
+    {
+      "id": "D07",
+      "title": "Employer stock with restrictions",
+      "concept_ids": [
+        "C07"
+      ],
+      "status": "Original fictional illustration, not a quotation from the report or a live model run.",
+      "context": {
+        "tool_status": "Employment and vesting restrictions are not verified account fields."
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "I have company shares because I work there. I cannot sell them before they vest."
+        },
+        {
+          "role": "assistant",
+          "content": "That restriction matters. We can distinguish shares you can trade from those you cannot, while still recognizing the exposure. Are those restricted shares already included in the holdings shown here?"
+        }
+      ],
+      "why_this_is_useful": "The agent accepts a plausible constraint as user-stated context, does not infer loyalty bias, and checks account scope before calculating."
+    },
+    {
+      "id": "D08",
+      "title": "Fear with a real liquidity need",
+      "concept_ids": [
+        "C03",
+        "C14"
+      ],
+      "status": "Original fictional illustration, not a quotation from the report or a live model run.",
+      "context": {
+        "stored_context": "Long horizon on file; a new near-term need is not yet recorded."
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "The market is falling and I need to sell. I need the money for a payment soon."
+        },
+        {
+          "role": "assistant",
+          "content": "A near-term payment changes what matters for this decision. How much cash do you need to have available for it?"
+        }
+      ],
+      "why_this_is_useful": "The agent explores the actual constraint instead of automatically treating a sale during a decline as panic."
+    },
+    {
+      "id": "D09",
+      "title": "Friendly French reply without a diagnostic label",
+      "concept_ids": [
+        "C01",
+        "C05"
+      ],
+      "status": "Original fictional illustration, not a quotation from the report or a live model run.",
+      "context": {
+        "preferred_language": "fr",
+        "tool_status": "No forecast of recovery is available."
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "Je ne veux pas vendre à perte. Je préfère attendre que le prix remonte."
+        },
+        {
+          "role": "assistant",
+          "content": "Je comprends que réaliser une perte puisse être difficile. Le prix d'achat explique le résultat passé, mais il ne garantit pas une remontée. Qu'est-ce qui vous donne envie de conserver ce placement aujourd'hui, au-delà de retrouver ce prix?"
+        }
+      ],
+      "why_this_is_useful": "The agent matches the language, acknowledges an expressed concern and asks about the current investment case without promising recovery."
+    },
+    {
+      "id": "D10",
+      "title": "Unverified news stays unverified",
+      "concept_ids": [
+        "C11"
+      ],
+      "status": "Original fictional illustration, not a quotation from the report or a live model run.",
+      "context": {
+        "tool_status": "A news check has found no eligible official evidence supporting the specific claim."
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "I saw that the company is being acquired. Is that true?"
+        },
+        {
+          "role": "assistant",
+          "content": "I do not have an eligible official source confirming that claim. That does not prove it is false. Can you share the source or publication date so we can check it against the decision date?"
+        }
+      ],
+      "why_this_is_useful": "The response does not equate missing evidence with falsehood or use a later article to justify an earlier trade."
+    },
+    {
+      "id": "D11",
+      "title": "Client asks whether they are irrational",
+      "concept_ids": [
+        "C02",
+        "C08"
+      ],
+      "status": "Original fictional illustration, not a quotation from the report or a live model run.",
+      "context": {
+        "current_assessment": "A red rule result exists; no psychological assessment is available."
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "Does the red flag mean I am making an irrational decision?"
+        },
+        {
+          "role": "assistant",
+          "content": "No. It means the proposed trade breaches the limits checked for this account. It does not tell us why you chose it. We can examine your reasoning and the consequences, and the decision remains yours."
+        }
+      ],
+      "why_this_is_useful": "A financial rule flag is separated from a judgment about the person."
+    },
+    {
+      "id": "D12",
+      "title": "Growth style is not a psychological diagnosis",
+      "concept_ids": [
+        "C15"
+      ],
+      "status": "Original fictional illustration, not a quotation from the report or a live model run.",
+      "context": {
+        "stored_context": "The client is discussing investment style, not changing the assigned risk profile."
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "I prefer growth companies because I have a specific long-term thesis. Are you saying that is a bias?"
+        },
+        {
+          "role": "assistant",
+          "content": "No. A preference for growth companies is not, by itself, evidence of a bias. We can separate the company assumptions in your thesis from how much exposure the trade adds to this account. Which assumption is most important to your thesis?"
+        }
+      ],
+      "why_this_is_useful": "The agent preserves the report's caveat and does not confuse growth style with the Growth risk category."
+    }
+  ]
+}

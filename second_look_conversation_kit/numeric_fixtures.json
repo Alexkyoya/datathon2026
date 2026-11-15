@@ -1,0 +1,1602 @@
+{
+  "status": "Fictional, computed evaluation fixtures. Not real client results; never load them as live investor context.",
+  "verdict_caveat": "Under the starter policy, green may mean an existing breach is reduced. portfolio_within_limits is computed separately from every gap_after. Do not rewrite the raw verdict or equate green with full compliance.",
+  "fixtures": [
+    {
+      "tool_call_id": "T_CURRENT",
+      "tool_alias": "get_current_assessment",
+      "mode": "fictional_current",
+      "as_of": "2026-11-13",
+      "input_version": "T_CURRENT_v1",
+      "fixture_only": true,
+      "client": {
+        "client_id": "training_example_only",
+        "profile": "Balanced",
+        "horizon_years": 8,
+        "objectives": [
+          "long_term_growth"
+        ],
+        "loss_tolerance_fraction": 0.2,
+        "preferences": {}
+      },
+      "original_holdings_cad": {
+        "CASH_CAD": 22000,
+        "TSLA": 3000,
+        "SPY": 20000,
+        "XIU.TO": 10000,
+        "ESGV": 10000,
+        "XBB.TO": 10000,
+        "AGG": 10000,
+        "TLT": 10000,
+        "GLD": 5000
+      },
+      "candidate_request": {
+        "client_id": "training_example_only",
+        "decision_date": "2026-11-13",
+        "ticker": "TSLA",
+        "side": "buy",
+        "amount_cad": 12000
+      },
+      "future_plan": {
+        "contribution_cad": 0,
+        "planned_purchases_cad": {},
+        "certainty": "user_stated_not_verified",
+        "expected_timing": null
+      },
+      "effective_holdings_before_trade_cad": {
+        "CASH_CAD": 22000,
+        "TSLA": 3000,
+        "SPY": 20000,
+        "XIU.TO": 10000,
+        "ESGV": 10000,
+        "XBB.TO": 10000,
+        "AGG": 10000,
+        "TLT": 10000,
+        "GLD": 5000
+      },
+      "assumptions": [
+        "Fictional test holdings expressed as CAD values.",
+        "Fixed prices and FX across hypothetical dates; no future return prediction.",
+        "No fees or taxes.",
+        "Future purchases are client-specified; none are executed."
+      ],
+      "source_or_method": "Python second_look.rules.evaluate_trade from the previously created local starter package; not the user's live deployed backend.",
+      "engine_source_sha256": "1a7ae9c7d03e89a144c0e6a557c4345eefc1cf8bde3a0a6028926e31b256b937",
+      "policy": {
+        "version": "second-look-0.1",
+        "allocation_source": "NBF Investment Strategy Fall 2026 ranges supplied in project instructions; source document not independently verified in this package",
+        "assumptions": [
+          "All non-allocation thresholds, asset mapping and color precedence are team assumptions.",
+          "HHI is sum of squared whole-portfolio position weights, including one cash bucket; no ETF look-through.",
+          "HHI watch begins at 0.15; new/worsened concentration above 0.25 is red. HHI uses index points, not the allocation 5-percentage-point buffer.",
+          "Near-limit warnings apply to meaningful asset-class boundaries only (exclude 0% minima and 100% maxima).",
+          "Strict improvement is green only if no breach is created or worsened; unchanged existing breaches remain yellow for review.",
+          "Single-stock, crypto and explicit exclusion breaches are red when created or worsened.",
+          "Sector limits require look-through for equity ETFs. Missing required coverage gives verdict null unless a definite red breach exists.",
+          "Cash-funded long-only trades; fractional units; zero fees and slippage; no automatic sale of ZST.TO for funding."
+        ],
+        "yellow_buffer": 0.05,
+        "hhi_watch": 0.15,
+        "hhi_max": 0.25,
+        "profiles": {
+          "Income": {
+            "asset_class_ranges": {
+              "cash": [
+                0,
+                0.2
+              ],
+              "fixed_income": [
+                0.6,
+                1
+              ],
+              "equities": [
+                0,
+                0.3
+              ],
+              "alternatives": [
+                0,
+                0.2
+              ]
+            },
+            "single_stock_max": 0.05,
+            "crypto_max": 0,
+            "sector_max": null
+          },
+          "Conservative": {
+            "asset_class_ranges": {
+              "cash": [
+                0,
+                0.2
+              ],
+              "fixed_income": [
+                0.45,
+                0.8
+              ],
+              "equities": [
+                0.2,
+                0.45
+              ],
+              "alternatives": [
+                0,
+                0.2
+              ]
+            },
+            "single_stock_max": 0.05,
+            "crypto_max": 0,
+            "sector_max": null
+          },
+          "Balanced": {
+            "asset_class_ranges": {
+              "cash": [
+                0,
+                0.2
+              ],
+              "fixed_income": [
+                0.3,
+                0.65
+              ],
+              "equities": [
+                0.3,
+                0.65
+              ],
+              "alternatives": [
+                0,
+                0.25
+              ]
+            },
+            "single_stock_max": 0.1,
+            "crypto_max": 0,
+            "sector_max": null
+          },
+          "Growth": {
+            "asset_class_ranges": {
+              "cash": [
+                0,
+                0.25
+              ],
+              "fixed_income": [
+                0.2,
+                0.45
+              ],
+              "equities": [
+                0.4,
+                0.75
+              ],
+              "alternatives": [
+                0,
+                0.25
+              ]
+            },
+            "single_stock_max": 0.1,
+            "crypto_max": 0.05,
+            "sector_max": 0.4
+          },
+          "Maximum growth": {
+            "asset_class_ranges": {
+              "cash": [
+                0,
+                0.3
+              ],
+              "fixed_income": [
+                0,
+                0.3
+              ],
+              "equities": [
+                0.55,
+                1
+              ],
+              "alternatives": [
+                0,
+                0.3
+              ]
+            },
+            "single_stock_max": 0.15,
+            "crypto_max": 0.1,
+            "sector_max": null
+          }
+        }
+      },
+      "portfolio_within_limits": false,
+      "residual_breaches": [
+        {
+          "rule": "single_stock.TSLA",
+          "limit": 0.1,
+          "bound": "max",
+          "before": 0.03,
+          "after": 0.15,
+          "gap_before": 0.0,
+          "gap_after": 0.04999999999999999,
+          "effect": "creates",
+          "severity": "red",
+          "resolved": false,
+          "unit": "weight",
+          "source": "team_assumption"
+        }
+      ],
+      "result": {
+        "schema_version": "1.1",
+        "policy_version": "second-look-0.1",
+        "client_id": "training_example_only",
+        "decision_date": "2026-11-13",
+        "profile": "Balanced",
+        "verdict": "red",
+        "evaluation_status": "complete",
+        "action": "pause_and_ask_reason",
+        "activate_agents": true,
+        "effect": "mixed",
+        "reasons": [
+          "allocation.fixed_income.min: 0.300000 -> 0.300000; min 0.300000; unchanged",
+          "single_stock.TSLA: 0.030000 -> 0.150000; max 0.100000; creates"
+        ],
+        "breaches": [
+          {
+            "rule": "allocation.cash.max",
+            "limit": 0.2,
+            "bound": "max",
+            "before": 0.22,
+            "after": 0.1,
+            "gap_before": 0.01999999999999999,
+            "gap_after": 0.0,
+            "effect": "reduces",
+            "severity": "none",
+            "resolved": true,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "single_stock.TSLA",
+            "limit": 0.1,
+            "bound": "max",
+            "before": 0.03,
+            "after": 0.15,
+            "gap_before": 0.0,
+            "gap_after": 0.04999999999999999,
+            "effect": "creates",
+            "severity": "red",
+            "resolved": false,
+            "unit": "weight",
+            "source": "team_assumption"
+          }
+        ],
+        "alerts": [
+          {
+            "rule": "allocation.fixed_income.min",
+            "limit": 0.3,
+            "bound": "min",
+            "before": 0.30000000000000004,
+            "after": 0.30000000000000004,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "yellow",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "single_stock.TSLA",
+            "limit": 0.1,
+            "bound": "max",
+            "before": 0.03,
+            "after": 0.15,
+            "gap_before": 0.0,
+            "gap_after": 0.04999999999999999,
+            "effect": "creates",
+            "severity": "red",
+            "resolved": false,
+            "unit": "weight",
+            "source": "team_assumption"
+          }
+        ],
+        "checks": [
+          {
+            "rule": "allocation.cash.min",
+            "limit": 0,
+            "bound": "min",
+            "before": 0.22,
+            "after": 0.1,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.cash.max",
+            "limit": 0.2,
+            "bound": "max",
+            "before": 0.22,
+            "after": 0.1,
+            "gap_before": 0.01999999999999999,
+            "gap_after": 0.0,
+            "effect": "reduces",
+            "severity": "none",
+            "resolved": true,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.fixed_income.min",
+            "limit": 0.3,
+            "bound": "min",
+            "before": 0.30000000000000004,
+            "after": 0.30000000000000004,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "yellow",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.fixed_income.max",
+            "limit": 0.65,
+            "bound": "max",
+            "before": 0.30000000000000004,
+            "after": 0.30000000000000004,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.equities.min",
+            "limit": 0.3,
+            "bound": "min",
+            "before": 0.43000000000000005,
+            "after": 0.5499999999999999,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.equities.max",
+            "limit": 0.65,
+            "bound": "max",
+            "before": 0.43000000000000005,
+            "after": 0.5499999999999999,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.alternatives.min",
+            "limit": 0,
+            "bound": "min",
+            "before": 0.05,
+            "after": 0.05,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.alternatives.max",
+            "limit": 0.25,
+            "bound": "max",
+            "before": 0.05,
+            "after": 0.05,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "single_stock.TSLA",
+            "limit": 0.1,
+            "bound": "max",
+            "before": 0.03,
+            "after": 0.15,
+            "gap_before": 0.0,
+            "gap_after": 0.04999999999999999,
+            "effect": "creates",
+            "severity": "red",
+            "resolved": false,
+            "unit": "weight",
+            "source": "team_assumption"
+          },
+          {
+            "rule": "crypto",
+            "limit": 0,
+            "bound": "max",
+            "before": 0.0,
+            "after": 0.0,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "team_assumption"
+          },
+          {
+            "rule": "hhi",
+            "limit": 0.25,
+            "bound": "max",
+            "before": 0.14180000000000004,
+            "after": 0.12500000000000003,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "hhi_index",
+            "source": "team_assumption"
+          }
+        ],
+        "hhi_before": 0.14180000000000004,
+        "hhi_after": 0.12500000000000003,
+        "weights_before": {
+          "cash": 0.22,
+          "fixed_income": 0.30000000000000004,
+          "equities": 0.43000000000000005,
+          "alternatives": 0.05
+        },
+        "weights_after": {
+          "cash": 0.1,
+          "fixed_income": 0.30000000000000004,
+          "equities": 0.5499999999999999,
+          "alternatives": 0.05
+        },
+        "position_weights_before": {
+          "CASH_CAD": 0.22,
+          "TSLA": 0.03,
+          "SPY": 0.2,
+          "XIU.TO": 0.1,
+          "ESGV": 0.1,
+          "XBB.TO": 0.1,
+          "AGG": 0.1,
+          "TLT": 0.1,
+          "GLD": 0.05
+        },
+        "position_weights_after": {
+          "CASH_CAD": 0.1,
+          "TSLA": 0.15,
+          "SPY": 0.2,
+          "XIU.TO": 0.1,
+          "ESGV": 0.1,
+          "XBB.TO": 0.1,
+          "AGG": 0.1,
+          "TLT": 0.1,
+          "GLD": 0.05
+        },
+        "holdings_cad_before": {
+          "CASH_CAD": 22000.0,
+          "TSLA": 3000.0,
+          "SPY": 20000.0,
+          "XIU.TO": 10000.0,
+          "ESGV": 10000.0,
+          "XBB.TO": 10000.0,
+          "AGG": 10000.0,
+          "TLT": 10000.0,
+          "GLD": 5000.0
+        },
+        "holdings_cad_after": {
+          "CASH_CAD": 10000.0,
+          "TSLA": 15000.0,
+          "SPY": 20000.0,
+          "XIU.TO": 10000.0,
+          "ESGV": 10000.0,
+          "XBB.TO": 10000.0,
+          "AGG": 10000.0,
+          "TLT": 10000.0,
+          "GLD": 5000.0
+        },
+        "portfolio_value_cad": 100000.0,
+        "context_for_agents": {
+          "horizon_years": 8,
+          "objectives": [
+            "long_term_growth"
+          ],
+          "loss_tolerance_fraction": 0.2,
+          "preferences": {}
+        },
+        "context_only": [
+          "Horizon, objectives and loss tolerance do not change the assigned profile or verdict without an explicit constraint.",
+          "Historical drawdown is not a guaranteed future loss or a profile classifier."
+        ],
+        "coverage": {
+          "unresolved": [],
+          "unknown_sector_weight_before": 0.4,
+          "unknown_sector_weight_after": 0.4
+        },
+        "assumptions": [
+          "All non-allocation thresholds, asset mapping and color precedence are team assumptions.",
+          "HHI is sum of squared whole-portfolio position weights, including one cash bucket; no ETF look-through.",
+          "HHI watch begins at 0.15; new/worsened concentration above 0.25 is red. HHI uses index points, not the allocation 5-percentage-point buffer.",
+          "Near-limit warnings apply to meaningful asset-class boundaries only (exclude 0% minima and 100% maxima).",
+          "Strict improvement is green only if no breach is created or worsened; unchanged existing breaches remain yellow for review.",
+          "Single-stock, crypto and explicit exclusion breaches are red when created or worsened.",
+          "Sector limits require look-through for equity ETFs. Missing required coverage gives verdict null unless a definite red breach exists.",
+          "Cash-funded long-only trades; fractional units; zero fees and slippage; no automatic sale of ZST.TO for funding."
+        ],
+        "disclaimer": "Fictional clients; simulated trades only; no investment advice."
+      }
+    },
+    {
+      "tool_call_id": "T_DEPOSIT_CASH",
+      "tool_alias": "simulate_future_cash_plan",
+      "mode": "hypothetical",
+      "as_of": "2026-11-13",
+      "input_version": "T_DEPOSIT_CASH_v1",
+      "fixture_only": true,
+      "client": {
+        "client_id": "training_example_only",
+        "profile": "Balanced",
+        "horizon_years": 8,
+        "objectives": [
+          "long_term_growth"
+        ],
+        "loss_tolerance_fraction": 0.2,
+        "preferences": {}
+      },
+      "original_holdings_cad": {
+        "CASH_CAD": 22000,
+        "TSLA": 3000,
+        "SPY": 20000,
+        "XIU.TO": 10000,
+        "ESGV": 10000,
+        "XBB.TO": 10000,
+        "AGG": 10000,
+        "TLT": 10000,
+        "GLD": 5000
+      },
+      "candidate_request": {
+        "client_id": "training_example_only",
+        "decision_date": "2026-11-13",
+        "ticker": "TSLA",
+        "side": "buy",
+        "amount_cad": 12000
+      },
+      "future_plan": {
+        "contribution_cad": 50000,
+        "planned_purchases_cad": {},
+        "certainty": "user_stated_not_verified",
+        "expected_timing": "one_week_after_decision"
+      },
+      "effective_holdings_before_trade_cad": {
+        "CASH_CAD": 72000,
+        "TSLA": 3000,
+        "SPY": 20000,
+        "XIU.TO": 10000,
+        "ESGV": 10000,
+        "XBB.TO": 10000,
+        "AGG": 10000,
+        "TLT": 10000,
+        "GLD": 5000
+      },
+      "assumptions": [
+        "Fictional test holdings expressed as CAD values.",
+        "Fixed prices and FX across hypothetical dates; no future return prediction.",
+        "No fees or taxes.",
+        "Future purchases are client-specified; none are executed."
+      ],
+      "source_or_method": "Python second_look.rules.evaluate_trade from the previously created local starter package; not the user's live deployed backend.",
+      "engine_source_sha256": "1a7ae9c7d03e89a144c0e6a557c4345eefc1cf8bde3a0a6028926e31b256b937",
+      "policy": {
+        "version": "second-look-0.1",
+        "allocation_source": "NBF Investment Strategy Fall 2026 ranges supplied in project instructions; source document not independently verified in this package",
+        "assumptions": [
+          "All non-allocation thresholds, asset mapping and color precedence are team assumptions.",
+          "HHI is sum of squared whole-portfolio position weights, including one cash bucket; no ETF look-through.",
+          "HHI watch begins at 0.15; new/worsened concentration above 0.25 is red. HHI uses index points, not the allocation 5-percentage-point buffer.",
+          "Near-limit warnings apply to meaningful asset-class boundaries only (exclude 0% minima and 100% maxima).",
+          "Strict improvement is green only if no breach is created or worsened; unchanged existing breaches remain yellow for review.",
+          "Single-stock, crypto and explicit exclusion breaches are red when created or worsened.",
+          "Sector limits require look-through for equity ETFs. Missing required coverage gives verdict null unless a definite red breach exists.",
+          "Cash-funded long-only trades; fractional units; zero fees and slippage; no automatic sale of ZST.TO for funding."
+        ],
+        "yellow_buffer": 0.05,
+        "hhi_watch": 0.15,
+        "hhi_max": 0.25,
+        "profiles": {
+          "Income": {
+            "asset_class_ranges": {
+              "cash": [
+                0,
+                0.2
+              ],
+              "fixed_income": [
+                0.6,
+                1
+              ],
+              "equities": [
+                0,
+                0.3
+              ],
+              "alternatives": [
+                0,
+                0.2
+              ]
+            },
+            "single_stock_max": 0.05,
+            "crypto_max": 0,
+            "sector_max": null
+          },
+          "Conservative": {
+            "asset_class_ranges": {
+              "cash": [
+                0,
+                0.2
+              ],
+              "fixed_income": [
+                0.45,
+                0.8
+              ],
+              "equities": [
+                0.2,
+                0.45
+              ],
+              "alternatives": [
+                0,
+                0.2
+              ]
+            },
+            "single_stock_max": 0.05,
+            "crypto_max": 0,
+            "sector_max": null
+          },
+          "Balanced": {
+            "asset_class_ranges": {
+              "cash": [
+                0,
+                0.2
+              ],
+              "fixed_income": [
+                0.3,
+                0.65
+              ],
+              "equities": [
+                0.3,
+                0.65
+              ],
+              "alternatives": [
+                0,
+                0.25
+              ]
+            },
+            "single_stock_max": 0.1,
+            "crypto_max": 0,
+            "sector_max": null
+          },
+          "Growth": {
+            "asset_class_ranges": {
+              "cash": [
+                0,
+                0.25
+              ],
+              "fixed_income": [
+                0.2,
+                0.45
+              ],
+              "equities": [
+                0.4,
+                0.75
+              ],
+              "alternatives": [
+                0,
+                0.25
+              ]
+            },
+            "single_stock_max": 0.1,
+            "crypto_max": 0.05,
+            "sector_max": 0.4
+          },
+          "Maximum growth": {
+            "asset_class_ranges": {
+              "cash": [
+                0,
+                0.3
+              ],
+              "fixed_income": [
+                0,
+                0.3
+              ],
+              "equities": [
+                0.55,
+                1
+              ],
+              "alternatives": [
+                0,
+                0.3
+              ]
+            },
+            "single_stock_max": 0.15,
+            "crypto_max": 0.1,
+            "sector_max": null
+          }
+        }
+      },
+      "portfolio_within_limits": false,
+      "residual_breaches": [
+        {
+          "rule": "allocation.cash.max",
+          "limit": 0.2,
+          "bound": "max",
+          "before": 0.48,
+          "after": 0.4,
+          "gap_before": 0.27999999999999997,
+          "gap_after": 0.2,
+          "effect": "reduces",
+          "severity": "yellow",
+          "resolved": false,
+          "unit": "weight",
+          "source": "NBF Fall 2026 ranges supplied in project instructions"
+        },
+        {
+          "rule": "allocation.fixed_income.min",
+          "limit": 0.3,
+          "bound": "min",
+          "before": 0.2,
+          "after": 0.2,
+          "gap_before": 0.09999999999999998,
+          "gap_after": 0.09999999999999998,
+          "effect": "unchanged",
+          "severity": "yellow",
+          "resolved": false,
+          "unit": "weight",
+          "source": "NBF Fall 2026 ranges supplied in project instructions"
+        }
+      ],
+      "result": {
+        "schema_version": "1.1",
+        "policy_version": "second-look-0.1",
+        "client_id": "training_example_only",
+        "decision_date": "2026-11-13",
+        "profile": "Balanced",
+        "verdict": "green",
+        "evaluation_status": "complete",
+        "action": "pass_simulation",
+        "activate_agents": false,
+        "effect": "reduces",
+        "reasons": [
+          "Existing deviation reduced with no new or worsened breach; remaining breaches are reported.",
+          "allocation.cash.max: 0.480000 -> 0.400000; max 0.200000; reduces",
+          "allocation.fixed_income.min: 0.200000 -> 0.200000; min 0.300000; unchanged",
+          "hhi: 0.271911 -> 0.211111; max 0.250000; reduces"
+        ],
+        "breaches": [
+          {
+            "rule": "allocation.cash.max",
+            "limit": 0.2,
+            "bound": "max",
+            "before": 0.48,
+            "after": 0.4,
+            "gap_before": 0.27999999999999997,
+            "gap_after": 0.2,
+            "effect": "reduces",
+            "severity": "yellow",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.fixed_income.min",
+            "limit": 0.3,
+            "bound": "min",
+            "before": 0.2,
+            "after": 0.2,
+            "gap_before": 0.09999999999999998,
+            "gap_after": 0.09999999999999998,
+            "effect": "unchanged",
+            "severity": "yellow",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.equities.min",
+            "limit": 0.3,
+            "bound": "min",
+            "before": 0.2866666666666666,
+            "after": 0.36666666666666664,
+            "gap_before": 0.013333333333333364,
+            "gap_after": 0.0,
+            "effect": "reduces",
+            "severity": "none",
+            "resolved": true,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "hhi",
+            "limit": 0.25,
+            "bound": "max",
+            "before": 0.2719111111111111,
+            "after": 0.21111111111111114,
+            "gap_before": 0.021911111111111103,
+            "gap_after": 0.0,
+            "effect": "reduces",
+            "severity": "yellow",
+            "resolved": true,
+            "unit": "hhi_index",
+            "source": "team_assumption"
+          }
+        ],
+        "alerts": [
+          {
+            "rule": "allocation.cash.max",
+            "limit": 0.2,
+            "bound": "max",
+            "before": 0.48,
+            "after": 0.4,
+            "gap_before": 0.27999999999999997,
+            "gap_after": 0.2,
+            "effect": "reduces",
+            "severity": "yellow",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.fixed_income.min",
+            "limit": 0.3,
+            "bound": "min",
+            "before": 0.2,
+            "after": 0.2,
+            "gap_before": 0.09999999999999998,
+            "gap_after": 0.09999999999999998,
+            "effect": "unchanged",
+            "severity": "yellow",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "hhi",
+            "limit": 0.25,
+            "bound": "max",
+            "before": 0.2719111111111111,
+            "after": 0.21111111111111114,
+            "gap_before": 0.021911111111111103,
+            "gap_after": 0.0,
+            "effect": "reduces",
+            "severity": "yellow",
+            "resolved": true,
+            "unit": "hhi_index",
+            "source": "team_assumption"
+          }
+        ],
+        "checks": [
+          {
+            "rule": "allocation.cash.min",
+            "limit": 0,
+            "bound": "min",
+            "before": 0.48,
+            "after": 0.4,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.cash.max",
+            "limit": 0.2,
+            "bound": "max",
+            "before": 0.48,
+            "after": 0.4,
+            "gap_before": 0.27999999999999997,
+            "gap_after": 0.2,
+            "effect": "reduces",
+            "severity": "yellow",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.fixed_income.min",
+            "limit": 0.3,
+            "bound": "min",
+            "before": 0.2,
+            "after": 0.2,
+            "gap_before": 0.09999999999999998,
+            "gap_after": 0.09999999999999998,
+            "effect": "unchanged",
+            "severity": "yellow",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.fixed_income.max",
+            "limit": 0.65,
+            "bound": "max",
+            "before": 0.2,
+            "after": 0.2,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.equities.min",
+            "limit": 0.3,
+            "bound": "min",
+            "before": 0.2866666666666666,
+            "after": 0.36666666666666664,
+            "gap_before": 0.013333333333333364,
+            "gap_after": 0.0,
+            "effect": "reduces",
+            "severity": "none",
+            "resolved": true,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.equities.max",
+            "limit": 0.65,
+            "bound": "max",
+            "before": 0.2866666666666666,
+            "after": 0.36666666666666664,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.alternatives.min",
+            "limit": 0,
+            "bound": "min",
+            "before": 0.03333333333333333,
+            "after": 0.03333333333333333,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.alternatives.max",
+            "limit": 0.25,
+            "bound": "max",
+            "before": 0.03333333333333333,
+            "after": 0.03333333333333333,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "single_stock.TSLA",
+            "limit": 0.1,
+            "bound": "max",
+            "before": 0.02,
+            "after": 0.1,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "team_assumption"
+          },
+          {
+            "rule": "crypto",
+            "limit": 0,
+            "bound": "max",
+            "before": 0.0,
+            "after": 0.0,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "team_assumption"
+          },
+          {
+            "rule": "hhi",
+            "limit": 0.25,
+            "bound": "max",
+            "before": 0.2719111111111111,
+            "after": 0.21111111111111114,
+            "gap_before": 0.021911111111111103,
+            "gap_after": 0.0,
+            "effect": "reduces",
+            "severity": "yellow",
+            "resolved": true,
+            "unit": "hhi_index",
+            "source": "team_assumption"
+          }
+        ],
+        "hhi_before": 0.2719111111111111,
+        "hhi_after": 0.21111111111111114,
+        "weights_before": {
+          "cash": 0.48,
+          "fixed_income": 0.2,
+          "equities": 0.2866666666666666,
+          "alternatives": 0.03333333333333333
+        },
+        "weights_after": {
+          "cash": 0.4,
+          "fixed_income": 0.2,
+          "equities": 0.36666666666666664,
+          "alternatives": 0.03333333333333333
+        },
+        "position_weights_before": {
+          "CASH_CAD": 0.48,
+          "TSLA": 0.02,
+          "SPY": 0.13333333333333333,
+          "XIU.TO": 0.06666666666666667,
+          "ESGV": 0.06666666666666667,
+          "XBB.TO": 0.06666666666666667,
+          "AGG": 0.06666666666666667,
+          "TLT": 0.06666666666666667,
+          "GLD": 0.03333333333333333
+        },
+        "position_weights_after": {
+          "CASH_CAD": 0.4,
+          "TSLA": 0.1,
+          "SPY": 0.13333333333333333,
+          "XIU.TO": 0.06666666666666667,
+          "ESGV": 0.06666666666666667,
+          "XBB.TO": 0.06666666666666667,
+          "AGG": 0.06666666666666667,
+          "TLT": 0.06666666666666667,
+          "GLD": 0.03333333333333333
+        },
+        "holdings_cad_before": {
+          "CASH_CAD": 72000.0,
+          "TSLA": 3000.0,
+          "SPY": 20000.0,
+          "XIU.TO": 10000.0,
+          "ESGV": 10000.0,
+          "XBB.TO": 10000.0,
+          "AGG": 10000.0,
+          "TLT": 10000.0,
+          "GLD": 5000.0
+        },
+        "holdings_cad_after": {
+          "CASH_CAD": 60000.0,
+          "TSLA": 15000.0,
+          "SPY": 20000.0,
+          "XIU.TO": 10000.0,
+          "ESGV": 10000.0,
+          "XBB.TO": 10000.0,
+          "AGG": 10000.0,
+          "TLT": 10000.0,
+          "GLD": 5000.0
+        },
+        "portfolio_value_cad": 150000.0,
+        "context_for_agents": {
+          "horizon_years": 8,
+          "objectives": [
+            "long_term_growth"
+          ],
+          "loss_tolerance_fraction": 0.2,
+          "preferences": {}
+        },
+        "context_only": [
+          "Horizon, objectives and loss tolerance do not change the assigned profile or verdict without an explicit constraint.",
+          "Historical drawdown is not a guaranteed future loss or a profile classifier."
+        ],
+        "coverage": {
+          "unresolved": [],
+          "unknown_sector_weight_before": 0.26666666666666666,
+          "unknown_sector_weight_after": 0.26666666666666666
+        },
+        "assumptions": [
+          "All non-allocation thresholds, asset mapping and color precedence are team assumptions.",
+          "HHI is sum of squared whole-portfolio position weights, including one cash bucket; no ETF look-through.",
+          "HHI watch begins at 0.15; new/worsened concentration above 0.25 is red. HHI uses index points, not the allocation 5-percentage-point buffer.",
+          "Near-limit warnings apply to meaningful asset-class boundaries only (exclude 0% minima and 100% maxima).",
+          "Strict improvement is green only if no breach is created or worsened; unchanged existing breaches remain yellow for review.",
+          "Single-stock, crypto and explicit exclusion breaches are red when created or worsened.",
+          "Sector limits require look-through for equity ETFs. Missing required coverage gives verdict null unless a definite red breach exists.",
+          "Cash-funded long-only trades; fractional units; zero fees and slippage; no automatic sale of ZST.TO for funding."
+        ],
+        "disclaimer": "Fictional clients; simulated trades only; no investment advice."
+      }
+    },
+    {
+      "tool_call_id": "T_DEPOSIT_ALLOCATED",
+      "tool_alias": "simulate_future_cash_plan",
+      "mode": "hypothetical",
+      "as_of": "2026-11-13",
+      "input_version": "T_DEPOSIT_ALLOCATED_v1",
+      "fixture_only": true,
+      "client": {
+        "client_id": "training_example_only",
+        "profile": "Balanced",
+        "horizon_years": 8,
+        "objectives": [
+          "long_term_growth"
+        ],
+        "loss_tolerance_fraction": 0.2,
+        "preferences": {}
+      },
+      "original_holdings_cad": {
+        "CASH_CAD": 22000,
+        "TSLA": 3000,
+        "SPY": 20000,
+        "XIU.TO": 10000,
+        "ESGV": 10000,
+        "XBB.TO": 10000,
+        "AGG": 10000,
+        "TLT": 10000,
+        "GLD": 5000
+      },
+      "candidate_request": {
+        "client_id": "training_example_only",
+        "decision_date": "2026-11-13",
+        "ticker": "TSLA",
+        "side": "buy",
+        "amount_cad": 12000
+      },
+      "future_plan": {
+        "contribution_cad": 50000,
+        "planned_purchases_cad": {
+          "XBB.TO": 15000,
+          "AGG": 15000,
+          "TLT": 15000
+        },
+        "certainty": "user_stated_not_verified",
+        "expected_timing": "one_week_after_decision"
+      },
+      "effective_holdings_before_trade_cad": {
+        "CASH_CAD": 27000,
+        "TSLA": 3000,
+        "SPY": 20000,
+        "XIU.TO": 10000,
+        "ESGV": 10000,
+        "XBB.TO": 25000,
+        "AGG": 25000,
+        "TLT": 25000,
+        "GLD": 5000
+      },
+      "assumptions": [
+        "Fictional test holdings expressed as CAD values.",
+        "Fixed prices and FX across hypothetical dates; no future return prediction.",
+        "No fees or taxes.",
+        "Future purchases are client-specified; none are executed."
+      ],
+      "source_or_method": "Python second_look.rules.evaluate_trade from the previously created local starter package; not the user's live deployed backend.",
+      "engine_source_sha256": "1a7ae9c7d03e89a144c0e6a557c4345eefc1cf8bde3a0a6028926e31b256b937",
+      "policy": {
+        "version": "second-look-0.1",
+        "allocation_source": "NBF Investment Strategy Fall 2026 ranges supplied in project instructions; source document not independently verified in this package",
+        "assumptions": [
+          "All non-allocation thresholds, asset mapping and color precedence are team assumptions.",
+          "HHI is sum of squared whole-portfolio position weights, including one cash bucket; no ETF look-through.",
+          "HHI watch begins at 0.15; new/worsened concentration above 0.25 is red. HHI uses index points, not the allocation 5-percentage-point buffer.",
+          "Near-limit warnings apply to meaningful asset-class boundaries only (exclude 0% minima and 100% maxima).",
+          "Strict improvement is green only if no breach is created or worsened; unchanged existing breaches remain yellow for review.",
+          "Single-stock, crypto and explicit exclusion breaches are red when created or worsened.",
+          "Sector limits require look-through for equity ETFs. Missing required coverage gives verdict null unless a definite red breach exists.",
+          "Cash-funded long-only trades; fractional units; zero fees and slippage; no automatic sale of ZST.TO for funding."
+        ],
+        "yellow_buffer": 0.05,
+        "hhi_watch": 0.15,
+        "hhi_max": 0.25,
+        "profiles": {
+          "Income": {
+            "asset_class_ranges": {
+              "cash": [
+                0,
+                0.2
+              ],
+              "fixed_income": [
+                0.6,
+                1
+              ],
+              "equities": [
+                0,
+                0.3
+              ],
+              "alternatives": [
+                0,
+                0.2
+              ]
+            },
+            "single_stock_max": 0.05,
+            "crypto_max": 0,
+            "sector_max": null
+          },
+          "Conservative": {
+            "asset_class_ranges": {
+              "cash": [
+                0,
+                0.2
+              ],
+              "fixed_income": [
+                0.45,
+                0.8
+              ],
+              "equities": [
+                0.2,
+                0.45
+              ],
+              "alternatives": [
+                0,
+                0.2
+              ]
+            },
+            "single_stock_max": 0.05,
+            "crypto_max": 0,
+            "sector_max": null
+          },
+          "Balanced": {
+            "asset_class_ranges": {
+              "cash": [
+                0,
+                0.2
+              ],
+              "fixed_income": [
+                0.3,
+                0.65
+              ],
+              "equities": [
+                0.3,
+                0.65
+              ],
+              "alternatives": [
+                0,
+                0.25
+              ]
+            },
+            "single_stock_max": 0.1,
+            "crypto_max": 0,
+            "sector_max": null
+          },
+          "Growth": {
+            "asset_class_ranges": {
+              "cash": [
+                0,
+                0.25
+              ],
+              "fixed_income": [
+                0.2,
+                0.45
+              ],
+              "equities": [
+                0.4,
+                0.75
+              ],
+              "alternatives": [
+                0,
+                0.25
+              ]
+            },
+            "single_stock_max": 0.1,
+            "crypto_max": 0.05,
+            "sector_max": 0.4
+          },
+          "Maximum growth": {
+            "asset_class_ranges": {
+              "cash": [
+                0,
+                0.3
+              ],
+              "fixed_income": [
+                0,
+                0.3
+              ],
+              "equities": [
+                0.55,
+                1
+              ],
+              "alternatives": [
+                0,
+                0.3
+              ]
+            },
+            "single_stock_max": 0.15,
+            "crypto_max": 0.1,
+            "sector_max": null
+          }
+        }
+      },
+      "portfolio_within_limits": true,
+      "residual_breaches": [],
+      "result": {
+        "schema_version": "1.1",
+        "policy_version": "second-look-0.1",
+        "client_id": "training_example_only",
+        "decision_date": "2026-11-13",
+        "profile": "Balanced",
+        "verdict": "green",
+        "evaluation_status": "complete",
+        "action": "pass_simulation",
+        "activate_agents": false,
+        "effect": "reduces",
+        "reasons": [
+          "Existing deviation reduced with no new or worsened breach; remaining breaches are reported."
+        ],
+        "breaches": [
+          {
+            "rule": "allocation.equities.min",
+            "limit": 0.3,
+            "bound": "min",
+            "before": 0.2866666666666666,
+            "after": 0.36666666666666664,
+            "gap_before": 0.013333333333333364,
+            "gap_after": 0.0,
+            "effect": "reduces",
+            "severity": "none",
+            "resolved": true,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          }
+        ],
+        "alerts": [],
+        "checks": [
+          {
+            "rule": "allocation.cash.min",
+            "limit": 0,
+            "bound": "min",
+            "before": 0.18,
+            "after": 0.1,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.cash.max",
+            "limit": 0.2,
+            "bound": "max",
+            "before": 0.18,
+            "after": 0.1,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.fixed_income.min",
+            "limit": 0.3,
+            "bound": "min",
+            "before": 0.5,
+            "after": 0.5,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.fixed_income.max",
+            "limit": 0.65,
+            "bound": "max",
+            "before": 0.5,
+            "after": 0.5,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.equities.min",
+            "limit": 0.3,
+            "bound": "min",
+            "before": 0.2866666666666666,
+            "after": 0.36666666666666664,
+            "gap_before": 0.013333333333333364,
+            "gap_after": 0.0,
+            "effect": "reduces",
+            "severity": "none",
+            "resolved": true,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.equities.max",
+            "limit": 0.65,
+            "bound": "max",
+            "before": 0.2866666666666666,
+            "after": 0.36666666666666664,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.alternatives.min",
+            "limit": 0,
+            "bound": "min",
+            "before": 0.03333333333333333,
+            "after": 0.03333333333333333,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "allocation.alternatives.max",
+            "limit": 0.25,
+            "bound": "max",
+            "before": 0.03333333333333333,
+            "after": 0.03333333333333333,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "NBF Fall 2026 ranges supplied in project instructions"
+          },
+          {
+            "rule": "single_stock.TSLA",
+            "limit": 0.1,
+            "bound": "max",
+            "before": 0.02,
+            "after": 0.1,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "team_assumption"
+          },
+          {
+            "rule": "crypto",
+            "limit": 0,
+            "bound": "max",
+            "before": 0.0,
+            "after": 0.0,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "weight",
+            "source": "team_assumption"
+          },
+          {
+            "rule": "hhi",
+            "limit": 0.25,
+            "bound": "max",
+            "before": 0.1439111111111111,
+            "after": 0.13111111111111112,
+            "gap_before": 0.0,
+            "gap_after": 0.0,
+            "effect": "unchanged",
+            "severity": "none",
+            "resolved": false,
+            "unit": "hhi_index",
+            "source": "team_assumption"
+          }
+        ],
+        "hhi_before": 0.1439111111111111,
+        "hhi_after": 0.13111111111111112,
+        "weights_before": {
+          "cash": 0.18,
+          "fixed_income": 0.5,
+          "equities": 0.2866666666666666,
+          "alternatives": 0.03333333333333333
+        },
+        "weights_after": {
+          "cash": 0.1,
+          "fixed_income": 0.5,
+          "equities": 0.36666666666666664,
+          "alternatives": 0.03333333333333333
+        },
+        "position_weights_before": {
+          "CASH_CAD": 0.18,
+          "TSLA": 0.02,
+          "SPY": 0.13333333333333333,
+          "XIU.TO": 0.06666666666666667,
+          "ESGV": 0.06666666666666667,
+          "XBB.TO": 0.16666666666666666,
+          "AGG": 0.16666666666666666,
+          "TLT": 0.16666666666666666,
+          "GLD": 0.03333333333333333
+        },
+        "position_weights_after": {
+          "CASH_CAD": 0.1,
+          "TSLA": 0.1,
+          "SPY": 0.13333333333333333,
+          "XIU.TO": 0.06666666666666667,
+          "ESGV": 0.06666666666666667,
+          "XBB.TO": 0.16666666666666666,
+          "AGG": 0.16666666666666666,
+          "TLT": 0.16666666666666666,
+          "GLD": 0.03333333333333333
+        },
+        "holdings_cad_before": {
+          "CASH_CAD": 27000.0,
+          "TSLA": 3000.0,
+          "SPY": 20000.0,
+          "XIU.TO": 10000.0,
+          "ESGV": 10000.0,
+          "XBB.TO": 25000.0,
+          "AGG": 25000.0,
+          "TLT": 25000.0,
+          "GLD": 5000.0
+        },
+        "holdings_cad_after": {
+          "CASH_CAD": 15000.0,
+          "TSLA": 15000.0,
+          "SPY": 20000.0,
+          "XIU.TO": 10000.0,
+          "ESGV": 10000.0,
+          "XBB.TO": 25000.0,
+          "AGG": 25000.0,
+          "TLT": 25000.0,
+          "GLD": 5000.0
+        },
+        "portfolio_value_cad": 150000.0,
+        "context_for_agents": {
+          "horizon_years": 8,
+          "objectives": [
+            "long_term_growth"
+          ],
+          "loss_tolerance_fraction": 0.2,
+          "preferences": {}
+        },
+        "context_only": [
+          "Horizon, objectives and loss tolerance do not change the assigned profile or verdict without an explicit constraint.",
+          "Historical drawdown is not a guaranteed future loss or a profile classifier."
+        ],
+        "coverage": {
+          "unresolved": [],
+          "unknown_sector_weight_before": 0.26666666666666666,
+          "unknown_sector_weight_after": 0.26666666666666666
+        },
+        "assumptions": [
+          "All non-allocation thresholds, asset mapping and color precedence are team assumptions.",
+          "HHI is sum of squared whole-portfolio position weights, including one cash bucket; no ETF look-through.",
+          "HHI watch begins at 0.15; new/worsened concentration above 0.25 is red. HHI uses index points, not the allocation 5-percentage-point buffer.",
+          "Near-limit warnings apply to meaningful asset-class boundaries only (exclude 0% minima and 100% maxima).",
+          "Strict improvement is green only if no breach is created or worsened; unchanged existing breaches remain yellow for review.",
+          "Single-stock, crypto and explicit exclusion breaches are red when created or worsened.",
+          "Sector limits require look-through for equity ETFs. Missing required coverage gives verdict null unless a definite red breach exists.",
+          "Cash-funded long-only trades; fractional units; zero fees and slippage; no automatic sale of ZST.TO for funding."
+        ],
+        "disclaimer": "Fictional clients; simulated trades only; no investment advice."
+      }
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "content_validation": "passed",
+  "knowledge_cards": 17,
+  "report_cards": 16,
+  "runtime_enabled_cards": 16,
+  "dialogue_examples": 12,
+  "evaluation_cases": 24,
+  "numeric_fixtures": 3,
+  "checks": [
+    "JSON parsed: behavioral_knowledge.json",
+    "JSON parsed: agent_settings.json",
+    "JSON parsed: conversation_examples.json",
+    "JSON parsed: evaluation_cases.json",
+    "JSON parsed: numeric_fixtures.json",
+    "JSON parsed: source_provenance.json",
+    "Unique cards, valid page mapping, alternative explanations and provenance",
+    "Source PDF hash matches unmodified supplied document",
+    "Numeric fixture totals, weights, HHI, residual breaches and README/example figures reconcile",
+    "Dialogue and evaluation concept/fixture references resolve",
+    "Runtime content paths exist"
+  ],
+  "llm_behavior_evaluation": "NOT RUN",
+  "aws_deployment": "NOT PERFORMED",
+  "scope": "Content structure, references and fixture arithmetic only; not a clinical instrument, model benchmark or deployment verification."
+}

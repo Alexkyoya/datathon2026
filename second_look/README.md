@@ -49,12 +49,13 @@ ticket preserves the red review in the page and does not approve anything.
 Editing an evaluated ticket invalidates its result and evaluates the revised
 trade. Revising, cancelling and explicitly acknowledging risk are separate actions.
 
-The numerical explanation and spectrum work offline. Local personalized AI is
-unconfigured, so submitting a reason saves it and displays an explicit unavailable
-state. The root AWS API can return real agent results through the same UI.
-Its existing agent flow supports buys on its configured historical date; other
-trade/date combinations retain the numerical result with an unavailable AI state.
-No deployment is performed by this interface change.
+The numerical explanation and spectrum work offline. The full repository also
+supports Bedrock conversations locally and through the root AWS API, using the
+existing coordinator configuration. Credentials/model access are required; missing
+access produces a saved message with an explicit unavailable/retry state, never a
+canned AI answer. Follow-up turns reuse the initial specialist reports. See
+[conversation setup, tool boundaries and checks](CONVERSATION.md). No deployment
+is performed automatically.
 
 The five-field trade request is unchanged. The decision route additionally accepts
 `{"decision":"proceed","risk_acknowledged":true}` for a paused red simulation.
@@ -68,7 +69,8 @@ running-server check `../.venv/bin/python tests/verify_http.py`. The optional
 `tests/verify_ui_macos.swift` harness exercises the rendered desktop/mobile flow,
 close behavior, red-only invitation, both invitation actions, edits, duplicates,
 failed requests and acknowledgement. It saves screenshots under `dist/` when
-called with that output directory; no test calls AWS.
+called with that output directory. Unit tests mock AWS; the native harness's
+explicit `--live` mode calls real Bedrock through the ordinary chat backend.
 
 ## One implementation per responsibility
 

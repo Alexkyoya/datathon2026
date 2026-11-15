@@ -68,6 +68,11 @@ def test_trade_outside_universe_rejected_with_clear_message():
 
 def test_no_price_downloads_in_code():
     allowed = {ROOT / "second_look" / "data" / "raw" / "build_dataset.py"}  # the organizers' own builder
+    # The original starter folder may also be present in a local workspace.
+    # Exempt only a byte-identical copy, never a different/new downloader.
+    original = ROOT / "alphaforge_starter" / "build_dataset.py"
+    if original.is_file() and original.read_bytes() == next(iter(allowed)).read_bytes():
+        allowed.add(original)
     for path in ROOT.rglob("*.py"):
         if ".venv" in path.parts or "build" in path.parts or path in allowed:
             continue

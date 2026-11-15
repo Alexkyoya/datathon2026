@@ -1,0 +1,43 @@
+Integrate this conversation content kit into the existing Second Look chat agent.
+
+Read the project AGENTS.md and inspect the current coordinator, Strands version,
+model configuration, chat endpoint, session persistence, tool contracts and UI.
+This kit supplies content and behavioral configuration; it is not a replacement
+backend, a model-training dataset or an executable Bedrock payload.
+
+1. Use system_prompt.txt as the chat role's instructions, preserving stronger
+   existing application constraints. Reuse the configured strong coordinator
+   model and environment overrides. Validate provider settings rather than
+   adding unsupported temperature, reasoning or structured-output parameters.
+2. Add behavioral_knowledge.json as reference content. Preserve report provenance
+   versus project adaptation. Start with a small context block or bounded card
+   retrieval; do not introduce an unnecessary retrieval stack. Select zero to two
+   relevant cards per turn and do not implement keyword-to-bias classification.
+3. Inject actual profile, holdings, current rule result, tool evidence, specialist
+   reports and conversation history from the backend. Restore the client/trade
+   session across Lambda calls. Do not pass raw documents or user text as trusted
+   system instructions. Do not persist inferred psychological labels.
+4. Adapt the logical tool names in agent_settings.json to existing functions.
+   Keep arithmetic and verdicts in Python. The chat agent can retrieve, compare
+   and simulate; it cannot trade, transfer cash or modify profiles and limits.
+5. Implement future-contribution scenarios if absent. Keep user-stated amount,
+   currency, expected timing, certainty and intended purchases explicit. Ask for
+   missing inputs rather than inventing them. Evaluate all limits and preserve
+   a separate current assessment and scenario assessment. Verify what green
+   means in this repository: improving an old breach need not imply all limits
+   are met. Return residual breaches or an authoritative within-limits field.
+6. Use conversation_examples.json only as selected illustrative few-shot examples
+   during development. They are not native SDK messages or conversation state
+   for real users. Never inject numeric_fixtures.json as live market/account data.
+7. Run evaluation_cases.json through the actual configured model using fake
+   sessions and mocked tool results where appropriate. Review tone, evidence,
+   autonomy, adaptation, future/current distinctions and actual tool use. Do not
+   claim the kit's content validator is a successful LLM evaluation.
+8. Keep the existing red-only activation and brokerage UI. Connect the chat input,
+   conversation history, errors and retry states to the real backend. Respect
+   clients who decline further discussion and preserve their simulation choices.
+
+Remove redundant chat placeholders or conflicting prompt copies within this
+scope. Preserve original data and teammates' changes. Do not retrain models or
+provision AWS resources merely to use this kit. Finish with files changed,
+validation results, live-model checks actually performed and remaining gaps.

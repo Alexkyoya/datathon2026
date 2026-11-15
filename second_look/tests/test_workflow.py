@@ -134,8 +134,14 @@ class WorkflowTests(unittest.TestCase):
         objects={f'second-look/{p.relative_to(Path(self.temp.name)).as_posix()}':p.read_bytes() for p in Path(self.temp.name).rglob('*.json')}
         invoked=[]
         class S3:
-            def get_object(self,**kwargs):return {'Body':io.BytesIO(objects[kwargs['Key']])}
-            def put_object(self,**kwargs):objects[kwargs['Key']]=kwargs['Body']
+            def __init__(self):self.version=0
+            def get_object(self,**kwargs):
+                from botocore.exceptions import ClientError
+                if kwargs['Key'] not in objects:
+                    raise ClientError({'Error': {'Code': 'NoSuchKey'}}, 'GetObject')
+                return {'Body':io.BytesIO(objects[kwargs['Key']]), 'ETag': 'mock-etag'}
+            def put_object(self,**kwargs):
+                objects[kwargs['Key']]=kwargs['Body'];return {'ETag':'mock-etag'}
         class Lambda:
             def invoke(self,**kwargs):invoked.append(kwargs);return {'StatusCode':202}
         boto=types.SimpleNamespace(client=lambda service:S3() if service=='s3' else Lambda())

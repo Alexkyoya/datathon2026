@@ -71,7 +71,7 @@ class HybridStore:
         return self._s3
 
     def load(self, key):
-        if key.startswith(("results/", "agent_requests/")):
+        if key.startswith(("results/", "agent_requests/", "assessment_inputs/", "conversations/", "accounts/")):
             try:
                 if config.LOCAL:
                     return json.loads(self._state_path(key).read_text())
@@ -105,6 +105,18 @@ class HybridStore:
         self._client().put_object(Bucket=config.DATA_BUCKET, Key=STATE_PREFIX + key, Body=body.encode(),
                                   ContentType="application/json")
 
+    def _state_store(self):
+        application, _ = _engine()
+        if config.LOCAL:
+            return application.FileStore(HERE/'runs/second_look_state')
+        return application.S3Store(self._client(), config.DATA_BUCKET, STATE_PREFIX)
+
+    def load_versioned(self, key):
+        return self._state_store().load_versioned(key)
+
+    def compare_and_swap(self, key, value, version):
+        return self._state_store().compare_and_swap(key, value, version)
+
 
 STORE = HybridStore()
 
@@ -118,6 +130,9 @@ USAGE = {
                                "side": "buy", "amount_cad": 360000},
         "POST /api/simulations/{id}/decision": [{"decision": "confirm"}, {"decision": "cancel"},
                                                 {"decision": "explain", "reason": "..."}],
+        "GET /api/simulations/{id}/conversation?client_id=...&input_version=...": "restore this client's trade conversation",
+        "POST /api/simulations/{id}/conversation": {"client_id": "robert", "input_version": "from evaluation",
+            "message_id": "unique UUID", "expected_revision": 0, "message": "Your reason or follow-up question"},
         "POST / (JSON)": {"client_id": "robert", "ticker": "NVDA", "amount_cad": 360000, "reason": "optional"},
     },
     "flow": ["green: passes without interruption", "yellow: short warning, client confirms",
@@ -140,6 +155,13 @@ def _context(params):
     clients = sorted(p.stem for p in CLIENTS.glob("*.json")) + ['demo_balanced']
     market = importlib.import_module('sl_engine.market')
     return market.build_context(STORE, cid, clients)
+
+
+def _conversations():
+    _engine()
+    module = importlib.import_module('sl_engine.conversation')
+    runtime = importlib.import_module('conversation')
+    return module.ConversationService(STORE, runtime.ConversationalCoordinator(S))
 
 
 def _run_agents(record):
@@ -209,6 +231,10 @@ def handler(event, context=None):
                 return _resp(200, USAGE)
             if path == "/api/context":
                 return _resp(200, _context(event.get("queryStringParameters")))
+            match = re.fullmatch(r'/api/simulations/([A-Za-z0-9_-]{1,128})/conversation', path)
+            if match:
+                params = event.get('queryStringParameters') or {}
+                return _resp(200, _conversations().get(match.group(1), params['client_id'], params['input_version']))
             return _resp(404, {"error": "Not found"})
 
         raw = event.get("body") or ""
@@ -223,6 +249,12 @@ def handler(event, context=None):
         app = application.SecondLookApplication(STORE)
         if path == "/api/evaluate":
             return _resp(200, app.evaluate(payload, getattr(context, "aws_request_id", None)))
+        match = re.fullmatch(r'/api/simulations/([A-Za-z0-9_-]{1,128})/conversation', path)
+        if match:
+            return _resp(200, _conversations().send(match.group(1), payload, request_id=getattr(context, 'aws_request_id', None)))
+        match = re.fullmatch(r'/api/simulations/([A-Za-z0-9_-]{1,128})/confirm-contribution', path)
+        if match:
+            return _resp(200, _conversations().confirm_contribution(match.group(1), payload))
         m = re.fullmatch(r"/api/simulations/([A-Za-z0-9_-]{1,128})/decision", path)
         if m:
             if set(payload) - {"decision", "reason", "risk_acknowledged"} or "decision" not in payload:
@@ -243,6 +275,7 @@ def handler(event, context=None):
             return _legacy(payload)
         return _resp(404, {"error": "Not found"})
     except (ValueError, KeyError, TypeError) as e:
-        return _resp(400, {"status": "invalid_input", "verdict": None, "error": str(e)})
+        code = 409 if type(e).__name__ == 'StateConflict' else 400
+        return _resp(code, {"status": "invalid_input", "verdict": None, "error": str(e)})
     except Exception as e:  # keep the dashboard informed instead of a bare 502
         return _resp(500, {"error": f"{type(e).__name__}: {e}"})

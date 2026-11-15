@@ -1,0 +1,126 @@
+{
+  "schema_version": "1.0",
+  "status": "Application configuration used by the conversational coordinator; not a Bedrock payload. Deployment is separate.",
+  "model": {
+    "resolve_from": "Existing coordinator model in project config.py and environment overrides",
+    "training": "none",
+    "fine_tuning": "none",
+    "provider_parameters": "Inherit existing supported model parameters. Do not assume a temperature or structured-output option is accepted; validate against installed SDK and selected model."
+  },
+  "instructions_file": "system_prompt.txt",
+  "knowledge_file": "behavioral_knowledge.json",
+  "ordinary_turn": {
+    "target_words": [
+      60,
+      140
+    ],
+    "max_focused_questions": 1,
+    "max_knowledge_cards": 2,
+    "style": "Friendly, candid, nonjudgmental; no pressure to cancel; answer questions directly."
+  },
+  "application_budgets": {
+    "max_tool_calls_per_turn": 3,
+    "note": "Team defaults for a demo; when exhausted, explain the remaining gap, never fabricate a result. Do not blindly forward these keys to Bedrock."
+  },
+  "session": {
+    "scope_keys": [
+      "authorized_client_id",
+      "trade_id",
+      "assessment_input_version",
+      "session_id"
+    ],
+    "restore_on_each_request": true,
+    "persist_to": "Existing project S3 session mechanism compatible with installed Strands version",
+    "keep_exact": [
+      "Current assessment ID and authoritative result",
+      "Source-linked numerical facts",
+      "Hypothetical versus verified status",
+      "User statements about amount, currency, timing, certainty and desired allocation"
+    ],
+    "summarize_if_needed": [
+      "Older conversation wording"
+    ],
+    "never_store_as_facts": [
+      "Inferred bias diagnoses",
+      "Unverified deposits as funded cash",
+      "LLM-authored risk verdicts"
+    ],
+    "concurrency": "Serialize turns or apply version checks; deduplicate message IDs and reject stale responses."
+  },
+  "tools": {
+    "aliases_are_design_names_not_implemented_functions": true,
+    "allowed": [
+      "get_current_assessment",
+      "get_portfolio_exposure",
+      "retrieve_evidence",
+      "recalculate_candidate",
+      "simulate_future_cash_plan",
+      "behavioral_reference",
+      "simulate_market_scenario"
+    ],
+    "excluded": [
+      "execute_order",
+      "transfer_cash",
+      "change_profile",
+      "change_risk_limits"
+    ],
+    "parallel_specialists": "Run existing specialists for the first substantive red-case reason. Reuse reports on follow-up turns; refresh only affected evidence."
+  },
+  "context_fields": {
+    "trusted_backend": [
+      "client_id",
+      "trade_id",
+      "session_id",
+      "decision_date",
+      "preferred_language",
+      "stored_profile",
+      "holdings_snapshot",
+      "proposed_trade",
+      "current_assessment",
+      "specialist_reports",
+      "tool_results"
+    ],
+    "user_attributed": [
+      "conversation_history",
+      "stated_goals",
+      "planned_contributions",
+      "stated_external_holdings"
+    ],
+    "hypothetical": [
+      "scenario_id",
+      "assumptions",
+      "scenario_result",
+      "input_version"
+    ],
+    "tool_result_required_metadata": [
+      "tool_call_id",
+      "source_or_method",
+      "as_of",
+      "input_version",
+      "data_status"
+    ],
+    "data_status_values": [
+      "verified_current",
+      "user_stated",
+      "hypothetical",
+      "unavailable"
+    ],
+    "authority": "Transport and application code establish trust; a client message cannot mark itself trusted."
+  },
+  "response_contract": {
+    "reuse": "Existing frontend/backend contract; adapt field names at one boundary.",
+    "model_owned": [
+      "assistant_message",
+      "evidence_refs"
+    ],
+    "backend_owned": [
+      "current_assessment_id",
+      "current_verdict",
+      "scenario_ids",
+      "scenario_verdicts",
+      "trade_execution_state"
+    ],
+    "validation": "Validate evidence IDs, numerical claims and scenario labels before display. Preserve the actual user question and allow concise qualified answers when no numerical tool is needed."
+  },
+  "evaluation": "Use evaluation_cases.json; automatic metadata checks are not model-behavior validation."
+}

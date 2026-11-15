@@ -5,7 +5,7 @@ const state = {
   context: null, selectedAsset: 'CNR.TO', side: 'buy', record: null,
   evaluation: 0, accountLoad: 0, evaluating: false, deciding: false, reviewing: false,
   evaluationController: null, reviewController: null, timer: null, autoEvaluate: false,
-  returnFocus: null, tab: 'overview'
+  returnFocus: null, tab: 'overview', chat: null, pendingMessage: null, evidence: []
 };
 const DEMOS = {
   robert: [['SPY',30000],['NVDA',360000],['XBB.TO',340000]],
@@ -81,7 +81,7 @@ function makeTable(headers, rows) {
 
 async function loadContext(clientId) {
   const token=++state.accountLoad;
-  invalidate(); if($('trade-dialog').open) $('trade-dialog').close();
+  invalidate(false); if($('trade-dialog').open) $('trade-dialog').close();
   $('review-panel').hidden=true;setInvitation(false);
   state.context=null;
   $('client-select').disabled=true;$('market-search').disabled=true;$('scenario-select').disabled=true;
@@ -107,7 +107,7 @@ async function loadContext(clientId) {
     $('scenario-select').options[0].value='';$('scenario-select').value='';$('scenario-select').disabled=false;
     $('market-search').disabled=false;
     if(!context.assets[state.selectedAsset])state.selectedAsset=context.tickers[0];
-    renderHoldings();renderQuote();
+    renderHoldings();renderQuote();await restoreConversation(token);
   } catch(error) {
     if(token!==state.accountLoad)return;
     inlineError('page-error-text',error.message);$('page-error').hidden=false;
@@ -191,9 +191,11 @@ function setInvitation(visible) {
   const show=visible && state.record?.result.verdict==='red' && !isTerminal(state.record);
   $('agent-invite').hidden=!show;$('dialog-layout').classList.toggle('with-invitation',show);
 }
-function invalidate() {
+function invalidate(forget=true) {
+  if(forget && state.context)sessionStorage.removeItem('second-look:'+state.context.client.client_id);
   clearTimeout(state.timer);state.evaluation++;state.evaluationController?.abort();state.reviewController?.abort();
-  state.record=null;state.evaluating=false;state.reviewing=false;state.autoEvaluate=false;
+  state.record=null;state.chat=null;state.pendingMessage=null;state.evidence=[];state.evaluating=false;state.reviewing=false;state.autoEvaluate=false;
+  $('reason').value='';
   setInvitation(false);$('review-panel').hidden=true;$('risk-checkbox').checked=false;
   inlineError('ticket-error','');inlineError('review-error','');
   $('ticket-status').hidden=true;syncButtons();
@@ -250,13 +252,14 @@ function syncButtons() {
   $('submit-trade').disabled=busy||!!record;
   $('submit-trade').textContent=state.evaluating?'Evaluating…':record?(record.result.verdict==='red'?'Trade paused':isTerminal(record)?'Simulation finished':'Review required'):'Check simulated trade';
   $('submit-trade').className='button '+(state.side==='sell'?'red':'blue');
-  $('cancel-trade').disabled=state.deciding||state.reviewing;
+  $('cancel-trade').disabled=state.deciding;
   ['amount','ticket-asset','side-buy','side-sell'].forEach(id=>$(id).disabled=state.deciding);
-  $('send-reason').disabled=state.reviewing||state.deciding||!record||record.stage!=='awaiting_reason';
-  $('send-reason').textContent=state.reviewing?'Reviewing…':'Send for review';
-  $('risk-checkbox').disabled=state.reviewing||state.deciding||isTerminal(record);
-  $('proceed-red').disabled=!$('risk-checkbox').checked||state.deciding||state.reviewing||isTerminal(record)||!record;
-  $('cancel-review').disabled=state.deciding||state.reviewing||isTerminal(record);
+  $('send-reason').disabled=state.reviewing||state.deciding||!record||isTerminal(record)||!!state.pendingMessage||state.chat?.messages.filter(m=>m.role==='user').at(-1)?.status==='failed';
+  $('send-reason').textContent=state.reviewing?'Replying…':'Send';
+  $('reason').disabled=state.reviewing||state.deciding||isTerminal(record)||!!state.pendingMessage;
+  $('risk-checkbox').disabled=state.deciding||isTerminal(record);
+  $('proceed-red').disabled=!$('risk-checkbox').checked||state.deciding||isTerminal(record)||!record;
+  $('cancel-review').disabled=state.deciding||isTerminal(record);
   $('revise-trade').disabled=state.deciding;
 }
 function ticketEdited() {
@@ -278,7 +281,7 @@ async function evaluateTrade() {
   try {
     const record=await api('/api/evaluate',request,state.evaluationController.signal);
     if(token!==state.evaluation)return;
-    state.record=record;state.evaluating=false;renderResult();
+    state.record=record;state.evaluating=false;rememberTrade();renderResult();
     if(record.result.verdict==='red'){
       const first=state.context.first_name;$('invite-title').textContent=first?`Hi, ${first}!`:'Hi there!';
       $('invite-message').textContent='This trade appears misaligned with your investor profile. Would you like to talk about it?';
@@ -334,7 +337,7 @@ function renderReview() {
   const rows=checks.filter(c=>finite(c.before)&&finite(c.after)&&finite(c.limit)).map(c=>{const format=c.unit==='hhi_index'?v=>decimal(v,3):percent;return [exposureName(c),format(c.before),format(c.after),(c.bound==='min'?'Minimum ':'Maximum ')+format(c.limit)];});
   $('exposure-table').replaceChildren(makeTable(['Flagged measure','Before','After','Limit'],rows));
   renderSpectrum(r.classification);
-  $('reason-form').hidden=record.stage!=='awaiting_reason';
+  $('reason-form').hidden=isTerminal(record);
   renderConversation(record);
   const terminal=isTerminal(record);
   document.querySelector('.review-kicker').textContent=terminal?'SECOND LOOK · '+(record.stage==='cancelled'?'SIMULATION CANCELLED':'RISK ACKNOWLEDGED'):'SECOND LOOK · TRADE PAUSED';
@@ -354,42 +357,139 @@ function renderSpectrum(c) {
   }
   root.append(node('p','Memberships describe asset allocation, not probabilities or complete risk. A small mismatch does not override a hard limit.','muted'));
 }
+function rememberTrade() {
+  if(state.record?.result.verdict==='red')sessionStorage.setItem('second-look:'+state.record.request.client_id,JSON.stringify({id:state.record.simulation_id,version:state.record.assessment_input_version}));
+}
+async function restoreConversation(accountToken) {
+  const saved=sessionStorage.getItem('second-look:'+state.context.client.client_id);
+  if(!saved)return;
+  try {
+    const {id,version}=JSON.parse(saved),client=state.context.client.client_id;
+    const response=await api(`/api/simulations/${id}/conversation?client_id=${encodeURIComponent(client)}&input_version=${encodeURIComponent(version)}`);
+    if(accountToken!==state.accountLoad)return;
+    state.record=response.record;state.chat=response.conversation;state.evidence=response.evidence;
+    state.side=state.record.request.side;$('ticket-asset').value=state.record.request.ticker;$('amount').value=state.record.request.amount_cad;
+    $('page-review-slot').append($('review-panel'));revealReview(false);renderResult();
+  }catch(error){if(accountToken===state.accountLoad)inlineError('page-error-text','The saved conversation could not be restored. '+error.message);}
+}
 function renderConversation(record) {
   const container=$('conversation-result');container.replaceChildren();
-  if(record.investor_reason){const message=node('div','','conversation-message');message.append(node('span','Your reason','small-label'),node('p',record.investor_reason));container.append(message);}
-  if(state.reviewing){container.append(node('p','Reviewing your reason with the available tools… The red verdict remains fixed.','backend-unavailable'));container.setAttribute('aria-busy','true');return;}
-  container.removeAttribute('aria-busy');
-  const answer=record.agent_result;
-  if(answer && record.agent_status==='completed'){
-    const article=node('article','','agent-answer');
-    const headline=answer.headline||'Personalized review';article.append(node('h3',headline));
-    const written=new Set();
-    for(const key of ['why_it_matters','your_reason','client_reason_response','goal_check','values_check'])if(typeof answer[key]==='string'&&answer[key]&&!written.has(answer[key])){written.add(answer[key]);article.append(node('p',answer[key]));}
-    const scenarios=(answer.risk?.scenarios||[]).filter(s=>finite(s.portfolio_return));
-    if(scenarios.length){const detail=node('details'),list=node('ul');detail.append(node('summary','Stress tests · hypothetical, not forecasts'));scenarios.forEach(s=>list.append(node('li',`${s.name}: ${percent(s.portfolio_return)}`)));detail.append(list);article.append(detail);}
-    const news=answer.news_check||[];
-    if(news.length){const detail=node('details'),list=node('ul');detail.append(node('summary','News evidence'));news.forEach(item=>{const row=node('li',`${item.claim} · ${item.type}. ${item.evidence||item.limitations||''} `);if(item.source?.url&&/^https?:\/\//.test(item.source.url)){const link=node('a',item.source.name||'Source');link.href=item.source.url;link.target='_blank';link.rel='noopener noreferrer';row.append(link);}list.append(row);});detail.append(list);article.append(detail);}
-    const alternatives=(answer.alternatives||[]).filter(a=>['green','yellow'].includes(a.rule_check_verdict)&&state.context.assets[a.ticker]&&finite(a.amount_cad)&&a.amount_cad>0);
-    if(alternatives.length){article.append(node('h3','Alternatives returned by the backend'));alternatives.forEach(alternative=>{const row=node('div','','alternative');row.append(node('span',alternative.description));const button=node('button','Review '+alternative.ticker,'button secondary compact');button.type='button';button.addEventListener('click',()=>{openTicket('buy',alternative.ticker,alternative.amount_cad);evaluateTrade();});row.append(button);article.append(row);});}
+  const messages=state.chat?.messages||[];
+  messages.forEach(message=>{
+    const article=node('article','',message.role==='assistant'?'agent-answer':'conversation-message');
+    article.append(node('span',message.role==='assistant'?'Second Look':'You','small-label'),node('p',message.text));
+    if(message.error)article.append(node('p',message.error,'backend-unavailable'));
+    if(message.diagnostic){
+      const detail=node('details');detail.append(node('summary','Diagnostic reference'));
+      detail.append(node('p',`${message.diagnostic.component} · ${message.diagnostic.code} · request ${message.diagnostic.request_id}`));
+      if(message.diagnostic.aws_request_id)detail.append(node('p','AWS request '+message.diagnostic.aws_request_id));
+      article.append(detail);
+    }
+    if(message.evidence_refs?.length){
+      const detail=node('details');detail.append(node('summary','Evidence and calculation dates'));
+      message.evidence_refs.forEach(ref=>{
+        const item=state.evidence.find(e=>e.tool_call_id===ref);if(!item)return;
+        detail.append(node('p',`${item.source_or_method} · as of ${dateLabel(item.as_of)} · ${item.data_status.replaceAll('_',' ')}`));
+        // URLs come only from stored tool evidence, never from model text.
+        const data=item.data;
+        for(const source of (data.items||[]))if(/^https?:\/\//.test(source.url||'')){
+          const link=node('a',`${source.source_name||source.title||'Official source'} · ${source.published_date}`);link.href=source.url;link.target='_blank';link.rel='noopener noreferrer';detail.append(link);
+        }
+      });article.append(detail);
+    }
     container.append(article);
-  }else if(record.agent_status!=='not_requested'){
-    const messages={not_configured:'Personalized AI review is unavailable in this local demo. Your reason is saved; the numerical explanation above remains available.',dispatched:'Your reason has been sent to the configured agent service. A completed explanation has not been returned here.',dispatch_failed:'The agent service could not be reached. Your reason is saved and the trade remains paused.',failed:record.agent_error||'The personalized review could not finish. You can revise, cancel, or acknowledge the flagged risks.',unavailable:record.agent_error||'Personalized review is unavailable for this trade.'};
-    container.append(node('p',messages[record.agent_status]||'A completed personalized review is not available.','backend-unavailable'));
+  });
+  if(state.pendingMessage&&!messages.some(m=>m.id===state.pendingMessage.message_id)){
+    const pending=node('article','','conversation-message');pending.append(node('span','You','small-label'),node('p',state.pendingMessage.message));container.append(pending);
   }
+  if(state.reviewing){container.append(node('p',state.chat?.messages.length?'Preparing a reply…':'Consulting the Profile, News and Financial Data specialists, then preparing your reply…','backend-unavailable'));container.setAttribute('aria-busy','true');}
+  else container.removeAttribute('aria-busy');
+  const lastUser=messages.filter(m=>m.role==='user').at(-1);
+  const retry=lastUser&&lastUser.status!=='completed';
+  $('retry-reply').hidden=state.reviewing||isTerminal(record)||(!retry&&!state.pendingMessage);
+  $('refresh-conversation').hidden=!state.chat&&!state.pendingMessage;
+  $('reason-label').textContent=messages.length?'Ask a question or add to your reasoning':'What made you interested in this trade?';
+  $('reason').placeholder=messages.length?'Ask Second Look…':'Tell us what you had in mind…';
+  const scenarios=$('conversation-scenarios');scenarios.replaceChildren();
+  (state.chat?.scenarios||[]).forEach(scenario=>{
+    const section=node('section','','scenario-assessment');
+    section.append(node('h3',scenario.kind==='future_contribution'?'Hypothetical assessment after contribution':scenario.kind==='market_shock'?'Hypothetical market scenario':'Separate assessment of your revised trade'));
+    const r=scenario.result;
+    section.append(node('p',`Trade verdict: ${r.verdict||'manual review'} · All applicable limits met: ${r.portfolio_within_limits===true?'Yes':r.portfolio_within_limits===false?'No':'Unverified'}.`));
+    section.append(makeTable(['Allocation','Hypothetical share'],Object.entries(r.weights_after).map(([key,value])=>[classes[key],percent(value)])));
+    const breaches=r.residual_breaches||[];
+    if(breaches.length){const list=node('ul');breaches.forEach(c=>list.append(node('li',`${c.rule}: ${c.unit==='hhi_index'?decimal(c.after,3):percent(c.after)}; ${c.bound==='min'?'minimum':'maximum'} ${c.unit==='hhi_index'?decimal(c.limit,3):percent(c.limit)}.`)));section.append(list);}
+    if(r.compliance_unresolved?.length)section.append(node('p','Some limits could not be verified.','backend-unavailable'));
+    section.append(node('p',`${scenario.kind==='market_shock'?'Client-specified hypothetical shocks applied; other prices and FX held':'Prices and FX held'} at ${dateLabel(scenario.as_of)}; fees and taxes excluded. This is a conditional comparison, with no funding or execution.`,'muted'));
+    if(scenario.kind==='market_shock')section.append(makeTable(['Hypothetical shock','Assumed return'],Object.entries(scenario.assumptions.shocks).map(([key,value])=>[key,percent(value)])));
+    if(scenario.kind==='future_contribution')section.append(node('p',`Expected timing (your statement): ${scenario.plan.expected_timing}. Certainty: ${scenario.plan.certainty}. Until arrival, or if delayed, the current trade assessment still applies. Goal runway is held at the original decision date.`,'muted'));
+    if(scenario.kind==='future_contribution'){
+      section.append(node('p',`Your stated contribution: ${decimal(scenario.plan.amount)} ${scenario.plan.currency}. At the snapshot FX rate: ${money(scenario.contribution_cad)} CAD.`));
+      if(scenario.plan.purchases.length)section.append(makeTable(['Client-stated planned purchase','Amount (CAD)'],scenario.plan.purchases.map(p=>[p.ticker,money(p.amount_cad)])));
+    }
+    if(scenario.kind==='future_contribution'&&!isTerminal(record)&&!record.superseded_by){
+      const label=node('label','','checkbox-label'),check=node('input');check.type='checkbox';
+      label.append(check,node('span','In this fictional account, confirm that this cash has arrived at the historical snapshot date. No planned purchases will execute.'));
+      const button=node('button','Confirm simulated cash arrival and recheck','button secondary compact');button.type='button';button.disabled=true;
+      check.addEventListener('change',()=>{button.disabled=!check.checked||state.reviewing||state.deciding;});
+      const eventId=crypto.randomUUID();button.addEventListener('click',()=>confirmContribution(scenario.scenario_id,eventId));
+      section.append(label,button);
+    }
+    scenarios.append(section);
+  });
+  container.scrollTop=container.scrollHeight;
 }
-async function submitReason(event) {
-  event.preventDefault();if(state.reviewing||state.deciding||state.record?.stage!=='awaiting_reason')return;
-  const reason=$('reason').value.trim();if(!reason){inlineError('review-error','Please enter what interested you in this trade.');$('reason').focus();return;}
-  const id=state.record.simulation_id,token=state.evaluation;state.reviewing=true;state.reviewController=new AbortController();inlineError('review-error','');renderReview();
-  try {
-    const record=await api(`/api/simulations/${id}/decision`,{decision:'explain',reason},state.reviewController.signal,180000);
+async function confirmContribution(scenarioId,eventId) {
+  if(state.deciding||state.reviewing||!state.record)return;
+  const record=state.record,token=state.evaluation;state.deciding=true;syncButtons();
+  try{
+    const response=await api(`/api/simulations/${record.simulation_id}/confirm-contribution`,{
+      client_id:record.request.client_id,input_version:record.assessment_input_version,scenario_id:scenarioId,event_id:eventId,confirmed:true});
+    if(token!==state.evaluation||state.record?.simulation_id!==record.simulation_id||isTerminal(state.record))return;
+    state.record=response.record;state.chat=null;state.pendingMessage=null;state.evidence=[];rememberTrade();
+    // Reload account figures from the newly confirmed simulated state.
+    const context=await api('/api/context?client_id='+encodeURIComponent(record.request.client_id));
+    if(token!==state.evaluation)return;
+    state.context=context;state.record=response.record;renderHoldings();renderQuote();
+    $('account-total').textContent=money(context.account.total_cad);$('account-invested').textContent=money(context.account.invested_cad);$('account-cash').textContent=money(context.account.cash_cad);
+    $('ticket-cash').textContent=money(context.account.cash_cad);renderResult();
+    if(state.record.result.verdict==='red')revealReview(false);else $('review-panel').hidden=true;
+    announce('Simulated cash arrival confirmed. A new assessment was calculated; no purchases executed.');
+  }catch(error){inlineError('review-error',error.message);}
+  finally{state.deciding=false;syncButtons();}
+}
+async function refreshConversation() {
+  if(!state.record)return;
+  const id=state.record.simulation_id,token=state.evaluation;
+  try{
+    const response=await api(`/api/simulations/${id}/conversation?client_id=${encodeURIComponent(state.record.request.client_id)}&input_version=${state.record.assessment_input_version}`);
     if(token!==state.evaluation||state.record?.simulation_id!==id)return;
-    state.record=record;
+    state.record=response.record;state.chat=response.conversation;state.evidence=response.evidence;
+    if(state.pendingMessage&&state.chat.messages.some(m=>m.id===state.pendingMessage.message_id&&m.status==='completed'))state.pendingMessage=null;
+    renderReview();
+  }catch(error){inlineError('review-error',error.message);}
+}
+async function submitReason(event, retry=false) {
+  event?.preventDefault();if(state.reviewing||state.deciding||!state.record||isTerminal(state.record))return;
+  let payload=state.pendingMessage;
+  if(retry && !payload){const last=state.chat?.messages.filter(m=>m.role==='user').at(-1);if(last)payload={message_id:last.id,message:last.text};}
+  if(!retry){
+    const message=$('reason').value.trim();if(!message){inlineError('review-error','Please enter a message.');$('reason').focus();return;}
+    payload={message_id:crypto.randomUUID(),message};
+  }
+  if(!payload)return;
+  const id=state.record.simulation_id,token=state.evaluation;
+  payload={...payload,client_id:state.record.request.client_id,input_version:state.record.assessment_input_version,expected_revision:state.chat?.revision||0};
+  state.pendingMessage=payload;state.reviewing=true;state.reviewController=new AbortController();inlineError('review-error','');renderReview();
+  try {
+    const response=await api(`/api/simulations/${id}/conversation`,payload,state.reviewController.signal,600000);
+    if(token!==state.evaluation||state.record?.simulation_id!==id||isTerminal(state.record))return;
+    state.record=response.record;state.chat=response.conversation;state.evidence=response.evidence;state.pendingMessage=null;$('reason').value='';rememberTrade();
   }catch(error){if(token===state.evaluation&&error.name!=='AbortError')inlineError('review-error',error.message);}
   finally{if(token===state.evaluation){state.reviewing=false;renderReview();}}
 }
 async function decision(action) {
-  if(state.deciding||state.reviewing||!state.record)return;
+  if(state.deciding||!state.record)return;
   if(action==='proceed'&&!$('risk-checkbox').checked)return;
   const id=state.record.simulation_id,token=state.evaluation;
   state.deciding=true;inlineError('review-error','');syncButtons();
@@ -432,6 +532,9 @@ $('lets-talk').addEventListener('click',()=>revealReview(true));
 $('dismiss-invite').addEventListener('click',()=>{revealReview(false);$('review-title').focus({preventScroll:true});});
 $('revise-trade').addEventListener('click',reviseTrade);
 $('reason-form').addEventListener('submit',submitReason);
+$('reason').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();if(!$('send-reason').disabled)$('reason-form').requestSubmit();}});
+$('retry-reply').addEventListener('click',event=>submitReason(event,true));
+$('refresh-conversation').addEventListener('click',refreshConversation);
 $('risk-checkbox').addEventListener('change',syncButtons);
 $('proceed-red').addEventListener('click',()=>decision('proceed'));
 $('cancel-review').addEventListener('click',()=>decision('cancel'));

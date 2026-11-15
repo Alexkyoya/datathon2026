@@ -313,3 +313,12 @@ dialog:has(.dialog-layout.with-invitation) { width: 1190px; }
   .alternative .button { margin-top: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *:before, *:after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+/* Persisted conversation and conditional assessments share the brokerage surfaces. */
+#conversation-result {display:grid;gap:12px;margin:16px 0;max-height:460px;overflow-y:auto;overflow-wrap:anywhere}
+#conversation-result p {white-space:pre-wrap}
+#conversation-result .conversation-message {margin-left:clamp(0px,4vw,48px);background:#eef5fa;border-radius:12px;padding:14px 18px}
+#conversation-result .agent-answer {margin-right:clamp(0px,4vw,48px);border:1px solid var(--line);border-radius:12px;padding:14px 18px}
+.conversation-retry {display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:8px 0}
+.scenario-assessment {border:1px solid #b8d5e3;border-radius:12px;background:#f5fafc;padding:16px;margin:16px 0;overflow-x:auto}
+.scenario-assessment h3 {margin-top:0}
+#reason {min-height:76px}

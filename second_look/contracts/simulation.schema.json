@@ -65,6 +65,13 @@
     },
     "agent_error": {
       "type": "string"
+    },
+    "assessment_input_version": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "superseded_by": {
+      "type": "string"
     }
   },
   "additionalProperties": false,

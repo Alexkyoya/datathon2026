@@ -8,6 +8,7 @@ create/update the Lambda (role: Bedrock + invoke tools Lambda + S3), create the 
 then test it with the green case. Prints the URL to give to the dashboard.
 """
 import json
+import importlib.metadata
 import os
 import shutil
 import subprocess
@@ -40,8 +41,10 @@ def build_zip():
     print("Installing strands-agents for Lambda (Linux, Python 3.12)...")
     shutil.rmtree(BUILD, ignore_errors=True)
     BUILD.mkdir(parents=True)
+    sdk = 'strands-agents==' + importlib.metadata.version('strands-agents')
+    boto = 'boto3==' + importlib.metadata.version('boto3')
     subprocess.run(["uv", "pip", "install", "--target", str(BUILD), "--python-platform", "x86_64-manylinux2014",
-                    "--python-version", "3.12", "--only-binary", ":all:", "strands-agents", "boto3"], check=True)
+                    "--python-version", "3.12", "--only-binary", ":all:", sdk, boto], check=True)
     shutil.copy(ROOT / "config.py", BUILD)
     shutil.copy(ROOT / "api_handler.py", BUILD)
     # dashboard + team rule engine (second_look/), bundled under sl_* names
@@ -59,8 +62,13 @@ def build_zip():
                 shutil.copy(f, BUILD / dst / f.name)
     shutil.copy(comp / "examples" / "client.json", BUILD / "sl_clients" / "demo_balanced.json")
     (BUILD / "agents").mkdir(exist_ok=True)
-    for f in ("second_look.py", "tools.py", "universe.py"):
+    for f in ("second_look.py", "tools.py", "universe.py", "conversation.py"):
         shutil.copy(ROOT / "agents" / f, BUILD / "agents")
+    kit = BUILD/'second_look_conversation_kit'
+    kit.mkdir(exist_ok=True)
+    # Production instructions/reference only: examples, evaluations and fictional fixtures stay out.
+    for name in ('agent_settings.json', 'system_prompt.txt', 'behavioral_knowledge.json'):
+        shutil.copy(ROOT/'second_look_conversation_kit'/name, kit/name)
     print("Zipping...")
     with zipfile.ZipFile(ZIP, "w", zipfile.ZIP_DEFLATED) as z:
         for p in BUILD.rglob("*"):

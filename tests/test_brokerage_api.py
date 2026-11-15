@@ -41,6 +41,14 @@ class BrokerageApiTests(unittest.TestCase):
         class Store:
             def load(self,key):return copy.deepcopy(values[key])
             def save(self,key,value):values[key]=copy.deepcopy(value)
+            def load_versioned(self,key):
+                if key not in values:return None,None
+                from second_look.application import digest
+                return self.load(key),digest(values[key])
+            def compare_and_swap(self,key,value,version):
+                from second_look.application import StateConflict
+                if self.load_versioned(key)[1]!=version:raise StateConflict('Session changed')
+                self.save(key,value);return self.load_versioned(key)[1]
         self.api.STORE=Store()
         self.model.run.reset_mock(side_effect=True)
         self.model.run.return_value={'verdict':'red','headline':'Mocked agent review','rule_check':{}}
@@ -90,3 +98,26 @@ class BrokerageApiTests(unittest.TestCase):
         self.assertEqual(code,200)
         self.assertEqual(record['stage'],'cancelled')
         self.assertEqual(record['result'],red['result'])
+
+    def test_conversation_http_route_restores_deduplicates_and_isolates_clients(self):
+        from second_look.conversation import ConversationService
+        coordinator=types.SimpleNamespace(initial=Mock(return_value={'specialist_reports':{},'explanation':{},'evidence':{}}),
+            respond=Mock(return_value={'assistant_message':'A scripted integration reply.','evidence_refs':['current']}),max_tool_calls=3)
+        chat=ConversationService(self.api.STORE,coordinator)
+        red=self.red();path='/api/simulations/api-test/conversation'
+        payload={'client_id':'demo_balanced','input_version':red['assessment_input_version'],'message_id':'turn_1',
+                 'expected_revision':0,'message':'What does this red flag mean?'}
+        with patch.object(self.api,'_conversations',return_value=chat):
+            code,response=self.call(path,payload)
+            self.assertEqual(code,200)
+            self.assertEqual(response['current_verdict'],'red')
+            self.assertEqual(len(response['conversation']['messages']),2)
+            self.assertEqual(self.call(path,payload),(code,response))
+            self.assertEqual(coordinator.initial.call_count,1)
+            self.assertEqual(coordinator.respond.call_count,1)
+            self.assertEqual(self.call(path,dict(payload,client_id='robert'))[0],400)
+            self.assertEqual(self.call(path,dict(payload,message_id='turn_2'))[0],409)
+            get=self.api.handler({'rawPath':path,'requestContext':{'http':{'method':'GET'}},
+                'queryStringParameters':{'client_id':'demo_balanced','input_version':red['assessment_input_version']}})
+            self.assertEqual(get['statusCode'],200)
+            self.assertEqual(json.loads(get['body'])['conversation'],response['conversation'])

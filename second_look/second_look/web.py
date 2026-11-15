@@ -1,16 +1,20 @@
 """Local frontend adapter over the same application service used by Lambda."""
 import json
+import uuid
 from urllib.parse import parse_qs, urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from .application import ProjectStore, SecondLookApplication
 from .market import build_context
+from .conversation import ConversationService, LazyCoordinator
+from .application import StateConflict
 
 
-def make_handler(root):
+def make_handler(root, coordinator=None):
     root = Path(root)
     runtime = ProjectStore(root)
     app = SecondLookApplication(runtime)
+    chat = ConversationService(runtime, coordinator or LazyCoordinator(root.parent))
     web = root/'web'
 
     class Handler(BaseHTTPRequestHandler):
@@ -25,6 +29,13 @@ def make_handler(root):
             self.wfile.write(encoded)
 
         def do_GET(self):
+            path = urlsplit(self.path).path
+            if path.startswith('/api/simulations/') and path.endswith('/conversation'):
+                try:
+                    params = parse_qs(urlsplit(self.path).query)
+                    return self.send(200, chat.get(path.split('/')[-2], params['client_id'][0], params['input_version'][0]))
+                except (ValueError, KeyError, OSError) as exc:
+                    return self.send(409 if isinstance(exc, StateConflict) else 400, {'error': str(exc)})
             if self.path == '/api/context' or self.path.startswith('/api/context?'):
                 try:
                     cid = parse_qs(urlsplit(self.path).query).get('client_id', ['robert'])[0]
@@ -52,6 +63,10 @@ def make_handler(root):
                 payload = json.loads(self.rfile.read(length))
                 if self.path == '/api/evaluate':
                     record = app.evaluate(payload)
+                elif self.path.startswith('/api/simulations/') and self.path.endswith('/conversation'):
+                    record = chat.send(self.path.split('/')[-2], payload, request_id=uuid.uuid4().hex)
+                elif self.path.startswith('/api/simulations/') and self.path.endswith('/confirm-contribution'):
+                    record = chat.confirm_contribution(self.path.split('/')[-2], payload)
                 elif self.path.startswith('/api/simulations/') and self.path.endswith('/decision'):
                     if set(payload)-{'decision', 'reason', 'risk_acknowledged'} or 'decision' not in payload:
                         raise ValueError('Decision accepts decision, optional reason and risk_acknowledged')
@@ -61,7 +76,7 @@ def make_handler(root):
                     return self.send(404, {'error': 'Not found'})
                 self.send(200, record)
             except (ValueError, KeyError, TypeError, OSError) as exc:
-                self.send(400, {'status': 'invalid_input', 'verdict': None, 'error': str(exc)})
+                self.send(409 if isinstance(exc, StateConflict) else 400, {'status': 'invalid_input', 'verdict': None, 'error': str(exc)})
 
     return Handler
 

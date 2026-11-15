@@ -132,7 +132,8 @@ Manual alternative (console):
 - `GET /`: the dashboard. Pick a client (robert, mateo, amira, demo_balanced) and use the demo buttons.
 - `GET /api`: usage. `GET /api/context?client_id=robert`: stored client and reference portfolios.
 - `POST /api/evaluate` with `{"client_id","decision_date":"2026-11-13","ticker","side","amount_cad"}` returns green, yellow or red.
-- `POST /api/simulations/{id}/decision` with `{"decision":"confirm"|"cancel"}`, or `{"decision":"explain","reason":"..."}` on red. The explain call runs the agents (1–2 min) and adds `agent_result` and `agent_trace` to the record. The verdict never changes.
+- `POST /api/simulations/{id}/decision` confirms/cancels, or proceeds after explicit risk acknowledgement. The old `explain` action remains for API compatibility; the dashboard uses the persisted conversation endpoint below.
+- `GET/POST /api/simulations/{id}/conversation` restores/sends chat turns. The first message runs the existing specialists/coordinator; subsequent messages reuse their reports. See [conversation setup and contracts](second_look/CONVERSATION.md).
 - `POST /` with `{"client_id","ticker","amount_cad"[,"reason"]}` or `{"action": ...}`: the simple JSON API.
 
 The URL is public (no auth) for the demo, so keep it inside the team.

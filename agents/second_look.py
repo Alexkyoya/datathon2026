@@ -25,6 +25,7 @@ if "--local" in sys.argv:  # must be set before config is imported (works on Win
 
 from strands import Agent, tool
 from strands.models import BedrockModel
+from botocore.config import Config
 
 sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -61,8 +62,10 @@ def _fast_model_id():
 
 def model(fast=False):
     if fast:  # specialists: short, tool-driven tasks -> smaller, faster model
-        return BedrockModel(model_id=_fast_model_id(), region_name=config.AWS_REGION)
-    return BedrockModel(model_id=config.MODEL_ID, region_name=config.AWS_REGION)  # no temperature: deprecated for newer Claude models
+        return BedrockModel(model_id=_fast_model_id(), region_name=config.AWS_REGION,
+                            boto_client_config=Config(connect_timeout=5, read_timeout=90, retries={'max_attempts': 1}))
+    return BedrockModel(model_id=config.MODEL_ID, region_name=config.AWS_REGION,
+                        boto_client_config=Config(connect_timeout=5, read_timeout=90, retries={'max_attempts': 1}))
 
 
 COMMON_RULES = """
@@ -258,6 +261,47 @@ def save_run(result):
     return f"s3://{config.DATA_BUCKET}/{key}"
 
 
+
+def review_red(ctx, rc, reason, shocks, profile_tools=None, news_tools=None, data_tools=None, alternative_tool=None, on_unavailable=None):
+    """Shared initial specialist/coordinator analysis, reused by persisted chat sessions."""
+    # The three specialists don't depend on each other: run them at the same time.
+    t0 = time.time()
+    data_prompt = DATA_PROMPT
+    if data_tools is not None:
+        data_prompt = data_prompt.replace('always pass\nclient_id, ticker and amount_cad',
+            'the tools are already bound to the exact account/trade; use only arguments in their schemas')
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        f_profile = pool.submit(_ask, PROFILE_PROMPT, profile_tools or [T.get_profile], ctx)
+        f_news = pool.submit(_ask, NEWS_PROMPT, news_tools or [T.news_check], ctx)
+        f_data = pool.submit(_ask, data_prompt, data_tools or [T.risk_metrics, T.macro_snapshot],
+                             ctx + "\nRun these scenarios as shocks: " + json.dumps(shocks))
+        reports = {}
+        for name, future in [('profile', f_profile), ('news', f_news), ('data', f_data)]:
+            try:
+                reports[name] = future.result()
+            except Exception as exc:
+                if on_unavailable is None:
+                    raise
+                reports[name] = {'status': 'unavailable', 'diagnostic': on_unavailable(name+'_specialist', exc)}
+    t1 = time.time()
+    coordinator = Agent(model=model(), system_prompt=coordinator_prompt(), tools=[alternative_tool or check_alternative],
+                        callback_handler=None)
+    prompt = (ctx + f"\nRule engine result (final verdict):\n{json.dumps(rc)}\n\n"
+              f"PROFILE AGENT REPORT:\n{reports['profile']}\n\nNEWS AGENT REPORT:\n{reports['news']}\n\n"
+              f"FINANCIAL DATA AGENT REPORT:\n{reports['data']}")
+    try:
+        out = _parse_json(str(coordinator(prompt)))
+    except Exception as exc:
+        if on_unavailable is None:
+            raise
+        out = {'status': 'unavailable', 'diagnostic': on_unavailable('initial_summary', exc)}
+    out["verdict"] = "red"  # the rule engine decides, never the LLM
+    out["specialist_reports"] = reports
+    out["rule_check"] = rc
+    out["client_reason"] = reason
+    out["timing_seconds"] = {"specialists_parallel": round(t1 - t0, 1), "coordinator": round(time.time() - t1, 1)}
+    return out
+
 def run(client_id, ticker, amount_cad, reason=None, interactive=True):
     T.reset_trace()
     rc = T.call_tool("rule_check", client_id=client_id, ticker=ticker, amount_cad=amount_cad,
@@ -290,26 +334,7 @@ def run(client_id, ticker, amount_cad, reason=None, interactive=True):
                f"Decision date: {DECISION_DATE}.\nClient's reason: {reason}")
         shocks = [{"name": f"{ticker} -30% (hypothetical)", "shock": {ticker: -0.30}},
                   {"name": "Broad equity -15% (hypothetical)", "shock": {"equity": -0.15}}]
-        # The three specialists don't depend on each other: run them at the same time.
-        t0 = time.time()
-        with ThreadPoolExecutor(max_workers=3) as pool:
-            f_profile = pool.submit(_ask, PROFILE_PROMPT, [T.get_profile], ctx)
-            f_news = pool.submit(_ask, NEWS_PROMPT, [T.news_check], ctx)
-            f_data = pool.submit(_ask, DATA_PROMPT, [T.risk_metrics, T.macro_snapshot],
-                                 ctx + "\nRun these scenarios as shocks: " + json.dumps(shocks))
-            reports = {"profile": f_profile.result(), "news": f_news.result(), "data": f_data.result()}
-        t1 = time.time()
-        coordinator = Agent(model=model(), system_prompt=coordinator_prompt(), tools=[check_alternative],
-                            callback_handler=None)
-        prompt = (ctx + f"\nRule engine result (final verdict):\n{json.dumps(rc)}\n\n"
-                  f"PROFILE AGENT REPORT:\n{reports['profile']}\n\nNEWS AGENT REPORT:\n{reports['news']}\n\n"
-                  f"FINANCIAL DATA AGENT REPORT:\n{reports['data']}")
-        out = _parse_json(str(coordinator(prompt)))
-        out["verdict"] = "red"  # the rule engine decides, never the LLM
-        out["rule_check"] = rc
-        out["client_reason"] = reason
-        out["timing_seconds"] = {"specialists_parallel": round(t1 - t0, 1), "coordinator": round(time.time() - t1, 1)}
-        result = out
+        result = review_red(ctx, rc, reason, shocks)
 
     result["saved_to"] = save_run(result)
     return result

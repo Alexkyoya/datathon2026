@@ -67,7 +67,8 @@ def main():
     results = {}
     for name,ticker,amount in [('green','SPY',4000),('yellow','GLD',14000),('red','TSLA',12000)]:
         req = {'client_id':client['client_id'],'decision_date':day,'ticker':ticker,'side':'buy','amount_cad':amount}
-        record = app.evaluate(req)
+        record = app.evaluate(req, trusted_inputs={'client': client, 'snapshot': snapshot, 'assets': store.load('config/assets.json'),
+            'policy': store.load('config/policy.json'), 'references': store.load('config/reference_portfolios.json')})
         result = record['result']
         if result['verdict'] != name:
             raise AssertionError(f'{name} demo unexpectedly {result["verdict"]}')

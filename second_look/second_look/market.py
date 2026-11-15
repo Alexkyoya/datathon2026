@@ -7,11 +7,12 @@ import math
 from .contracts import identifier, number, validate_client
 from .service import value_holdings
 from .spectrum import build_references
+from .application import load_client
 
 
 def build_context(store, client_id, clients=()):
     identifier(client_id)
-    client = store.load(f'clients/{client_id}.json')
+    client = load_client(store, client_id)
     assets = store.load('config/assets.json')
     policy = store.load('config/policy.json')
     references = store.load('config/reference_portfolios.json')

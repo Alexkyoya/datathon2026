@@ -1,0 +1,38 @@
+{
+  "id": "LOC2010",
+  "title": "Behavioral Patterns and Pitfalls of U.S. Investors",
+  "researcher": "Seth L. Elan",
+  "institution": "Federal Research Division, Library of Congress",
+  "date": "2010-08",
+  "commissioning_context": "Prepared under an interagency agreement with the SEC",
+  "source_file": "source/locinvestorbehaviorreport.pdf",
+  "sha256": "d2b3e7f9dca1a7dfdc47147c405c4a64a3013361be22f7d94c5c47aaaafc3ce2",
+  "pdf_pages": 23,
+  "printed_body_pages": [
+    1,
+    16
+  ],
+  "printed_bibliography_pages": [
+    17,
+    20
+  ],
+  "page_mapping": "Printed Arabic page n is PDF page n+3. Cover, preface and contents occupy PDF pages 1-3.",
+  "source_status": "User-supplied literature review, not a regulator rulebook, diagnostic scale or contemporary market assessment.",
+  "review_method": "Full text of the supplied report, including bibliography, reviewed; printed page 14 also visually checked.",
+  "underlying_studies": "Cited studies have not been independently re-reviewed or updated in this adaptation.",
+  "author_disclaimer": "The report states that its findings do not necessarily represent the SEC, its commissioners or staff.",
+  "excluded_inferences": [
+    "No demographic predictions about individual clients.",
+    "No rule that 300 stocks are necessary.",
+    "No promise that value always beats growth or that momentum always fails.",
+    "No current annuity, tax, retirement or regulatory recommendations.",
+    "No claim that a trade result identifies the client's hidden motive."
+  ],
+  "project_extensions": [
+    "Autonomy-preserving conversation policy",
+    "Future contribution scenarios",
+    "Application guardrails and tool routing",
+    "Illustrative dialogue examples and evaluation criteria"
+  ],
+  "scope": "English runtime content, with instructions to respond in the investor's preferred language."
+}

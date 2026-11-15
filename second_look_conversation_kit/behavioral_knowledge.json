@@ -1,0 +1,610 @@
+{
+  "schema_version": "1.0",
+  "source_id": "LOC2010",
+  "purpose": "Reference content for retrieval or selective prompt injection; not a diagnostic classifier.",
+  "selection_policy": "Select zero to two relevant cards for the current question; do not trigger on keywords, score biases or force a concept into every reply.",
+  "attribution_policy": "Only report_paraphrase fields are source summaries. Questions, alternative explanations, limits and workflow are original project adaptations.",
+  "cards": [
+    {
+      "id": "C01",
+      "title": "Reference dependence and loss aversion",
+      "runtime_enabled": true,
+      "source": {
+        "id": "LOC2010",
+        "printed_pages": [
+          2,
+          3
+        ],
+        "pdf_pages": [
+          5,
+          6
+        ],
+        "sections": [
+          "Prospect Theory"
+        ]
+      },
+      "report_paraphrase": "The review describes gains and losses being evaluated relative to a reference point, with losses receiving disproportionate weight in some decisions.",
+      "conversation_design": {
+        "origin": "Second Look adaptation, not wording or a validated intervention from the report",
+        "possible_signals_not_diagnostic": [
+          "The client focuses on getting back to the purchase price rather than what the asset now offers."
+        ],
+        "plausible_alternative_explanations": [
+          "An actual cash requirement, loss-capacity constraint or a deliberate risk preference can justify caution."
+        ],
+        "neutral_question": "What role does your original purchase price play in the decision you are making today?",
+        "follow_up_after_clarification": "Connect the answer to the current objective; compare a candidate only if requested and calculable.",
+        "logical_tools_if_needed": [
+          "get_current_assessment",
+          "recalculate_candidate"
+        ],
+        "limits_on_inference": "A preference for avoiding losses is not itself a mistake. Do not diagnose loss aversion, infer risk capacity or predict a rebound."
+      }
+    },
+    {
+      "id": "C02",
+      "title": "Overconfidence and certainty",
+      "runtime_enabled": true,
+      "source": {
+        "id": "LOC2010",
+        "printed_pages": [
+          3,
+          8
+        ],
+        "pdf_pages": [
+          6,
+          11
+        ],
+        "sections": [
+          "Overconfidence",
+          "Active Trading"
+        ]
+      },
+      "report_paraphrase": "The review links overconfidence with certain trading errors and discusses research on excessive trading and vulnerability to fraud.",
+      "conversation_design": {
+        "origin": "Second Look adaptation, not wording or a validated intervention from the report",
+        "possible_signals_not_diagnostic": [
+          "The client says a return is guaranteed or that no adverse outcome is possible."
+        ],
+        "plausible_alternative_explanations": [
+          "The client may have a specific evidence-based thesis, a small bounded position or expertise; ask what supports it."
+        ],
+        "neutral_question": "What development would make you reconsider your expectation?",
+        "follow_up_after_clarification": "Acknowledge a specific downside condition if supplied; compare it with the evidence and relevant scenario.",
+        "logical_tools_if_needed": [
+          "retrieve_evidence",
+          "get_current_assessment"
+        ],
+        "limits_on_inference": "Confidence is not proof of overconfidence, fraud or expertise. Do not repeat demographic comparisons as individual predictions."
+      }
+    },
+    {
+      "id": "C03",
+      "title": "Frequent checking and short-term loss focus",
+      "runtime_enabled": true,
+      "source": {
+        "id": "LOC2010",
+        "printed_pages": [
+          8,
+          9
+        ],
+        "pdf_pages": [
+          11,
+          12
+        ],
+        "sections": [
+          "Disposition Effect"
+        ]
+      },
+      "report_paraphrase": "The review discusses myopic loss aversion: long-horizon investors can place heavy weight on short-term changes when evaluating their portfolios frequently.",
+      "conversation_design": {
+        "origin": "Second Look adaptation, not wording or a validated intervention from the report",
+        "possible_signals_not_diagnostic": [
+          "A long-horizon investor wants an immediate change solely because of a recent daily loss."
+        ],
+        "plausible_alternative_explanations": [
+          "A new liquidity requirement, material news or a deliberately short strategy horizon may make immediate action relevant."
+        ],
+        "neutral_question": "Has your goal or need for this money changed since you made the original plan?",
+        "follow_up_after_clarification": "If a real need changed, examine that need rather than repeating a long-term investing message.",
+        "logical_tools_if_needed": [
+          "get_current_assessment",
+          "retrieve_evidence"
+        ],
+        "limits_on_inference": "Do not tell someone to hold simply because their stored horizon is long. Do not treat monitoring frequency alone as evidence of a bias."
+      }
+    },
+    {
+      "id": "C04",
+      "title": "Frequent trading and its purpose",
+      "runtime_enabled": true,
+      "source": {
+        "id": "LOC2010",
+        "printed_pages": [
+          7,
+          8
+        ],
+        "pdf_pages": [
+          10,
+          11
+        ],
+        "sections": [
+          "Active Trading"
+        ]
+      },
+      "report_paraphrase": "The review summarizes studies in which more active individual traders had worse performance and associates some excessive trading with overconfidence.",
+      "conversation_design": {
+        "origin": "Second Look adaptation, not wording or a validated intervention from the report",
+        "possible_signals_not_diagnostic": [
+          "Repeated changes are proposed without an articulated objective or evidence."
+        ],
+        "plausible_alternative_explanations": [
+          "Rebalancing, scheduled investing, meeting cash needs or implementing a documented strategy can explain transactions."
+        ],
+        "neutral_question": "What is this trade intended to change in your portfolio?",
+        "follow_up_after_clarification": "If the purpose is clear, evaluate its effect and relevant costs instead of assuming activity is excessive.",
+        "logical_tools_if_needed": [
+          "get_current_assessment",
+          "recalculate_candidate"
+        ],
+        "limits_on_inference": "One trade is not excessive trading. The report supplies no frequency threshold for this engine and does not prove every active strategy fails."
+      }
+    },
+    {
+      "id": "C05",
+      "title": "Disposition effect",
+      "runtime_enabled": true,
+      "source": {
+        "id": "LOC2010",
+        "printed_pages": [
+          8,
+          9
+        ],
+        "pdf_pages": [
+          11,
+          12
+        ],
+        "sections": [
+          "Disposition Effect"
+        ]
+      },
+      "report_paraphrase": "The review describes a tendency to realize winners while retaining losers and reports research finding this pattern counterproductive in the studied samples.",
+      "conversation_design": {
+        "origin": "Second Look adaptation, not wording or a validated intervention from the report",
+        "possible_signals_not_diagnostic": [
+          "The client wants to sell only because a position is up, or refuses to sell solely because it is below the entry price."
+        ],
+        "plausible_alternative_explanations": [
+          "Selling a winner may reduce concentration or fund a goal; holding a loser may follow an unchanged thesis or a constraint."
+        ],
+        "neutral_question": "What makes you want to keep or sell this position apart from its gain or loss so far?",
+        "follow_up_after_clarification": "Use the stated reason to choose an exposure check, evidence check or clarification. Accept an answer that changes the interpretation.",
+        "logical_tools_if_needed": [
+          "get_current_assessment",
+          "retrieve_evidence"
+        ],
+        "limits_on_inference": "Do not recommend keeping winners or selling losers as a universal rule. A past profit/loss is not a forecast."
+      }
+    },
+    {
+      "id": "C06",
+      "title": "Past performance and neglected costs",
+      "runtime_enabled": true,
+      "source": {
+        "id": "LOC2010",
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          12
+        ],
+        "sections": [
+          "Paying More Attention to the Past Returns of Mutual Funds than to Fees"
+        ]
+      },
+      "report_paraphrase": "The review describes investors emphasizing historical fund returns while underweighting expense ratios, transaction costs and sales loads.",
+      "conversation_design": {
+        "origin": "Second Look adaptation, not wording or a validated intervention from the report",
+        "possible_signals_not_diagnostic": [
+          "A fund is chosen only because its past return tops a ranking, while costs are unknown."
+        ],
+        "plausible_alternative_explanations": [
+          "A higher-cost product may be chosen for a particular exposure or service; first establish what the client values."
+        ],
+        "neutral_question": "Besides the past return, what made this fund a fit for what you need?",
+        "follow_up_after_clarification": "If cost information matters, retrieve dated product information and compare equivalent exposures without inventing fees.",
+        "logical_tools_if_needed": [
+          "retrieve_evidence",
+          "recalculate_candidate"
+        ],
+        "limits_on_inference": "A zero-fee demo assumption is not a verified real-world cost. Do not promise active or passive outperformance."
+      }
+    },
+    {
+      "id": "C07",
+      "title": "Familiarity, home exposure and employer stock",
+      "runtime_enabled": true,
+      "source": {
+        "id": "LOC2010",
+        "printed_pages": [
+          10,
+          11
+        ],
+        "pdf_pages": [
+          13,
+          14
+        ],
+        "sections": [
+          "Familiarity Bias"
+        ]
+      },
+      "report_paraphrase": "The review discusses preferences for local, domestic, employer and prominent companies. It highlights that employer-stock exposure can compound dependence on the employer for income.",
+      "conversation_design": {
+        "origin": "Second Look adaptation, not wording or a validated intervention from the report",
+        "possible_signals_not_diagnostic": [
+          "Familiarity or loyalty is offered as the only reason an asset is believed safe."
+        ],
+        "plausible_alternative_explanations": [
+          "Currency needs, an employer plan, vesting restrictions or a mandate can explain the holding. The review also notes institutional constraints on home exposure."
+        ],
+        "neutral_question": "What role do you want this holding to play beyond being a company you know?",
+        "follow_up_after_clarification": "If employer exposure is relevant and disclosed, discuss the link to income qualitatively unless the tool has data to quantify it.",
+        "logical_tools_if_needed": [
+          "get_portfolio_exposure",
+          "retrieve_evidence"
+        ],
+        "limits_on_inference": "Do not infer employment, foreign assets or account restrictions from a ticker. Domestic allocation alone does not establish bias."
+      }
+    },
+    {
+      "id": "C08",
+      "title": "Collective excitement, fear and urgency",
+      "runtime_enabled": true,
+      "source": {
+        "id": "LOC2010",
+        "printed_pages": [
+          3,
+          4,
+          11,
+          12
+        ],
+        "pdf_pages": [
+          6,
+          7,
+          14,
+          15
+        ],
+        "sections": [
+          "Human Sentiment",
+          "Manias and Panics",
+          "Momentum Investing"
+        ]
+      },
+      "report_paraphrase": "The review discusses how shared enthusiasm and fear may influence investment behavior during episodes of speculation and panic.",
+      "conversation_design": {
+        "origin": "Second Look adaptation, not wording or a validated intervention from the report",
+        "possible_signals_not_diagnostic": [
+          "The client describes pressure to join others quickly or fear of missing a price move."
+        ],
+        "plausible_alternative_explanations": [
+          "A time-limited transaction, newly published material information or a pre-existing plan may explain urgency."
+        ],
+        "neutral_question": "What would you want to know before deciding, if there were no pressure to act today?",
+        "follow_up_after_clarification": "If the client offers a specific thesis, examine its evidence rather than insisting that excitement explains everything.",
+        "logical_tools_if_needed": [
+          "retrieve_evidence",
+          "get_current_assessment"
+        ],
+        "limits_on_inference": "The report does not identify a current asset as a bubble. FOMO is a conversational adaptation here, not a separately validated classification in this report."
+      }
+    },
+    {
+      "id": "C09",
+      "title": "Momentum and extrapolation",
+      "runtime_enabled": true,
+      "source": {
+        "id": "LOC2010",
+        "printed_pages": [
+          12
+        ],
+        "pdf_pages": [
+          15
+        ],
+        "sections": [
+          "Momentum Investing"
+        ]
+      },
+      "report_paraphrase": "The review describes trend-following behavior and discusses a model in which information diffusion and momentum can contribute to overshooting and later reversals.",
+      "conversation_design": {
+        "origin": "Second Look adaptation, not wording or a validated intervention from the report",
+        "possible_signals_not_diagnostic": [
+          "A recent rise is treated as sufficient proof that prices must continue rising."
+        ],
+        "plausible_alternative_explanations": [
+          "A client may be following a documented momentum strategy with allocation, exit and risk rules."
+        ],
+        "neutral_question": "Is this part of a strategy you already follow, or is the recent price move the main reason?",
+        "follow_up_after_clarification": "If a strategy exists, ask about the one missing constraint that matters to this trade and assess it with tools.",
+        "logical_tools_if_needed": [
+          "get_current_assessment",
+          "retrieve_evidence"
+        ],
+        "limits_on_inference": "The review uses strong critical language about momentum. Do not turn that language into a rule that all momentum is irrational or forecast an inevitable reversal."
+      }
+    },
+    {
+      "id": "C10",
+      "title": "Equal weighting and naive diversification",
+      "runtime_enabled": true,
+      "source": {
+        "id": "LOC2010",
+        "printed_pages": [
+          12,
+          13
+        ],
+        "pdf_pages": [
+          15,
+          16
+        ],
+        "sections": [
+          "Naive Diversification"
+        ]
+      },
+      "report_paraphrase": "The review discusses allocating 1/n across offered options and notes that the outcome depends on the options available; it does not say equal weighting is always harmful.",
+      "conversation_design": {
+        "origin": "Second Look adaptation, not wording or a validated intervention from the report",
+        "possible_signals_not_diagnostic": [
+          "The client assumes equal dollars in several funds guarantees diversification."
+        ],
+        "plausible_alternative_explanations": [
+          "Equal weighting can be a deliberate simple allocation after considering the exposures."
+        ],
+        "neutral_question": "Have you looked at whether these funds hold many of the same underlying assets?",
+        "follow_up_after_clarification": "Use look-through data when available; otherwise explain precisely what the position-level proxy cannot determine.",
+        "logical_tools_if_needed": [
+          "get_portfolio_exposure"
+        ],
+        "limits_on_inference": "Do not infer overlap from fund names or call equal weighting irrational. HHI over tickers does not establish underlying diversification."
+      }
+    },
+    {
+      "id": "C11",
+      "title": "Attention, headlines and unverified signals",
+      "runtime_enabled": true,
+      "source": {
+        "id": "LOC2010",
+        "printed_pages": [
+          13
+        ],
+        "pdf_pages": [
+          16
+        ],
+        "sections": [
+          "Noise Trading"
+        ]
+      },
+      "report_paraphrase": "The review summarizes work on individual investors buying attention-grabbing stocks and discusses decisions driven by noisy or incomplete signals.",
+      "conversation_design": {
+        "origin": "Second Look adaptation, not wording or a validated intervention from the report",
+        "possible_signals_not_diagnostic": [
+          "A headline, popularity or abnormal recent volume is the only evidence supplied."
+        ],
+        "plausible_alternative_explanations": [
+          "The headline may refer to a material filing or announcement; a signal can also be part of a documented strategy."
+        ],
+        "neutral_question": "Which part of that information do you think changes the investment case?",
+        "follow_up_after_clarification": "Check the specific claim against eligible official evidence; distinguish a fact from a forecast or unverified statement.",
+        "logical_tools_if_needed": [
+          "retrieve_evidence"
+        ],
+        "limits_on_inference": "Unverified is not false. Do not dismiss news-based or non-fundamental strategies without examining the stated rationale."
+      }
+    },
+    {
+      "id": "C12",
+      "title": "Concentration and diversification",
+      "runtime_enabled": true,
+      "source": {
+        "id": "LOC2010",
+        "printed_pages": [
+          13,
+          14
+        ],
+        "pdf_pages": [
+          16,
+          17
+        ],
+        "sections": [
+          "Underdiversification"
+        ]
+      },
+      "report_paraphrase": "The review discusses concentrated investor portfolios, then presents contrary evidence that some concentrated portfolios outperformed in the samples studied.",
+      "conversation_design": {
+        "origin": "Second Look adaptation, not wording or a validated intervention from the report",
+        "possible_signals_not_diagnostic": [
+          "The client assumes a strong thesis or several tickers eliminates concentration risk."
+        ],
+        "plausible_alternative_explanations": [
+          "Concentration may be deliberate, or this account may be one part of a broader portfolio not yet verified."
+        ],
+        "neutral_question": "How does this position fit with the rest of the portfolio you want us to assess?",
+        "follow_up_after_clarification": "Clarify the account scope; recognize deliberate exposure while retaining any actual limit breach.",
+        "logical_tools_if_needed": [
+          "get_portfolio_exposure",
+          "get_current_assessment"
+        ],
+        "limits_on_inference": "Neither concentration nor the cited contrary evidence proves good or bad future performance. Do not turn the report's stock-count discussion into a minimum-holdings rule."
+      }
+    },
+    {
+      "id": "C13",
+      "title": "Understanding and trust",
+      "runtime_enabled": true,
+      "source": {
+        "id": "LOC2010",
+        "printed_pages": [
+          5,
+          6
+        ],
+        "pdf_pages": [
+          8,
+          9
+        ],
+        "sections": [
+          "Lack of Financial Literacy",
+          "Lack of Trust"
+        ]
+      },
+      "report_paraphrase": "The review discusses financial understanding, trust and participation in markets, including studies conducted outside the United States.",
+      "conversation_design": {
+        "origin": "Second Look adaptation, not wording or a validated intervention from the report",
+        "possible_signals_not_diagnostic": [
+          "The client explicitly says a term is unclear or expresses concern about the institution or the agent."
+        ],
+        "plausible_alternative_explanations": [
+          "Distrust can reflect real experience or missing disclosure; avoiding an investment can be an informed preference."
+        ],
+        "neutral_question": "What part of the explanation would be most useful for me to make clearer?",
+        "follow_up_after_clarification": "Answer directly with a plain-language explanation or source. Acknowledge uncertainty and the client's control.",
+        "logical_tools_if_needed": [
+          "retrieve_evidence"
+        ],
+        "limits_on_inference": "Do not infer literacy from spelling, accent, gender, age, education or nationality. Do not use a quiz or force participation in a market."
+      }
+    },
+    {
+      "id": "C14",
+      "title": "Immediate needs, future goals and defaults",
+      "runtime_enabled": true,
+      "source": {
+        "id": "LOC2010",
+        "printed_pages": [
+          4,
+          5,
+          7
+        ],
+        "pdf_pages": [
+          7,
+          8,
+          10
+        ],
+        "sections": [
+          "Reluctance to Invest",
+          "Retirement Saving Inadequacy"
+        ]
+      },
+      "report_paraphrase": "The review discusses present-versus-future preferences, inertia and the influence of plan defaults on saving decisions.",
+      "conversation_design": {
+        "origin": "Second Look adaptation, not wording or a validated intervention from the report",
+        "possible_signals_not_diagnostic": [
+          "An immediate desire appears to conflict with a stated future need, or a default is accepted without understanding it."
+        ],
+        "plausible_alternative_explanations": [
+          "An urgent expense, changing income, an adequate existing plan or an explicit liquidity preference can justify the choice."
+        ],
+        "neutral_question": "Is this money still intended for the goal we have on file, or has something changed?",
+        "follow_up_after_clarification": "Record a user-stated change as unverified context and route any official profile update through the platform.",
+        "logical_tools_if_needed": [
+          "get_current_assessment",
+          "recalculate_candidate"
+        ],
+        "limits_on_inference": "Do not assume cash is irrational, that everyone should invest more, or that a default is the client's informed preference. No retirement sufficiency calculation is supplied by this guide."
+      }
+    },
+    {
+      "id": "C15",
+      "title": "Growth investing and enthusiasm for familiar winners",
+      "runtime_enabled": true,
+      "source": {
+        "id": "LOC2010",
+        "printed_pages": [
+          15,
+          16
+        ],
+        "pdf_pages": [
+          18,
+          19
+        ],
+        "sections": [
+          "Growth Investing"
+        ]
+      },
+      "report_paraphrase": "The review explicitly avoids declaring growth investing a mistake. It discusses historical growth/value findings, period-dependent results and optimistic extrapolation about prominent companies.",
+      "conversation_design": {
+        "origin": "Second Look adaptation, not wording or a validated intervention from the report",
+        "possible_signals_not_diagnostic": [
+          "The client assumes rapid growth will continue indefinitely or that a popular company must be attractive at any price."
+        ],
+        "plausible_alternative_explanations": [
+          "A growth allocation can follow a considered thesis, diversification plan or mandate."
+        ],
+        "neutral_question": "What would need to happen for the growth you expect to justify this investment?",
+        "follow_up_after_clarification": "Separate company facts, valuation assumptions and forecasts; use a scenario if an appropriate tool is available.",
+        "logical_tools_if_needed": [
+          "retrieve_evidence",
+          "get_current_assessment"
+        ],
+        "limits_on_inference": "Do not promise value outperformance, classify all growth investing as biased, or confuse investment style with the assigned Growth risk profile."
+      }
+    },
+    {
+      "id": "C16",
+      "title": "Framing and annuity choices",
+      "runtime_enabled": false,
+      "source": {
+        "id": "LOC2010",
+        "printed_pages": [
+          14,
+          15
+        ],
+        "pdf_pages": [
+          17,
+          18
+        ],
+        "sections": [
+          "Annuity Investing"
+        ]
+      },
+      "report_paraphrase": "The review discusses framing, defaults and annuity choices, while stating that treating all annuities as poor investments is unjustified.",
+      "conversation_design": {
+        "origin": "Second Look adaptation, not wording or a validated intervention from the report",
+        "possible_signals_not_diagnostic": [
+          "The client is comparing descriptions of a product rather than its actual terms."
+        ],
+        "plausible_alternative_explanations": [
+          "Preferences for income certainty or particular contractual features may explain the choice."
+        ],
+        "neutral_question": "Which feature matters most to you: the income arrangement, access to the money, or something else?",
+        "follow_up_after_clarification": "Use product-specific evidence only if this product is within scope. Otherwise explain the scope limitation.",
+        "logical_tools_if_needed": [
+          "retrieve_evidence"
+        ],
+        "limits_on_inference": "Annuities are not in the starter asset universe. This card is disabled by default. Do not use the report's demographic comparisons or historical product claims for a current recommendation."
+      }
+    },
+    {
+      "id": "E01",
+      "title": "Planned cash contributions and legitimate new context",
+      "runtime_enabled": true,
+      "source": null,
+      "report_paraphrase": null,
+      "origin": "Second Look project extension; not a finding from LOC2010",
+      "conversation_design": {
+        "origin": "Second Look product policy",
+        "possible_signals_not_diagnostic": [
+          "The client expects a future cash contribution or says the account is only part of a larger portfolio."
+        ],
+        "plausible_alternative_explanations": [
+          "The investor may have a real funding plan that changes a conditional allocation assessment."
+        ],
+        "neutral_question": "How much do you expect to contribute, and when?",
+        "follow_up_after_clarification": "Clarify currency, uncertainty and intended allocation only if missing; simulate the plan without treating it as funded today.",
+        "logical_tools_if_needed": [
+          "simulate_future_cash_plan",
+          "get_current_assessment"
+        ],
+        "limits_on_inference": "A promise is not a verified deposit. Check every limit; a lower stock weight can coexist with excessive cash. Do not invent bond purchases or treat a scenario as executed."
+      }
+    }
+  ]
+}

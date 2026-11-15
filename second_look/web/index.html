@@ -76,10 +76,15 @@
 </dialog>
 <section id="review-panel" class="review-panel surface" aria-labelledby="review-title" hidden>
   <div class="review-heading"><div><span class="review-kicker">SECOND LOOK · TRADE PAUSED</span><h2 id="review-title" tabindex="-1">Let’s look at what changes.</h2><p id="pending-trade-summary" class="muted"></p></div><button class="button secondary compact" id="revise-trade">Revise trade</button></div>
+  <h3>Current trade assessment</h3>
   <p class="rule-summary" id="red-summary"></p><div id="exposure-table" class="table-scroll"></div>
   <div class="review-spectrum" id="review-spectrum"></div>
-  <form id="reason-form"><label for="reason">What made you interested in this trade?</label><textarea id="reason" rows="2" maxlength="5000" placeholder="Tell us what you had in mind…" required></textarea><div class="conversation-footer"><span class="muted">Your response adds context. The red verdict stays fixed.</span><button class="button blue" id="send-reason" type="submit">Send for review</button></div></form>
-  <p id="review-error" class="inline-error" role="alert" hidden></p><div id="conversation-result" aria-live="polite"></div>
+  <h3>Talk with Second Look</h3>
+  <div id="conversation-result" role="log" aria-live="polite" aria-label="Conversation with Second Look"></div>
+  <div id="conversation-scenarios"></div>
+  <form id="reason-form"><label id="reason-label" for="reason">What made you interested in this trade?</label><textarea id="reason" rows="2" maxlength="5000" placeholder="Tell us what you had in mind…" required></textarea><div class="conversation-footer"><span class="muted">Enter to send · Shift+Enter for a new line. Chat never executes a trade.</span><button class="button blue" id="send-reason" type="submit">Send</button></div></form>
+  <p id="review-error" class="inline-error" role="alert" hidden></p>
+  <div class="conversation-retry"><button id="retry-reply" class="button secondary compact" hidden>Retry saved message</button><button id="refresh-conversation" class="text-button" hidden>Refresh conversation</button></div>
   <div class="risk-acknowledgement" id="risk-actions"><label class="checkbox-label"><input id="risk-checkbox" type="checkbox"><span>I understand the flagged risks and want to continue this simulation.</span></label><div class="risk-buttons"><button class="button secondary" id="cancel-review">Cancel simulation</button><button class="button blue" id="proceed-red" disabled>Proceed with simulation</button></div></div>
   <p id="review-terminal" class="terminal-note" role="status" hidden></p>
 </section>

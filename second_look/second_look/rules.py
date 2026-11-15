@@ -102,6 +102,20 @@ def evaluate_trade(request, client, holdings_cad, assets, policy, references=Non
     b, a = metrics(before,assets), metrics(after,assets)
     if not math.isclose(b['total'], a['total'], rel_tol=1e-12):
         raise AssertionError('Trade must conserve value before fees')
+    return assess_transition(request, client, before, after, assets, policy, references)
+
+
+def assess_transition(request, client, before, after, assets, policy, references=None):
+    """Assess a tool-built portfolio transition, including an explicit cash contribution.
+
+    Callers construct/validate the holdings; this function never funds or executes a trade.
+    The ordinary single-trade verdict semantics are preserved.
+    """
+    profile = client['profile']
+    limits = policy['profiles'][profile]
+    preferences = client['preferences']
+    ticker, side, amount = request['ticker'], request['side'], request['amount_cad']
+    b, a = metrics(before, assets), metrics(after, assets)
     checks, unresolved, notes = [], [], []
 
     def unresolved_item(rule, key, reason):
@@ -113,8 +127,9 @@ def evaluate_trade(request, client, holdings_cad, assets, policy, references=Non
         unresolved_item('preferences', 'unsupported_preference',
                         'Unsupported stored preferences: '+', '.join(sorted(set(preferences)-SUPPORTED_PREFERENCES)))
 
-    def check(rule, old, new, limit, bound='max', hard=False, near=False, unit='weight', source='team_assumption'):
-        old_gap = max(0, old-limit) if bound=='max' else max(0, limit-old)
+    def check(rule, old, new, limit, bound='max', hard=False, near=False, unit='weight', source='team_assumption', old_limit=None):
+        old_bound = limit if old_limit is None else old_limit
+        old_gap = max(0, old-old_bound) if bound=='max' else max(0, old_bound-old)
         new_gap = max(0, new-limit) if bound=='max' else max(0, limit-new)
         old_gap = 0.0 if old_gap <= EPS else old_gap
         new_gap = 0.0 if new_gap <= EPS else new_gap
@@ -158,7 +173,7 @@ def evaluate_trade(request, client, holdings_cad, assets, policy, references=Non
     if 'minimum_cash_cad' in preferences:
         reserve = number(preferences['minimum_cash_cad'],'minimum_cash_cad')
         check('liquid_cash_reserve',before.get('CASH_CAD',0)/b['total'],after['CASH_CAD']/a['total'],
-              reserve/b['total'],'min',hard=True,source='stored_client_constraint')
+              reserve/a['total'],'min',hard=True,source='stored_client_constraint',old_limit=reserve/b['total'])
 
     # Rule B (ESG preferences) and rule A (goal coverage): only creating or worsening is flagged.
     trade = {'ticker': ticker, 'side': side, 'amount_cad': amount}
@@ -206,7 +221,7 @@ def evaluate_trade(request, client, holdings_cad, assets, policy, references=Non
     reference_config = load_references() if references is None else references
     classification = classify_transition(b['classes'], a['classes'], profile,
                                           reference_config, assets, policy)
-    return {'schema_version':SCHEMA_VERSION,'policy_version':policy['version'],
+    result = {'schema_version':SCHEMA_VERSION,'policy_version':policy['version'],
         'reference_portfolio_version':reference_config['version'],
         'classification':classification,
         'client_id':client['client_id'],'decision_date':request['decision_date'],'profile':profile,
@@ -226,3 +241,34 @@ def evaluate_trade(request, client, holdings_cad, assets, policy, references=Non
                     'unknown_sector_weight_after':a['unknown_sector_weight']},
         'assumptions':policy['assumptions'],
         'disclaimer':'Fictional clients; simulated trades only; no investment advice.'}
+    result.update(full_compliance(result, client, assets, policy))
+    return result
+
+
+def full_compliance(result, client, assets, policy):
+    """Report every residual limit, independent of whether the trade improved it."""
+    residual = [dict(c) for c in result['checks'] if c['gap_after'] > EPS]
+    known = {c['rule'] for c in residual}
+    # Goal/ESG alerts deliberately omit unchanged breaches; compliance must include them.
+    for row in result['goals'].get('installments', []):
+        rule = 'goal.' + row['goal'] + '.' + row['date']
+        if row['coverage_after'] < 1-EPS and not any(
+                c.get('goal') == row['goal'] and c.get('date') == row['date'] for c in residual):
+            residual.append({'rule': rule, 'after': row['coverage_after'], 'limit': 1.0,
+                             'bound': 'min', 'unit': 'coverage', 'source': 'stored_client_goal'})
+    after = metrics(result['holdings_cad_after'], assets)
+    empty = dict(after, positions={}, sectors={})
+    unresolved = list(result['coverage']['unresolved'])
+    for ticker, weight in after['positions'].items():
+        if ticker == 'CASH_CAD' or weight <= EPS:
+            continue
+        _, checks, missing = esg_check(client['preferences'], policy, assets,
+                                      {'ticker': ticker, 'side': 'buy'}, empty, after)
+        unresolved.extend(missing)
+        for check in checks:
+            if check['gap_after'] > EPS and check['rule'] not in known:
+                residual.append(check); known.add(check['rule'])
+    if after['unknown_sector_weight'] > EPS and policy['profiles'][client['profile']]['sector_max'] is not None:
+        unresolved.append({'rule': 'sector_lookthrough', 'reason': 'Some held funds have no sector breakdown.'})
+    return {'portfolio_within_limits': False if residual else (None if unresolved else True),
+            'residual_breaches': residual, 'compliance_unresolved': unresolved}

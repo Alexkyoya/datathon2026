@@ -23,7 +23,7 @@ def reset_trace():
     RUN_ID = uuid.uuid4().hex[:8]
 
 
-def call_tool(action, **kwargs):
+def call_tool(action, *, record_trace=True, **kwargs):
     payload = {"action": action, **kwargs}
     t0 = time.time()
     if config.LOCAL:
@@ -33,11 +33,16 @@ def call_tool(action, **kwargs):
         out = lambda_function.lambda_handler(payload, None)
     else:
         import boto3
-        resp = boto3.client("lambda", region_name=config.AWS_REGION).invoke(
+        from botocore.config import Config
+        resp = boto3.client("lambda", region_name=config.AWS_REGION,
+                            config=Config(connect_timeout=5, read_timeout=65, retries={'max_attempts':1})).invoke(
             FunctionName=config.LAMBDA_NAME, Payload=json.dumps(payload).encode())
         out = json.loads(resp["Payload"].read())
-    TRACE.append({"step": len(TRACE) + 1, "tool": action, "input": kwargs, "output": out,
-                  "seconds": round(time.time() - t0, 2)})
+        if resp.get('FunctionError'):
+            out = {'error': 'Financial tools Lambda failed.', 'aws_request_id': resp.get('ResponseMetadata', {}).get('RequestId')}
+    if record_trace:
+        TRACE.append({"step": len(TRACE) + 1, "tool": action, "input": kwargs, "output": out,
+                      "seconds": round(time.time() - t0, 2)})
     return out
 
 
