@@ -22,3 +22,7 @@ MODEL_ID_FAST = os.getenv("MODEL_ID_FAST", "us.amazon.nova-2-lite-v1:0,us.amazon
 # SECOND_LOOK_LOCAL=1 and DATA_DIR=<folder with the starter CSVs + profiles.json>
 LOCAL = os.getenv("SECOND_LOOK_LOCAL", "0") == "1"
 DATA_DIR = os.getenv("DATA_DIR", os.path.join(os.path.dirname(__file__), "data"))
+
+# Chat speed: skip the coordinator's written summary before the first chat reply (the chat never shows it;
+# the chat agent still gets the three specialist reports and can check alternatives itself).
+CHAT_FAST_START = os.getenv("CHAT_FAST_START", "1") == "1"

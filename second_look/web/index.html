@@ -1,83 +1,89 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#f1f8fc"><title>Second Look · Direct investing simulation</title>
+  <meta name="theme-color" content="#ffffff"><title>Courtage direct · Simulation</title>
   <link rel="stylesheet" href="/styles.css"><script src="/app.js" defer></script>
 </head>
 <body>
-<a class="skip-link" href="#main">Skip to market information</a>
+<a class="skip-link" href="#main">Aller à l’information de marché</a>
 <header class="site-header">
-  <a class="brand" href="/" aria-label="Second Look home">
-    <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M9 10h17v7H16v6h15v7H9z" fill="currentColor"/><path d="m30 7 6 6-6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <span>SECOND LOOK<small>DIRECT INVESTING</small></span>
-  </a>
-  <div class="account-controls"><span class="simulation-badge">Simulation</span><label class="sr-only" for="client-select">Fictional investor</label><select id="client-select" aria-label="Fictional investor" disabled><option>Loading account…</option></select><span class="user-avatar" id="user-avatar" aria-hidden="true">—</span></div>
+  <a class="brand" href="/" aria-label="Banque Nationale Courtage direct · accueil de la simulation"><span>BANQUE<br>NATIONALE<small>COURTAGE DIRECT</small></span></a>
+  <div class="account-controls"><button type="button" class="lang-toggle" id="lang-toggle">English</button><span class="simulation-badge">Simulation</span><label class="sr-only" for="client-select">Investisseur fictif</label><select id="client-select" aria-label="Investisseur fictif" disabled><option>Chargement…</option></select><span class="user-avatar" id="user-avatar" aria-hidden="true">—</span></div>
 </header>
-<div class="nav-wrap"><nav class="main-nav" aria-label="Main navigation">
-  <div class="nav-links"><button class="nav-link active" id="nav-markets" aria-current="page">Markets</button><button class="nav-link" id="nav-holdings">My holdings</button></div>
-  <div class="nav-actions"><button class="button compact blue-outline" data-open-side="buy" disabled>Buy</button><button class="button compact red-outline" data-open-side="sell" disabled>Sell</button></div>
+<div class="nav-wrap"><nav class="main-nav" aria-label="Navigation principale">
+  <div class="nav-links"><button class="nav-link active" id="nav-markets" aria-current="page">Marchés</button><button class="nav-link" id="nav-holdings">Mes avoirs</button></div>
+  <div class="nav-actions"><button class="button compact blue-outline" data-open-side="buy" disabled>Achat</button><button class="button compact red-outline" data-open-side="sell" disabled>Vente</button><button class="button compact blue" id="nav-quote">Cote <span aria-hidden="true">⌕</span></button></div>
 </nav></div>
 <main id="main" tabindex="-1">
-  <div class="page-heading"><div><p class="eyebrow">YOUR INVESTING WORKSPACE</p><h1 id="page-title">Market quote</h1></div><p class="date-stamp" id="snapshot-label">Loading historical snapshot…</p></div>
-  <section class="account-summary surface" aria-label="Account summary">
-    <div class="account-identity"><span class="small-label">CAD simulation account</span><strong id="account-name">—</strong><span id="account-profile" class="muted">Stored investor profile</span></div>
-    <div><span class="small-label">Total account value</span><strong id="account-total">—</strong><span class="muted">CAD</span></div>
-    <div><span class="small-label">Invested value</span><strong id="account-invested">—</strong><span class="muted">CAD</span></div>
-    <div><span class="small-label">Available cash</span><strong id="account-cash">—</strong><button class="text-button" id="view-holdings">View holdings <span aria-hidden="true">↗</span></button></div>
-  </section>
-  <div id="page-error" class="error-banner" role="alert" hidden><span id="page-error-text"></span><button class="text-button" id="retry-context">Try again</button></div>
-  <section id="market-view" aria-label="Selected asset quote">
-    <div class="market-toolbar"><div class="search-control"><label class="sr-only" for="market-search">Search ticker, company or sector</label><span aria-hidden="true">⌕</span><input id="market-search" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="market-search-listbox" placeholder="Search ticker, company or sector" autocomplete="off" spellcheck="false" disabled></div><div class="scenario-control"><span class="small-label" id="scenario-label">Try a demo trade</span><div id="scenario-cards" class="scenario-cards" role="group" aria-labelledby="scenario-label"></div><select id="scenario-select" hidden aria-hidden="true" tabindex="-1" disabled><option value="">Select a scenario</option></select></div></div>
+  <div class="page-heading"><h1 id="page-title">Cote</h1><p class="date-stamp"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span><strong id="snapshot-label">Chargement de l’instantané historique…</strong><small>Données historiques · pas en temps réel</small></span></p></div>
+  <div id="page-error" class="error-banner" role="alert" hidden><span id="page-error-text"></span><button class="text-button" id="retry-context">Réessayer</button></div>
+  <section id="market-view" aria-label="Cote du titre sélectionné">
+    <div class="market-toolbar"><div class="search-control"><label class="sr-only" for="market-search">Rechercher un symbole, une société ou un secteur</label><span aria-hidden="true">⌕</span><input id="market-search" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="market-search-listbox" placeholder="Rechercher un symbole, une société ou un secteur" autocomplete="off" spellcheck="false" disabled></div><div class="scenario-control"><span class="small-label" id="scenario-label">Essayer une transaction démo</span><div id="scenario-cards" class="scenario-cards" role="group" aria-labelledby="scenario-label"></div><select id="scenario-select" hidden aria-hidden="true" tabindex="-1" disabled><option value="">Choisir un scénario</option></select></div></div>
     <article class="quote-card surface">
-      <div class="quote-heading"><div class="asset-title"><span id="asset-market" class="market-badge">—</span><div><h2 id="asset-name">Loading your market data…</h2><p id="asset-ticker" class="muted">Historical daily quote</p></div></div><div class="trade-actions"><button class="button blue" data-open-side="buy" disabled>Buy</button><button class="button red" data-open-side="sell" disabled>Sell</button></div></div>
-      <div class="quote-lead"><div class="last-price"><span class="small-label">Last observed close <span id="quote-currency"></span></span><strong id="quote-price">—</strong></div><div><span class="small-label">Change vs previous observation</span><strong id="quote-change">—</strong></div><div><span class="small-label">Source volume</span><strong id="quote-volume">—</strong></div><div class="quote-time"><span class="small-label">Price observation date</span><strong id="quote-date">—</strong><span class="muted">Historical data · not real time</span></div></div>
-      <div class="quote-tabs" role="tablist" aria-label="Quote information"><button role="tab" aria-selected="true" aria-controls="overview-panel" id="tab-overview" tabindex="0">Overview</button><button role="tab" aria-selected="false" aria-controls="history-panel" id="tab-history" tabindex="-1">Price history</button><button role="tab" aria-selected="false" aria-controls="position-panel" id="tab-position" tabindex="-1">My position</button></div>
-      <div id="overview-panel" role="tabpanel" aria-labelledby="tab-overview"><h3>Key quote information</h3><div class="quote-information" id="quote-information"></div></div>
-      <div id="history-panel" role="tabpanel" aria-labelledby="tab-history" hidden><h3>Historical closing prices</h3><p class="muted">Completed source observations in CAD. No future observations or analyst estimates are included.</p><div id="history-table" class="table-scroll"></div></div>
-      <div id="position-panel" role="tabpanel" aria-labelledby="tab-position" hidden><h3>Your position</h3><div id="position-information" class="quote-information"></div></div>
-      <section class="chart-section" id="chart-section" aria-label="Historical price chart"><div class="chart-heading"><h3>Price history <span class="muted">CAD</span></h3><span class="muted" id="chart-period"></span></div><div id="price-chart"><p class="empty-state">Historical chart data is loading.</p></div></section>
-      <p class="source-note" id="quote-source">Source: AlphaForge starter dataset · Yahoo Finance prices · Bank of Canada FX.</p>
+      <div class="quote-heading"><div class="asset-title"><div><h2 id="asset-name">Chargement des données de marché…</h2><p id="asset-ticker" class="muted">Cote quotidienne historique</p></div></div><div class="trade-actions"><button class="button blue" data-open-side="buy" disabled>Achat</button><button class="button red" data-open-side="sell" disabled>Vente</button></div></div>
+      <div class="quote-lead"><div class="last-price"><span class="small-label">Dernier prix <span id="quote-currency"></span></span><strong id="quote-price">—</strong></div><div><span class="small-label">Variation du jour</span><strong id="quote-change">—</strong></div><div><span class="small-label">Vol.</span><strong id="quote-volume">—</strong></div><div class="quote-time"><span class="small-label">Date du cours</span><strong id="quote-date">—</strong><span class="muted">Données historiques · pas en temps réel</span></div></div>
+      <div class="key-layout">
+        <section aria-labelledby="key-title"><h3 id="key-title">Information clé sur la cote</h3><div class="quote-information" id="quote-information"></div></section>
+        <section aria-labelledby="position-title"><h3 id="position-title">Ma position</h3><div id="position-information" class="quote-information"></div></section>
+      </div>
+      <div class="quote-tabs" role="tablist" aria-label="Information sur la cote"><button role="tab" aria-selected="true" aria-controls="overview-panel" id="tab-overview" tabindex="0">Sommaire</button><button role="tab" aria-selected="false" aria-controls="history-panel" id="tab-history" tabindex="-1">Historique des cours</button></div>
+      <div id="overview-panel" role="tabpanel" aria-labelledby="tab-overview"><div class="summary-layout">
+        <section class="performance" aria-labelledby="performance-title"><h3 id="performance-title">Rendement</h3><div id="performance-list"></div><p class="muted">Calculé à partir des cours de clôture en CAD.</p></section>
+        <section class="chart-section" id="chart-section" aria-label="Graphique des cours historiques"><div class="chart-heading"><h3>Graphique <span class="muted">CAD</span></h3><span class="muted" id="chart-period"></span></div><div id="price-chart"><p class="empty-state">Chargement du graphique historique.</p></div></section>
+      </div></div>
+      <div id="history-panel" role="tabpanel" aria-labelledby="tab-history" hidden><h3>Historique des cours</h3><p class="muted">Observations complètes en CAD. Aucune observation future ni estimation d’analyste n’est incluse.</p><div id="history-table" class="table-scroll"></div></div>
+      <p class="source-note" id="quote-source">Source : jeu de données AlphaForge · cours Yahoo Finance · taux de change de la Banque du Canada.</p>
     </article>
   </section>
-  <section id="holdings-view" class="surface holdings-card" aria-labelledby="holdings-title" hidden><div class="section-heading"><div><h2 id="holdings-title">Your holdings</h2><p class="muted">Stored positions, valued in CAD at the account snapshot.</p></div><button class="text-button" id="back-to-markets">Back to market quote →</button></div><div id="holdings-table" class="table-scroll"></div><details class="profile-details"><summary>Stored profile, goals and preferences</summary><div id="profile-details"></div></details></section>
+  <section id="holdings-view" aria-labelledby="holdings-title" hidden>
+    <div class="account-summary surface" role="group" aria-label="Sommaire du compte">
+      <div class="account-identity"><span class="small-label">Compte de simulation CAD</span><strong id="account-name">—</strong><span id="account-profile" class="muted">Profil d’investisseur enregistré</span></div>
+      <div><span class="small-label">Valeur totale du compte</span><strong id="account-total">—</strong><span class="muted">CAD</span></div>
+      <div><span class="small-label">Valeur investie</span><strong id="account-invested">—</strong><span class="muted">CAD</span></div>
+      <div><span class="small-label">Encaisse disponible</span><strong id="account-cash">—</strong><span class="muted">CAD</span></div>
+    </div>
+    <div class="surface holdings-card"><div class="section-heading"><div><h2 id="holdings-title">Vos avoirs</h2><p class="muted">Positions enregistrées, évaluées en CAD à la date de l’instantané.</p></div><button class="text-button" id="back-to-markets">Retour à la cote →</button></div><div id="holdings-table" class="table-scroll"></div><details class="profile-details"><summary>Profil, objectifs et préférences enregistrés</summary><div id="profile-details"></div></details></div>
+  </section>
   <div id="page-review-slot"></div>
-  <footer class="page-footer"><span>Second Look · Hackathon demonstration</span><span>Fictional accounts. Independent simulations. No real orders are placed.</span></footer>
+  <footer class="page-footer"><span>Second Look · Démonstration hackathon</span><span>Simulation non officielle. Comptes fictifs. Aucun ordre réel n’est passé.</span></footer>
 </main>
 <dialog id="trade-dialog" aria-labelledby="ticket-title">
   <div class="dialog-layout" id="dialog-layout">
     <article class="trade-ticket">
-      <div class="ticket-heading"><div><p class="eyebrow">SIMULATED ORDER</p><h2 id="ticket-title">Buy</h2></div><button class="icon-button" id="close-ticket" aria-label="Close trade ticket" title="Close trade ticket">×</button></div>
-      <div class="ticket-account"><div><span class="small-label">Account</span><strong id="ticket-account-name">—</strong><span class="muted">CAD · cash-funded simulation</span></div><div><span class="small-label">Available cash</span><strong id="ticket-cash">—</strong></div></div>
-      <div class="ticket-tabs"><div class="side-switch" role="group" aria-label="Trade direction"><button type="button" id="side-buy" aria-pressed="true">Buy</button><button type="button" id="side-sell" aria-pressed="false">Sell</button></div><span id="ticket-category" class="muted">Provided asset universe</span></div>
+      <div class="ticket-heading"><div><p class="eyebrow">ORDRE · DÉMO</p><h2 id="ticket-title">Achat</h2></div><button class="icon-button" id="close-ticket" aria-label="Fermer le billet d’ordre" title="Fermer le billet d’ordre">×</button></div>
+      <div class="ticket-account"><div><span class="small-label">Compte</span><strong id="ticket-account-name">—</strong><span class="muted">CAD · simulation au comptant</span></div><div><span class="small-label">Encaisse</span><strong id="ticket-cash">—</strong></div></div>
+      <div class="ticket-tabs"><div class="side-switch" role="group" aria-label="Sens de la transaction"><button type="button" id="side-buy" aria-pressed="true">Achat</button><button type="button" id="side-sell" aria-pressed="false">Vente</button></div><span id="ticket-category" class="muted">Univers d’actifs fourni</span></div>
       <div class="ticket-columns">
         <form id="trade-form" novalidate>
-          <label for="ticket-asset">Asset <span class="muted">· ticker or company</span></label><input id="ticket-asset" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ticket-asset-listbox" placeholder="Search ticker, company or sector" autocomplete="off" spellcheck="false" required><p class="field-description" id="ticket-asset-name"></p>
-          <label for="amount">Trade amount <span class="currency-tag">CAD</span></label><div class="amount-control"><span aria-hidden="true">$</span><input id="amount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" required></div><p class="field-description" id="unit-estimate">Enter a CAD amount to see estimated units.</p>
-          <label>Order valuation</label><div class="read-only-field">Historical closing price <span class="muted">Simulation</span></div><p class="field-description">Fractional units are supported. Fees, slippage and margin are excluded.</p>
+          <label for="ticket-asset">Titre <span class="muted">· symbole ou société</span></label><input id="ticket-asset" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ticket-asset-listbox" placeholder="Rechercher un symbole, une société ou un secteur" autocomplete="off" spellcheck="false" required><p class="field-description" id="ticket-asset-name"></p>
+          <label for="amount">Montant de la transaction <span class="currency-tag">CAD</span></label><div class="amount-control"><span aria-hidden="true">$</span><input id="amount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" required></div><p class="field-description" id="unit-estimate">Entrez un montant en CAD pour voir le nombre d’unités estimé.</p>
+          <label>Type de prix</label><div class="read-only-field">Au marché <span class="muted">Exécuté au dernier cours de clôture (démo)</span></div><p class="field-description">Payé à même l’encaisse. Unités fractionnaires; sans frais ni marge dans cette démo.</p>
           <p id="ticket-error" class="inline-error" role="alert" hidden></p>
         </form>
-        <aside class="ticket-quote" aria-label="Trade quote summary"><p class="small-label" id="ticket-quote-symbol">Quote</p><strong class="ticket-price" id="ticket-quote-price">—</strong><p id="ticket-quote-change"></p><dl id="ticket-quote-details"></dl><p class="historical-label" id="ticket-quote-date"></p></aside>
+        <aside class="ticket-quote" aria-label="Sommaire de la cote"><p class="small-label" id="ticket-quote-symbol">Cote</p><strong class="ticket-price" id="ticket-quote-price">—</strong><p id="ticket-quote-change"></p><dl id="ticket-quote-details"></dl><p class="historical-label" id="ticket-quote-date"></p></aside>
       </div>
       <div class="ticket-status" id="ticket-status" role="status" aria-live="polite" hidden></div>
-      <div class="ticket-footer"><button type="button" class="button secondary" id="cancel-trade">Cancel trade</button><button type="submit" form="trade-form" class="button blue" id="submit-trade">Check simulated trade</button></div>
+      <div class="ticket-footer"><button type="button" class="button secondary" id="cancel-trade">Annuler</button><button type="submit" form="trade-form" class="button blue" id="submit-trade">Soumettre</button></div>
       <div id="ticket-review-slot"></div>
     </article>
     <aside id="agent-invite" class="agent-invitation" aria-labelledby="invite-title" hidden>
       <button class="icon-button invite-close" id="dismiss-invite" aria-label="Dismiss agent invitation" title="Dismiss agent invitation">×</button>
       <svg class="advisor" viewBox="0 0 132 126" role="img" aria-label="A friendly human Second Look guide smiling and waving">
-        <circle cx="63" cy="62" r="54" fill="#e9f5fc"/><path d="M26 123q0-37 33-37h14q34 0 34 37" fill="#197daa"/><path d="m50 85 16 22 15-22" fill="#fff"/><path d="M57 77h17v16q-8 13-17 0" fill="#d69b76"/>
+        <circle cx="63" cy="62" r="54" fill="#fdeced"/><path d="M26 123q0-37 33-37h14q34 0 34 37" fill="#e41c23"/><path d="m50 85 16 22 15-22" fill="#fff"/><path d="M57 77h17v16q-8 13-17 0" fill="#d69b76"/>
         <path d="M34 48q-3-37 30-37 37-3 36 39l-8 23H39z" fill="#263b4b"/><ellipse cx="65" cy="54" rx="28" ry="33" fill="#efbd97"/><path d="M37 48q5-33 29-27 19 18 32 10l-4-12-31-10-25 15z" fill="#263b4b"/><path d="M47 47q5-4 10-1m18 0q5-3 10 1" fill="none" stroke="#6b483c" stroke-width="2.3" stroke-linecap="round"/><ellipse cx="53" cy="54" rx="2.6" ry="3.3" fill="#263b4b"/><ellipse cx="79" cy="54" rx="2.6" ry="3.3" fill="#263b4b"/><path d="M59 68q7 8 15-1" fill="none" stroke="#9b4f46" stroke-width="2.6" stroke-linecap="round"/><circle cx="45" cy="63" r="4" fill="#eaa58e"/><circle cx="86" cy="63" r="4" fill="#eaa58e"/>
-        <g class="waving-hand"><path d="m101 106 9-25" fill="none" stroke="#197daa" stroke-width="16" stroke-linecap="round"/><path d="m108 81-4-13q-1-5 3-5l3 8-1-21q0-5 4-3l2 19 2-23q1-4 4-1l-1 24 5-16q3-4 5-1l-5 28q-5 14-14 6" fill="#efbd97" stroke="#d79e79" stroke-width="1"/></g>
+        <g class="waving-hand"><path d="m101 106 9-25" fill="none" stroke="#e41c23" stroke-width="16" stroke-linecap="round"/><path d="m108 81-4-13q-1-5 3-5l3 8-1-21q0-5 4-3l2 19 2-23q1-4 4-1l-1 24 5-16q3-4 5-1l-5 28q-5 14-14 6" fill="#efbd97" stroke="#d79e79" stroke-width="1"/></g>
       </svg>
       <h3 id="invite-title">A second look?</h3><p id="invite-message"></p><button class="button blue" id="lets-talk">Let’s talk</button><span class="small-label">Your trade remains paused.</span>
     </aside>
   </div>
 </dialog>
-<section id="review-panel" class="review-panel surface" aria-labelledby="review-title" hidden>
+<section id="review-panel" class="review-panel surface" aria-labelledby="review-title" lang="en" hidden>
   <div class="review-heading"><div><span class="review-kicker">SECOND LOOK · TRADE PAUSED</span><h2 id="review-title" tabindex="-1">Let’s look at what changes.</h2><p id="pending-trade-summary" class="muted"></p></div><button class="button secondary compact" id="revise-trade">Revise trade</button></div>
   <h3>Current trade assessment</h3>
-  <p class="rule-summary" id="red-summary"></p><div id="exposure-table" class="table-scroll"></div>
+  <p class="rule-summary" id="red-summary"></p>
+  <div id="review-visuals" class="review-visuals" aria-label="What this trade changes"></div>
+  <details class="exact-numbers"><summary>Exact figures and limits</summary><div id="exposure-table" class="table-scroll"></div></details>
   <div class="review-spectrum" id="review-spectrum"></div>
   <h3>Talk with Second Look</h3>
   <div id="conversation-result" role="log" aria-live="polite" aria-label="Conversation with Second Look"></div>
@@ -85,7 +91,7 @@
   <form id="reason-form"><label id="reason-label" for="reason">What made you interested in this trade?</label><textarea id="reason" rows="2" maxlength="5000" placeholder="Tell us what you had in mind…" required></textarea><div class="conversation-footer"><span class="muted">Enter to send · Shift+Enter for a new line. Chat never executes a trade.</span><button class="button blue" id="send-reason" type="submit">Send</button></div></form>
   <p id="review-error" class="inline-error" role="alert" hidden></p>
   <div class="conversation-retry"><button id="retry-reply" class="button secondary compact" hidden>Retry saved message</button><button id="refresh-conversation" class="text-button" hidden>Refresh conversation</button></div>
-  <div class="risk-acknowledgement" id="risk-actions"><label class="checkbox-label"><input id="risk-checkbox" type="checkbox"><span>I understand the flagged risks and want to continue this simulation.</span></label><div class="risk-buttons"><button class="button secondary" id="cancel-review">Cancel simulation</button><button class="button blue" id="proceed-red" disabled>Proceed with simulation</button></div></div>
+  <div class="risk-acknowledgement" id="risk-actions"><label class="checkbox-label"><input id="risk-checkbox" type="checkbox"><span>I understand the flagged risks and want to submit this order anyway.</span></label><div class="risk-buttons"><button class="button secondary" id="cancel-review">Cancel simulation</button><button class="button blue" id="proceed-red" disabled>Proceed with simulation</button></div></div>
   <p id="review-terminal" class="terminal-note" role="status" hidden></p>
 </section>
 <div id="announcer" class="sr-only" role="status" aria-live="polite"></div>
