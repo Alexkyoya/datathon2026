@@ -85,7 +85,9 @@ def role_arn():
         {"Effect": "Allow", "Action": "lambda:InvokeFunction",
          "Resource": f"arn:aws:lambda:{config.AWS_REGION}:{account}:function:{config.LAMBDA_NAME}"},
         {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject"],
-         "Resource": f"arn:aws:s3:::{config.DATA_BUCKET}/*"}]}
+         "Resource": f"arn:aws:s3:::{config.DATA_BUCKET}/*"},
+        # without ListBucket, S3 answers AccessDenied (not NoSuchKey) for a missing key
+        {"Effect": "Allow", "Action": "s3:ListBucket", "Resource": f"arn:aws:s3:::{config.DATA_BUCKET}"}]}
     try:
         arn = iam.get_role(RoleName=ROLE_NAME)["Role"]["Arn"]
         new = False
