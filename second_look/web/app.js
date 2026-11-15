@@ -346,15 +346,43 @@ function renderReview() {
 }
 function renderSpectrum(c) {
   const root=$('review-spectrum');root.hidden=!c;if(!c)return;
-  root.replaceChildren(node('p',`Reference spectrum · stored target: ${c.target_profile}`,'small-label'));
-  const axis=node('div','','spectrum-axis');['Income','Conservative','Balanced','Growth','Maximum growth'].forEach(label=>axis.append(node('span',label)));root.append(axis);
-  for(const key of ['before','after']){
-    const row=node('div','','spectrum-position'),track=node('div','','position-track'),dot=node('span','','position-dot '+key);
-    dot.style.left=(c[key].normalized_score*100)+'%';track.append(dot);row.append(node('span',key==='before'?'Before':'After'),track);root.append(row);
-    const memberships=Object.entries(c[key].membership_weights).filter(([,w])=>w>1e-10).map(([label,w])=>percent(w)+' '+label).join(' / ');
-    root.append(node('p',`${key==='before'?'Before':'After'}: ${memberships} · allocation score ${c[key].score.toFixed(3)} · mismatch distance ${c[key].distance.toFixed(4)}`,'spectrum-membership'));
-  }
-  root.append(node('p','Memberships describe asset allocation, not probabilities or complete risk. A small mismatch does not override a hard limit.','muted'));
+  const steps=['Income','Conservative','Balanced','Growth','Maximum growth'];
+  const target=c.target_profile, tScore=c.target_score;
+  const where=p=>{
+    const w=Object.entries(p.membership_weights).filter(([,v])=>v>0.02).sort((x,y)=>y[1]-x[1]);
+    if(w.length===1)return `right at ${w[0][0]}`;
+    const names=steps.filter(n=>w.some(([k])=>k===n));
+    return `between ${names.join(' and ')}, closer to ${w[0][0]}`;
+  };
+  const gapB=Math.abs(c.before.score-tScore), gapA=Math.abs(c.after.score-tScore), move=c.after.score-c.before.score;
+  const title=node('h4','Where your mix sits','spectrum-title');
+  const intro=node('p','','spectrum-intro');
+  intro.append(document.createTextNode('We line up five model mixes from National Bank Financial (Fall 2026), from the most cautious to the most adventurous. Your profile aims for '),node('strong',target),document.createTextNode('. The dots show where your portfolio sits before and after this trade, based only on its split between cash, bonds, stocks and alternatives.'));
+  // one track: five model mixes, the profile's aim, before and after
+  const track=node('div','','spectrum-line');
+  steps.forEach((label,i)=>{const tick=node('span','','spectrum-step'+(label===target?' aim':''));tick.style.left=(i*25)+'%';tick.append(node('i'),node('span',label));if(label===target)tick.append(node('small','Your aim'));track.append(tick);});
+  const b=c.before.normalized_score*100, a=c.after.normalized_score*100;
+  if(Math.abs(a-b)>1.5){const arrow=node('span','','spectrum-move');arrow.style.left=Math.min(a,b)+'%';arrow.style.width=Math.abs(a-b)+'%';arrow.classList.add(a>b?'right':'left');track.append(arrow);}
+  const close=Math.abs(a-b)<14;
+  [['before',b,'Before'],['after',a,'After']].forEach(([k,pos,label])=>{const dot=node('span','','spectrum-dot '+k);dot.style.left=pos+'%';const tag=node('span',label);
+    if(close){tag.style.position='relative';tag.style.left=((k==='before')===(b<=a)?-32:32)+'px';}
+    dot.append(tag);track.append(dot);});
+  const reading=node('ul','','spectrum-reading');
+  reading.append(node('li',`Before: ${where(c.before)}.`),node('li',`After: ${where(c.after)}.`));
+  let verdictLine;
+  if(Math.abs(move)<0.02) verdictLine='This trade barely changes your overall mix.';
+  else verdictLine=`This trade makes your overall mix more ${move>0?'adventurous':'cautious'}, and ${gapA<gapB-0.01?`closer to your ${target} aim`:gapA>gapB+0.01?`further from your ${target} aim`:`about as close to your ${target} aim as before`}.`;
+  reading.append(node('li',verdictLine,'strong'));
+  const why=node('p','','spectrum-note');
+  why.append(node('strong','Why can this look fine when a trade is flagged? '),document.createTextNode('This line only looks at the broad mix. Limits such as how much one company, one sector or crypto can be, your avoid list, and money you need for your goals are checked separately. Those checks decide the colour.'));
+  const details=node('details','','spectrum-details');
+  details.append(node('summary','Exact numbers (for reviewers)'));
+  ['before','after'].forEach(key=>{
+    const m=Object.entries(c[key].membership_weights).filter(([,w])=>w>1e-10).map(([label,w])=>percent(w)+' '+label).join(' / ');
+    details.append(node('p',`${key==='before'?'Before':'After'}: ${m} · position ${c[key].score.toFixed(2)} on a 0–4 line (your aim: ${tScore}) · distance from the nearest model mix ${c[key].distance.toFixed(3)}`));
+  });
+  details.append(node('p','Percentages say how far the portfolio is between two neighbouring model mixes. They are not probabilities or a full measure of risk. Distance is how different the mix is from that point on the line (0 = identical).','muted'));
+  root.replaceChildren(title,intro,track,reading,why,details);
 }
 function rememberTrade() {
   if(state.record?.result.verdict==='red')sessionStorage.setItem('second-look:'+state.record.request.client_id,JSON.stringify({id:state.record.simulation_id,version:state.record.assessment_input_version}));
