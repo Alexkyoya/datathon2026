@@ -354,14 +354,14 @@ function renderReview() {
   const checks=r.alerts.filter(c=>c.severity==='red');
   $('red-summary').textContent=plainHeadline(r,request);
   renderVisuals(r,request);
-  $('pending-trade-summary').textContent=L(`${request.side==='buy'?'Achat':'Vente'} ${request.ticker} · ${money(request.amount_cad)} · ${dateLabel(request.decision_date)}. Verdict initial : rouge.`,`${request.side==='buy'?'Buy':'Sell'} ${request.ticker} · ${money(request.amount_cad)} CAD · ${dateLabel(request.decision_date)}. Original verdict: Red.`);
+  $('pending-trade-summary').textContent=L(`${request.side==='buy'?'Achat':'Vente'} ${request.ticker} · ${money(request.amount_cad)} · ${dateLabel(request.decision_date)}`,`${request.side==='buy'?'Buy':'Sell'} ${request.ticker} · ${money(request.amount_cad)} · ${dateLabel(request.decision_date)}`);
   const rows=checks.filter(c=>finite(c.before)&&finite(c.after)&&finite(c.limit)).map(c=>{const format=c.unit==='hhi_index'?v=>decimal(v,3):percent;return [exposureName(c),format(c.before),format(c.after),(c.bound==='min'?'Minimum ':'Maximum ')+format(c.limit)];});
   $('exposure-table').replaceChildren(makeTable([L('Mesure signalée','Flagged measure'),L('Avant','Before'),L('Après','After'),L('Limite','Limit')],rows));
   renderSpectrum(r.classification);
   $('reason-form').hidden=isTerminal(record);
   renderConversation(record);
   const terminal=isTerminal(record);
-  document.querySelector('.review-kicker').textContent=terminal?'SECOND LOOK · '+(record.stage==='cancelled'?L('SIMULATION ANNULÉE','SIMULATION CANCELLED'):L('RISQUE RECONNU','RISK ACKNOWLEDGED')):L('SECOND LOOK · TRANSACTION SUSPENDUE','SECOND LOOK · TRADE PAUSED');
+  document.querySelector('.review-kicker').textContent=terminal?(record.stage==='cancelled'?L('Simulation annulée','Simulation cancelled'):L('Risque reconnu','Risk acknowledged')):L('Transaction suspendue','Trade paused');
   $('risk-actions').hidden=terminal;$('review-terminal').hidden=!terminal;
   $('review-terminal').textContent=record.stage==='cancelled'?L('Ordre annulé. Vos avoirs sont inchangés.','Order cancelled. Your holdings are unchanged.'):L('Vous avez reconnu les risques et soumis l’ordre. Le résultat de la vérification reste rouge. Démo seulement : aucun ordre réel n’a été passé.','You acknowledged the risks and submitted the order. The check result stays red. Demo only: no real order was placed.');
   syncButtons();
@@ -434,8 +434,14 @@ function renderSpectrum(c) {
     const m=Object.entries(c[key].membership_weights).filter(([,w])=>w>1e-10).map(([label,w])=>percent(w)+' '+label).join(' / ');
     details.append(node('p',L(`${key==='before'?'Avant':'Après'} : ${m} · position ${c[key].score.toFixed(2)} sur un cadran de 0 à 4 (votre cible : ${tScore}) · distance du portefeuille modèle le plus proche ${c[key].distance.toFixed(3)}`,`${key==='before'?'Before':'After'}: ${m} · position ${c[key].score.toFixed(2)} on a 0–4 dial (your aim: ${tScore}) · distance from the nearest model mix ${c[key].distance.toFixed(3)}`)));
   });
-  details.append(node('p',L('Les pourcentages indiquent où se situe le portefeuille entre deux portefeuilles modèles voisins. Ce ne sont ni des probabilités ni une mesure complète du risque. La distance indique à quel point la répartition diffère de ce point du cadran (0 = identique).','Percentages say how far the portfolio is between two neighbouring model mixes. They are not probabilities or a full measure of risk. Distance is how different the mix is from that point on the dial (0 = identical).'),'muted'));
-  root.replaceChildren(title,intro,track,ends,mix,reading,why,details);
+    details.append(node('p',L('Les pourcentages indiquent où se situe le portefeuille entre deux portefeuilles modèles voisins. Ce ne sont ni des probabilités ni une mesure complète du risque. La distance indique à quel point la répartition diffère de ce point du cadran (0 = identique).','Percentages say how far the portfolio is between two neighbouring model mixes. They are not probabilities or a full measure of risk. Distance is how different the mix is from that point on the dial (0 = identical).'),'muted'));
+  const head=node('div','','viz-head');head.append(title);
+  const more=node('div','','viz-more');more.id='spectrum-more';more.hidden=true;more.append(intro,track,ends,why,details);
+  const button=node('button','','viz-info');button.type='button';button.setAttribute('aria-expanded','false');button.setAttribute('aria-controls','spectrum-more');
+  button.append(node('span','i','viz-info-icon'),node('span',L('Afficher le cadran','Show the dial'),'viz-info-text'));
+  button.addEventListener('click',()=>{const open=more.hidden;more.hidden=!open;button.setAttribute('aria-expanded',String(open));button.lastChild.textContent=open?L('Masquer le cadran','Hide the dial'):L('Afficher le cadran','Show the dial');});
+  head.append(button);
+  root.replaceChildren(head,reading,mix,more);
 }
 // ---------------------------------------------------------------------------------------------
 // Visual red review. Every figure below comes from the rule engine result or the stored asset
@@ -444,16 +450,27 @@ function renderSpectrum(c) {
 // ---------------------------------------------------------------------------------------------
 const SVG_NS='http://www.w3.org/2000/svg';
 const svgEl=(tag,attrs={},text)=>{const el=document.createElementNS(SVG_NS,tag);for(const [k,v] of Object.entries(attrs))el.setAttribute(k,String(v));if(text!==undefined)el.textContent=text;return el;};
-const pct0=value=>finite(value)?`${Math.round(value*100)}%`:'—';
+const pct0=value=>!finite(value)?'—':(value>0&&value<0.0095)?`${(value*100).toFixed(1)}%`:`${Math.round(value*100)}%`;
 const months=value=>!finite(value)?'—':value<0.5?'now':value<1.5?'about a month':value<24?`${Math.round(value)} months`:`${(value/12).toFixed(1)} years`;
 const clamp01=value=>Math.min(1,Math.max(0,value));
 const classLimits=r=>{const limits={};r.checks.filter(c=>c.rule.startsWith('allocation.')).forEach(c=>{const [,cls,bound]=c.rule.split('.');(limits[cls]??={})[bound]=c.limit;});return limits;};
 const ruleAlerts=(r,prefix)=>r.alerts.filter(c=>c.rule.startsWith(prefix)&&c.severity!=='none');
 
 function vizCard(kicker,headline,tone='',wide=false) {
-  const card=node('section','','viz-card'+(tone?' '+tone:'')+(wide?' wide':''));
-  card.append(node('span',kicker,'small-label'),node('p',headline,'viz-headline'));
+  const card=node('section','','viz-card'+(tone?' '+tone:''));
+  const head=node('div','','viz-head');head.append(node('span',kicker,'small-label'));
+  card.append(head,node('p',headline,'viz-headline'));
   return card;
+}
+// Extra explanation stays one click away: an (i) button in the card header shows or hides it.
+let vizMoreId=0;
+function addMore(card,...items) {
+  items=items.filter(Boolean);if(!items.length)return;
+  const id='viz-more-'+(++vizMoreId),more=node('div','','viz-more');more.id=id;more.hidden=true;more.append(...items);
+  const button=node('button','','viz-info');button.type='button';button.setAttribute('aria-expanded','false');button.setAttribute('aria-controls',id);
+  button.append(node('span','i','viz-info-icon'),node('span','Charts & details','viz-info-text'));
+  button.addEventListener('click',()=>{const open=more.hidden;more.hidden=!open;card.classList.toggle('expanded',open);button.setAttribute('aria-expanded',String(open));button.lastChild.textContent=open?'Hide charts':'Charts & details';});
+  (card.querySelector('.viz-head')||card).append(button);card.append(more);
 }
 function legend(items) {
   const wrap=node('div','','viz-legend');
@@ -489,12 +506,16 @@ function concentrationCard(r,request) {
   svg.append(svgEl('rect',{x:x0,y:8,width:W,height:16,rx:4,class:'viz-track'}));
   svg.append(svgEl('rect',{x:x0,y:8,width:clamp01(c.after/scale)*W,height:16,rx:4,class:'viz-after out'}));
   if(c.before>1e-9)svg.append(svgEl('line',{x1:x0+clamp01(c.before/scale)*W,x2:x0+clamp01(c.before/scale)*W,y1:4,y2:28,class:'viz-before'}));
-  const capX=x0+clamp01(c.limit/scale)*W;
-  svg.append(svgEl('line',{x1:capX,x2:capX,y1:2,y2:32,class:'viz-cap'}));
-  svg.append(svgEl('text',{x:Math.min(capX+4,W-40),y:46,class:'viz-cap-label'},`limit ${pct0(c.limit)}`));
-  svg.append(svgEl('text',{x:x0,y:46,class:'viz-tick'},'0%'));
-  card.append(svg,legend([['#20313d','before'],['var(--red)','after this trade'],['var(--red)','dashed: your limit']]));
-  if(finite(r.hhi_after)&&r.hhi_after>r.hhi_before+1e-9)card.append(node('p',`Overall concentration (HHI) rises from ${decimal(r.hhi_before,2)} to ${decimal(r.hhi_after,2)}; above ${decimal(0.25,2)} counts as concentrated.`,'viz-note'));
+  if(c.limit>0){
+    const capX=x0+clamp01(c.limit/scale)*W;
+    svg.append(svgEl('line',{x1:capX,x2:capX,y1:2,y2:32,class:'viz-cap'}));
+    svg.append(svgEl('text',{x:Math.min(capX+4,W-40),y:46,class:'viz-cap-label'},`limit ${pct0(c.limit)}`));
+    if(capX-x0>28)svg.append(svgEl('text',{x:x0,y:46,class:'viz-tick'},'0%'));
+  }
+  addMore(card,svg,
+    legend(c.limit>0?[['#20313d','before'],['var(--red)','after this trade'],['var(--red)','dashed: your limit']]:[['#20313d','before'],['var(--red)','after this trade']]),
+    c.limit>0?null:node('p',`Your ${r.profile} profile does not include ${stock?'more of this company':'crypto'}, so any amount is over the limit.`,'viz-note'),
+    finite(r.hhi_after)&&r.hhi_after>r.hhi_before+1e-9?node('p',`Overall concentration (HHI) rises from ${decimal(r.hhi_before,2)} to ${decimal(r.hhi_after,2)}; above ${decimal(0.25,2)} counts as concentrated.`,'viz-note'):null);
   return card;
 }
 
@@ -503,9 +524,9 @@ function allocationCard(r) {
   const limits=classLimits(r);
   const rows=Object.keys(classes).filter(cls=>limits[cls]);
   const breached=rows.filter(cls=>{const a=r.weights_after[cls]||0;return a<limits[cls].min-1e-9||a>limits[cls].max+1e-9;});
-  const card=vizCard('Where your money sits',breached.length?`${breached.map(cls=>classes[cls]).join(' and ')} would be outside the range for your ${r.profile} profile.`:`Every asset class stays inside the range for your ${r.profile} profile.`,breached.length?'red':'',true);
-  const H=rows.length*30+8,x0=96,W=186;
-  const svg=svgEl('svg',{viewBox:`0 0 360 ${H}`,role:'img','aria-label':'Asset classes before and after the trade against the allowed ranges'});
+  const card=vizCard('Asset mix',breached.length?`${breached.map(cls=>classes[cls]).join(' and ')} would be outside the range for your ${r.profile} profile.`:`Every asset class stays inside the range for your ${r.profile} profile.`,breached.length?'red':'',true);
+  const H=rows.length*30+8,x0=132,W=186;
+  const svg=svgEl('svg',{viewBox:`0 0 400 ${H}`,role:'img','aria-label':'Asset classes before and after the trade against the allowed ranges'});
   rows.forEach((cls,i)=>{
     const y=i*30+4,lo=limits[cls].min??0,hi=limits[cls].max??1,b=r.weights_before[cls]||0,a=r.weights_after[cls]||0,out=a<lo-1e-9||a>hi+1e-9;
     svg.append(svgEl('text',{x:0,y:y+15,class:'viz-label'},classes[cls]));
@@ -515,8 +536,10 @@ function allocationCard(r) {
     svg.append(svgEl('line',{x1:x0+clamp01(b)*W,x2:x0+clamp01(b)*W,y1:y+1,y2:y+23,class:'viz-before'}));
     svg.append(svgEl('text',{x:x0+W+8,y:y+16,class:'viz-value'+(out?' out':'')},`${pct0(b)} → ${pct0(a)}`));
   });
-  card.append(svg,legend([['#cfe6d8','allowed range'],['#20313d','before'],['#3a6ea5','after'],['var(--red)','after, outside the range']]));
-  card.append(node('p','Ranges: National Bank Financial model portfolios (Fall 2026) for your stored profile.','viz-note'));
+  const moved=rows.filter(cls=>Math.abs((r.weights_after[cls]||0)-(r.weights_before[cls]||0))>=0.005);
+  card.append(node('p',moved.length?moved.map(cls=>`${classes[cls]} ${pct0(r.weights_before[cls]||0)} → ${pct0(r.weights_after[cls]||0)}`).join(' · '):'No asset class changes noticeably.','viz-plain'));
+  addMore(card,svg,legend([['#cfe6d8','allowed range'],['#20313d','before'],['#3a6ea5','after'],['var(--red)','after, outside the range']]),
+    node('p','The green zone is the range allowed for your profile. Ranges: National Bank Financial model portfolios (Fall 2026) for your stored profile.','viz-note'));
   return card;
 }
 
@@ -528,10 +551,10 @@ function worstFallCard(r,request) {
   if(!h||!finite(h.max_drawdown))return null;
   const amount=request.amount_cad,loss=-h.max_drawdown*amount,left=amount-loss;
   const recovered=h.recovered&&finite(h.recovery_months);
-  const card=vizCard('If its worst past fall happened again',`${request.ticker} once fell ${pct0(-h.max_drawdown)}. On this trade that is ${money(loss)} gone at the lowest point.`,'red',true);
-  const big=node('div','','viz-big');big.append(node('strong',money(loss)),node('span',recovered?`and ${months(h.recovery_months)} to get back to even`:'and it had not recovered by the end of the data'));card.append(big);
+  const card=vizCard('Worst past fall',`If ${request.ticker} fell like its worst past drop (${pct0(-h.max_drawdown)}), you would lose:`,'red',true);
+  const big=node('div','','viz-big');big.append(node('strong','−'+money(loss).replace(/[.,]\d\d(?=\D*$)/,'')),node('span',`of the ${money(amount).replace(/[.,]\d\d(?=\D*$)/,'')} you put in`));card.append(big);
   // Money bars: what you put in vs what would be left at the bottom.
-  const W=200,x0=112,svg=svgEl('svg',{viewBox:'0 0 360 58',role:'img','aria-label':`${money(amount)} invested; ${money(left)} left after a ${pct0(-h.max_drawdown)} fall`});
+  const W=200,x0=112,svg=svgEl('svg',{viewBox:'0 0 400 58',role:'img','aria-label':`${money(amount)} invested; ${money(left)} left after a ${pct0(-h.max_drawdown)} fall`});
   svg.append(svgEl('text',{x:0,y:16,class:'viz-label'},'You put in'));
   svg.append(svgEl('rect',{x:x0,y:5,width:W,height:16,rx:3,class:'viz-keep'}));
   svg.append(svgEl('text',{x:x0+W+8,y:17,class:'viz-value'},money(amount)));
@@ -540,31 +563,36 @@ function worstFallCard(r,request) {
   svg.append(svgEl('rect',{x:x0,y:33,width:clamp01(left/amount)*W,height:16,rx:3,class:'viz-keep'}));
   svg.append(svgEl('rect',{x:x0+clamp01(left/amount)*W,y:33,width:clamp01(loss/amount)*W,height:16,rx:3,class:'viz-loss'}));
   svg.append(svgEl('text',{x:x0+W+8,y:45,class:'viz-value out'},money(left)));
-  card.append(svg);
+  const bars=svg;
   // Recovery timeline with the client's dated needs.
   const needs=(r.goals?.installments||[]).filter(i=>finite(i.months_to_goal)).slice(0,4);
   const span=Math.max(recovered?h.recovery_months:36,...needs.map(n=>n.months_to_goal),12)*1.15;
   const tl=svgEl('svg',{viewBox:'0 0 360 64',role:'img','aria-label':'Recovery time compared with when you need the money'});
   tl.append(svgEl('defs'));tl.firstChild.innerHTML='<pattern id="viz-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="6" fill="#d9a2a7"/></pattern>';
   const tx0=4,TW=332;
-  tl.append(svgEl('text',{x:tx0,y:11,class:'viz-label'},recovered?`Time ${request.ticker} needed to recover: ${months(h.recovery_months)}`:`${request.ticker} had not recovered after ${months(span/1.15)} of data`));
   tl.append(svgEl('rect',{x:tx0,y:34,width:TW,height:12,rx:3,class:'viz-track'}));
   tl.append(svgEl('rect',{x:tx0,y:34,width:clamp01((recovered?h.recovery_months:span)/span)*TW,height:12,rx:3,class:'viz-recovery'+(recovered?'':' open')}));
   [0,12,24,36,48,60].filter(m=>m<=span).forEach(m=>{const x=tx0+(m/span)*TW;tl.append(svgEl('line',{x1:x,x2:x,y1:46,y2:50,class:'viz-axis'}));tl.append(svgEl('text',{x:x-(m?8:0),y:60,class:'viz-tick'},m?`${m/12}y`:'today'));});
-  needs.forEach((n,i)=>{const x=tx0+clamp01(n.months_to_goal/span)*TW;tl.append(svgEl('line',{x1:x,x2:x,y1:26,y2:50,class:'viz-goal'}));tl.append(svgEl('circle',{cx:x,cy:23,r:6,class:'viz-goal-dot'}));tl.append(svgEl('text',{x:x,y:26,'text-anchor':'middle',class:'viz-goal-number'},String(i+1)));});
-  card.append(tl);
-  if(needs.length){const list=node('ol','','viz-needs');needs.forEach(n=>{const item=node('li',`${n.goal} · ${months(n.months_to_goal)}${n.months_to_goal<(recovered?h.recovery_months:Infinity)?' · before '+request.ticker+' would be back to even':''}`);list.append(item);});card.append(list);}
-  card.append(node('p',`Worst fall and recovery measured on the provided prices, ${h.window||'2021-2026'}. A past fall is not a forecast; the next one can be smaller or larger.${needs.length?' Orange marks: dates you told us you need money.':''}`,'viz-note'));
+  let lastX=-99,lift=false;
+  needs.forEach((n,i)=>{const x=tx0+clamp01(n.months_to_goal/span)*TW;lift=x-lastX<15?!lift:false;lastX=x;const cy=lift?11:23;
+    tl.append(svgEl('line',{x1:x,x2:x,y1:cy+3,y2:50,class:'viz-goal'}));tl.append(svgEl('circle',{cx:x,cy,r:6,class:'viz-goal-dot'}));tl.append(svgEl('text',{x:x,y:cy+3,'text-anchor':'middle',class:'viz-goal-number'},String(i+1)));});
+  const before=needs.filter(n=>n.months_to_goal<(recovered?h.recovery_months:Infinity));
+  card.append(node('p',recovered?`It took ${request.ticker} ${months(h.recovery_months)} to get back to even.${before.length?` ${before.length===1?'One of your money needs comes':`${before.length} of your money needs come`} before that.`:''}`:`${request.ticker} had not got back to even by the end of the data.`,'viz-plain'));
+  const list=needs.length?node('ol','','viz-needs'):null;
+  needs.forEach(n=>list.append(node('li',`${n.goal} · ${months(n.months_to_goal)}${n.months_to_goal<(recovered?h.recovery_months:Infinity)?' · before '+request.ticker+' would be back to even':''}`)));
+  addMore(card,bars,tl,list,node('p',`Worst fall and recovery measured on the provided prices, ${h.window||'2021-2026'}. A past fall is not a forecast; the next one can be smaller or larger.${needs.length?' Orange marks: dates you told us you need money.':''}`,'viz-note'));
   return card;
 }
 
 // Card: coverage of each upcoming money need, before and after the trade.
 function goalsCard(r) {
   const g=r.goals;if(!g?.applied||!g.installments?.length)return null;
-  const rows=g.installments.slice(0,6),flagged=g.installments.filter(i=>i.flagged);
-  const card=vizCard('Money you said you need',flagged.length?`${flagged.length} of your ${g.installments.length} upcoming needs would no longer be fully covered.`:'All your upcoming needs stay covered after this trade.',flagged.length?(flagged.some(i=>i.severity==='red')?'red':'yellow'):'',true);
+  const flagged=g.installments.filter(i=>i.flagged);
+  if(!flagged.length)return null; // nothing changes for the client's needs: no card
+  const rows=flagged.slice(0,6);
+  const card=vizCard('Money you need',flagged.length?`${flagged.length} of your ${g.installments.length} upcoming needs would no longer be fully covered.`:'All your upcoming needs stay covered after this trade.',flagged.length?(flagged.some(i=>i.severity==='red')?'red':'yellow'):'',true);
   const monthYear=value=>new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'short',timeZone:'UTC'}).format(new Date(value.slice(0,10)+'T00:00:00Z'));
-  const x0=170,W=130,svg=svgEl('svg',{viewBox:`0 0 360 ${rows.length*28+6}`,role:'img','aria-label':'Goal coverage before and after the trade'});
+  const x0=170,W=130,svg=svgEl('svg',{viewBox:`0 0 400 ${rows.length*28+6}`,role:'img','aria-label':'Goal coverage before and after the trade'});
   rows.forEach((i,k)=>{
     const y=k*28+4,label=`${i.goal} · ${monthYear(i.date)}`;
     svg.append(svgEl('text',{x:0,y:y+15,class:'viz-label'},label.length>30?label.slice(0,29)+'…':label));
@@ -574,8 +602,9 @@ function goalsCard(r) {
     svg.append(svgEl('rect',{x:x0,y:y+12,width:clamp01(i.coverage_after)*W,height:7,rx:2,class:'viz-cover-after'+(i.flagged?' out':'')}));
     svg.append(svgEl('text',{x:x0+W+8,y:y+16,class:'viz-value'+(i.flagged?' out':'')},`${pct0(i.coverage_before)} → ${pct0(i.coverage_after)}`));
   });
-  card.append(svg,legend([['#c9d7e0','covered before'],['#3a6ea5','covered after'],['var(--red)','no longer covered']]));
-  card.append(node('p',`Covered means held in cash or in assets that recovered from their worst past fall within the time left. Checked until ${dateLabel(g.checked_until)}; later needs are long-term money.`,'viz-note'));
+  const list=node('ul','','viz-list');rows.forEach(i=>list.append(node('li',`${i.goal} · ${monthYear(i.date)}: ${pct0(i.coverage_before)} → ${pct0(i.coverage_after)} covered`)));card.append(list);
+  addMore(card,svg,legend([['#c9d7e0','covered before'],['#3a6ea5','covered after'],['var(--red)','no longer covered']]),
+    node('p',`Covered means held in cash or in assets that recovered from their worst past fall within the time left. Checked until ${dateLabel(g.checked_until)}; later needs are long-term money. ${g.installments.length-flagged.length} other upcoming needs stay covered.`,'viz-note'));
   return card;
 }
 
@@ -593,14 +622,17 @@ function esgCard(r,request) {
     const capX=x0+clamp01(fund.limit/scale)*W;svg.append(svgEl('line',{x1:capX,x2:capX,y1:0,y2:30,class:'viz-cap'}));
     svg.append(svgEl('text',{x:Math.min(capX+4,W-60),y:44,class:'viz-cap-label'},`your limit ${pct0(fund.limit)}`));
     svg.append(svgEl('text',{x:x0+clamp01(fund.after/scale)*W+6,y:18,class:'viz-value out'},pct0(fund.after)));
-    card.append(svg);
-    if(fund.fact_sheet)card.append(node('p',`Source: ${fund.fact_sheet}${fund.fact_sheet_as_of?' · as of '+dateLabel(fund.fact_sheet_as_of):''}.`,'viz-note'));
+    addMore(card,svg,fund.fact_sheet?node('p',`Source: ${fund.fact_sheet}${fund.fact_sheet_as_of?' · as of '+dateLabel(fund.fact_sheet_as_of):''}.`,'viz-note'):null);
   }
   return card;
 }
 
+// The chart tiles are switched off for the demo: the one-line summary, "Where your mix sits" and the
+// chat already explain the pause. Set to true to bring the tiles (and their charts) back.
+const SHOW_VISUAL_TILES=false;
 function renderVisuals(r,request) {
   const root=$('review-visuals');root.replaceChildren();
+  root.hidden=!SHOW_VISUAL_TILES;if(!SHOW_VISUAL_TILES)return;
   const cards=[concentrationCard(r,request),goalsCard(r),esgCard(r,request),worstFallCard(r,request),allocationCard(r)].filter(Boolean);
   // Red cards first, so the reason for the pause is the first thing on screen.
   const rank=card=>card.classList.contains('red')?0:card.classList.contains('yellow')?1:2;
@@ -613,7 +645,7 @@ function renderVisuals(r,request) {
 // deterministic cards so a slow or unavailable comparison never delays the verdict.
 async function loadHistoryCard(root) {
   const record=state.record;if(!record)return;
-  const token=state.evaluation,holder=node('section','','viz-card wide history-card');
+  const token=state.evaluation,holder=node('section','','viz-card history-card');
   root.append(holder);
   if(state.backtest?.simulation_id===record.simulation_id){renderHistoryCard(holder,state.backtest.data,record.request);return;}
   holder.append(node('span','What the two mixes did in the past','small-label'),node('p','Loading the five-year comparison…','viz-note'));
@@ -628,8 +660,8 @@ function renderHistoryCard(card,data,request) {
   const t=request.ticker,endB=data.end_value_cad.before,endA=data.end_value_cad.after,dd=data.max_drawdown;
   const worse=dd.after<dd.before-0.002;
   card.classList.toggle('red',worse);
-  card.append(node('span','What the two mixes did in the past','small-label'));
-  card.append(node('p',`${dateLabel(data.window.start)} to ${dateLabel(data.window.end)}: your current mix fell at most ${pct0(-dd.before)} from a peak; with ${t} at today's weight it would have fallen ${pct0(-dd.after)}.`,'viz-headline'));
+  const head=node('div','','viz-head');head.append(node('span','Past 5 years','small-label'));card.append(head);
+  card.append(node('p',`Over the past 5 years, your current mix fell at most ${pct0(-dd.before)} from a peak. With ${t} added, ${pct0(-dd.after)}.`,'viz-headline'));
   // Two-line chart.
   const W=360,H=150,L=58,R=8,T=10,B=24,pts=data.series;
   const vals=pts.flatMap(p=>[p.before,p.after]),lo=Math.min(...vals)*0.97,hi=Math.max(...vals)*1.03;
@@ -643,7 +675,7 @@ function renderHistoryCard(card,data,request) {
   years.filter((y,i)=>!(years[i+1]&&years[i+1][1]-y[1]<36)).forEach(([yr,xx])=>svg.append(svgEl('text',{x:xx,y:H-8,class:'viz-tick'},yr)));
   const gi=pts.reduce((best,p,i)=>p.after-p.before<pts[best].after-pts[best].before?i:best,0);
   svg.append(svgEl('line',{x1:x(gi),x2:x(gi),y1:y(pts[gi].before),y2:y(pts[gi].after),class:'hist-gap'}));
-  card.append(svg,legend([['#20313d','your current mix'],[worse?'var(--red)':'#3a6ea5',`with ${t}`],['#815909',`largest gap: ${money(Math.abs(data.largest_gap_cad.after_minus_before))} on ${dateLabel(data.largest_gap_cad.date)}`]]));
+  const chart=[svg,legend([['#20313d','your current mix'],[worse?'var(--red)':'#3a6ea5',`with ${t}`],['#815909',`largest gap: ${money(Math.abs(data.largest_gap_cad.after_minus_before))} on ${dateLabel(data.largest_gap_cad.date)}`]])];
   // One-year outcomes strip for the trade amount.
   const o=data.one_year_outcomes;
   if(o?.before&&o?.after){
@@ -659,9 +691,10 @@ function renderHistoryCard(card,data,request) {
     });
     strip.append(svgEl('line',{x1:sx(amount),x2:sx(amount),y1:4,y2:60,class:'viz-cap'}));
     strip.append(svgEl('text',{x:sx(amount)+3,y:72,class:'viz-cap-label'},`you put in ${money(amount).replace(/\.\d\d/,'')}`));
-    card.append(node('p',`${money(amount)} after one year, in every past 12-month window (${o.after.windows} windows): with ${t} it ended between ${money(o.after.worst)} and ${money(o.after.best)}, below what you put in ${pct0(o.after.share_below_start)} of the time; the current mix between ${money(o.before.worst)} and ${money(o.before.best)}, below ${pct0(o.before.share_below_start)} of the time.`,'viz-headline'),strip);
-  }
-  card.append(node('p',`${data.method} ${data.limitations.join(' ')}`,'viz-note'));
+    card.append(node('p',`One year later, ${money(amount).replace(/[.,]\d\d(?=\D*$)/,'')} in ${t} ended below what you put in ${pct0(o.after.share_below_start)} of the time in the past.`,'viz-plain'));
+    addMore(card,...chart,node('p',`${money(amount)} after one year, in every past 12-month window (${o.after.windows} windows): with ${t} it ended between ${money(o.after.worst)} and ${money(o.after.best)}, below what you put in ${pct0(o.after.share_below_start)} of the time; the current mix between ${money(o.before.worst)} and ${money(o.before.best)}, below ${pct0(o.before.share_below_start)} of the time.`,'viz-note strong'),strip,
+      node('p',`${data.method} ${data.limitations.join(' ')}`,'viz-note'));
+  } else addMore(card,...chart,node('p',`${data.method} ${data.limitations.join(' ')}`,'viz-note'));
 }
 
 function rememberTrade() {
@@ -1120,6 +1153,8 @@ const EN_TEXT = {
  'Annuler la simulation':'Cancel simulation',
  'Poursuivre la simulation':'Proceed with simulation',
  'Chiffres exacts et limites':'Exact figures and limits',
+ 'Pourquoi cette transaction est suspendue':'Why this trade is paused',
+ 'SECOND LOOK · TRANSACTION SUSPENDUE':'SECOND LOOK · TRADE PAUSED',
  'Ce que cette transaction change':'What this trade changes',
 };
 function translateStatic() {
