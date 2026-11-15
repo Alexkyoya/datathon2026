@@ -226,7 +226,7 @@ class ConversationalCoordinator:
             state.setdefault('guardrail_events', []).append({'source': 'INPUT', **verdict})
         if verdict['blocked']:
             diagnostics.emit('guardrail_blocked_input', request_id, policies=verdict.get('policies'))
-            return json.dumps({'assistant_message': G.BLOCKED_INPUT, 'evidence_refs': []})
+            return json.dumps({'assistant_message': G.blocked_message('INPUT', state.get('language', 'en')), 'evidence_refs': []})
         model_calls = 0
         def budget(event: BeforeModelCallEvent):
             nonlocal model_calls
@@ -348,13 +348,13 @@ class ConversationalCoordinator:
         # corrects JSON/evidence formatting; it cannot alter the Python verdict.
         for attempt in range(3):
             try:
-                text, _ = engine_module('conversation').render_answer(answer, state['evidence'])
+                text, _ = engine_module('conversation').render_answer(answer, state['evidence'], state.get('language', 'en'))
                 verdict = _guard(text, 'OUTPUT')
                 if verdict['status'] != 'not_configured':
                     state.setdefault('guardrail_events', []).append({'source': 'OUTPUT', **verdict})
                 if verdict['blocked']:
                     diagnostics.emit('guardrail_blocked_output', request_id, policies=verdict.get('policies'))
-                    return json.dumps({'assistant_message': G.BLOCKED_OUTPUT, 'evidence_refs': []})
+                    return json.dumps({'assistant_message': G.blocked_message('OUTPUT', state.get('language', 'en')), 'evidence_refs': []})
                 return answer
             except diagnostics.AnswerValidationError as exc:
                 diagnostics.emit('response_validation_rejected', request_id, attempt=attempt,

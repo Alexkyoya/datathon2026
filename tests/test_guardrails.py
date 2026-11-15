@@ -59,6 +59,6 @@ def test_fails_open(monkeypatch):
 
 def test_replacement_messages_pass_chat_validation():
     import json
-    for msg in (G.BLOCKED_INPUT, G.BLOCKED_OUTPUT):
+    for msg in [G.blocked_message(src, lang) for src in ("INPUT", "OUTPUT") for lang in ("en", "fr")]:
         text, refs = render_answer(json.dumps({"assistant_message": msg, "evidence_refs": []}), {})
         assert text == msg and refs == []

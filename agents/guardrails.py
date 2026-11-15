@@ -20,6 +20,20 @@ BLOCKED_INPUT = ("I can't work with that message. Please tell me in your own wor
 BLOCKED_OUTPUT = ("I can't say what an investment will be worth in the future, and no return is guaranteed. "
                   "The check above is based on your profile and past data only. Tell me what you would like "
                   "to look at next.")
+MESSAGES = {
+    "en": {"INPUT": BLOCKED_INPUT, "OUTPUT": BLOCKED_OUTPUT},
+    "fr": {"INPUT": ("Je ne peux pas traiter ce message. Expliquez-moi dans vos mots pourquoi vous voulez faire "
+                     "cette transaction. Ne partagez jamais ici de numéro de carte, d'assurance sociale, de mot de "
+                     "passe ou d'autre identifiant."),
+           "OUTPUT": ("Je ne peux pas dire ce que vaudra un placement dans le futur, et aucun rendement n'est "
+                      "garanti. La vérification ci-dessus repose seulement sur votre profil et sur des données "
+                      "passées. Dites-moi ce que vous aimeriez examiner ensuite.")},
+}
+
+
+def blocked_message(source, language="en"):
+    return MESSAGES.get(language, MESSAGES["en"])[source]
+
 
 _client = None
 
