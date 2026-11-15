@@ -8,6 +8,7 @@ import copy
 import json
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -80,6 +81,7 @@ def main():
                 outcome = {'id': case['id'], 'question': case['user_message'], 'expected_behaviors': case['expected_behaviors'],
                            'hard_fail_if': case['hard_fail_if'], 'human_rubric_scores': None}
                 original = copy.deepcopy(record)
+                started = time.time()
                 try:
                     answer = coordinator.respond(record, inputs, state, tools)
                     report['live_model_verified'] = True
@@ -88,10 +90,17 @@ def main():
                                    backend_unchanged=record == original, contract_validation='passed')
                 except Exception as exc:
                     outcome.update(error=f'{type(exc).__name__}: {exc}', contract_validation='failed_or_unavailable')
+                outcome['seconds'] = round(time.time() - started, 1)
+                print(f"{case['id']}: {outcome['seconds']}s {'ok' if 'response' in outcome else 'ERROR'}", flush=True)
                 report['results'].append(outcome)
         report['status'] = 'awaiting_human_review' if report['live_model_verified'] else 'unavailable'
     Path(args.output).write_text(json.dumps(report, indent=2, default=str)+'\n')
+    times = [r['seconds'] for r in report.get('results', []) if 'seconds' in r]
+    if times:
+        report['average_seconds'] = round(sum(times) / len(times), 1)
     print(json.dumps({k: report[k] for k in ('status', 'live_model_verified', 'aws_credentials_available', 'cases_requested')}))
+    if times:
+        print('Average reply time:', report['average_seconds'], 's over', len(times), 'cases')
     print('Review artifact:', args.output)
 
 

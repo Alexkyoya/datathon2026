@@ -103,6 +103,11 @@ def render_answer(answer, facts, language='en'):
             return value[:10]
         if isinstance(value, bool) or not isinstance(value, (float, int)):
             raise AnswerValidationError('This reference is not a number.', 'invalid_evidence_type')
+        if value == 0 and style == 'percent' and (parts[-1] == 'limit' or parts[-1].endswith('_max')):
+            # "a crypto maximum of 0.0%" reads like a number to compare; a zero limit means "not allowed".
+            raise AnswerValidationError('A limit of zero means the profile does not include this at all. Do not cite '
+                                        'it as a percentage; say it plainly, e.g. "Your profile doesn\'t include crypto" '
+                                        'or "This is on your avoid list".', 'zero_limit_as_figure')
         return format_figure(value, style, language)
     rendered = token.sub(replace, text)
     if '[[' in rendered or ']]' in rendered:

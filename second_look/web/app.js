@@ -699,6 +699,10 @@ function renderConversation(record) {
         detail.append(node('p',L(`${item.source_or_method} · en date du ${dateLabel(item.as_of)} · ${item.data_status.replaceAll('_',' ')}`,`${item.source_or_method} · as of ${dateLabel(item.as_of)} · ${item.data_status.replaceAll('_',' ')}`)));
         // URLs come only from stored tool evidence, never from model text.
         const data=item.data;
+        // What the evidence covers: data period for risk, dated series for macro, an explicit note when no news item exists.
+        if(data && typeof data.window==='string')detail.append(node('p',L(`${data.source||'Données historiques'} · période ${data.window}`,`${data.source||'Historical data'} · period ${data.window}`),'muted'));
+        for(const series of (Array.isArray(data?.series)?data.series:[]))if(series.label&&series.reference_date)detail.append(node('p',`${series.label} · ${series.source||''} · ${dateLabel(series.reference_date)}`,'muted'));
+        if(Array.isArray(data?.items)&&!data.items.length)detail.append(node('p',L(`Aucune nouvelle officielle trouvée pour cette transaction au ${dateLabel(item.as_of)}.`,`No official news item found for this trade as of ${dateLabel(item.as_of)}.`),'muted'));
         for(const source of (data.items||[]))if(/^https?:\/\//.test(source.url||'')){
           const link=node('a',L(`${source.source_name||source.title||'Source officielle'} · ${source.published_date}`,`${source.source_name||source.title||'Official source'} · ${source.published_date}`));link.href=source.url;link.target='_blank';link.rel='noopener noreferrer';detail.append(link);
         }

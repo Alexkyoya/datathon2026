@@ -497,3 +497,19 @@ def test_holdout_messages_pass_through_unchanged_without_affecting_account(setup
     assert response['conversation']['messages'][0]['text'] == case['user_message']
     assert response['record']['result'] == setup.record['result']
     assert setup.model.respond.call_args.args[2]['messages'][0]['text'] == case['user_message']
+
+
+def test_zero_limit_is_said_plainly_never_as_a_percentage(setup):
+    from second_look.diagnostics import AnswerValidationError
+    facts = {'current': evidence('current', {'alerts': [{'rule': 'crypto', 'limit': 0.0, 'after': 0.02}],
+                                            'limits': {'crypto_max': 0, 'single_stock_max': 0.05}}, setup.record)}
+    for path in ('/alerts/0/limit', '/limits/crypto_max'):
+        with pytest.raises(AnswerValidationError) as exc:
+            render_answer({'assistant_message': f'Your profile sets a crypto maximum of [[current:{path}|percent]].',
+                           'evidence_refs': ['current']}, facts)
+        assert exc.value.code == 'zero_limit_as_figure'
+    # Plain wording passes; a non-zero limit and the after-weight still render as figures.
+    text, _ = render_answer({'assistant_message': "Your profile doesn't include crypto. This trade would make it "
+                             "[[current:/alerts/0/after|percent]] of the portfolio; the single-stock cap is "
+                             "[[current:/limits/single_stock_max|percent]].", 'evidence_refs': ['current']}, facts)
+    assert '2.0%' in text and '5.0%' in text
