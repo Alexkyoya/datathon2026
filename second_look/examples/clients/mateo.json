@@ -24,7 +24,7 @@
       "excluded_sectors": [
         "Energy"
       ],
-      "max_lookthrough_excluded_share": 0.05,
+      "max_lookthrough_excluded_share": 0.0,
       "prefer_esg_screened_funds": true,
       "source": "fictional persona (team assumption): no fossil fuels. Excluded tickers = every Energy stock in the provided universe; a personal choice, not a claim about these companies."
     }
