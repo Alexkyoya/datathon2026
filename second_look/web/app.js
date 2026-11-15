@@ -84,7 +84,7 @@ async function loadContext(clientId) {
   invalidate(false); if($('trade-dialog').open) $('trade-dialog').close();
   $('review-panel').hidden=true;setInvitation(false);
   state.context=null;
-  $('client-select').disabled=true;$('market-search').disabled=true;$('scenario-select').disabled=true;
+  $('client-select').disabled=true;$('market-search').disabled=true;$('scenario-select').disabled=true;$('scenario-cards').replaceChildren();state.recent=[];
   $('account-name').textContent='Loading account…';
   ['account-total','account-invested','account-cash'].forEach(id=>$(id).textContent='—');
   document.querySelectorAll('[data-open-side]').forEach(button=>button.disabled=true);
@@ -102,9 +102,8 @@ async function loadContext(clientId) {
     $('user-avatar').textContent=(context.first_name || 'S').slice(0,1);
     $('client-select').replaceChildren(...context.clients.map(id=>{const option=node('option',id==='demo_balanced'?'Balanced demo':id[0].toUpperCase()+id.slice(1));option.value=id;return option;}));
     $('client-select').value=context.client.client_id;$('client-select').disabled=false;
-    $('asset-options').replaceChildren(...context.tickers.map(t=>{const option=node('option');option.value=t;option.label=context.assets[t].name;return option;}));
     $('scenario-select').replaceChildren(node('option','Select a scenario'),...(DEMOS[context.client.client_id]||[]).map(([ticker,amount],i)=>{const option=node('option',`Buy ${ticker} · ${money(amount)}`);option.value=String(i);return option;}));
-    $('scenario-select').options[0].value='';$('scenario-select').value='';$('scenario-select').disabled=false;
+    $('scenario-select').options[0].value='';$('scenario-select').value='';$('scenario-select').disabled=false;renderScenarioCards();
     $('market-search').disabled=false;
     if(!context.assets[state.selectedAsset])state.selectedAsset=context.tickers[0];
     renderHoldings();renderQuote();await restoreConversation(token);
@@ -510,6 +509,224 @@ function reviseTrade() {
   state.autoEvaluate=true;
   announce('Revise the pending trade. A new evaluation is required.');
 }
+
+// ---------------------------------------------------------------- asset picker
+// One accessible combobox for the market search and the ticket's asset field.
+// Shows only data the context already returns: names, markets, sectors, historical
+// closes, 90-day history, stored drawdown history and stored preferences. It never
+// predicts a verdict; the rule engine decides after "Check simulated trade".
+const PICKER_GROUPS = [
+  ['all','All'],['ca','Canadian stocks'],['us','U.S. stocks'],['funds','Funds (ETFs)'],
+  ['bonds','Bonds'],['gold','Gold'],['crypto','Crypto']
+];
+state.recent = [];
+function assetGroupKey(a) {
+  if(!a) return 'all';
+  if(a.instrument_type==='crypto' || a.is_crypto) return 'crypto';
+  if(a.asset_class==='fixed_income') return 'bonds';
+  if(a.asset_class==='alternatives') return 'gold';
+  if(a.asset_class==='cash') return 'bonds';
+  if(String(a.instrument_type||'').startsWith('etf')) return 'funds';
+  return a.currency==='CAD' ? 'ca' : 'us';
+}
+const assetTypeLabel = a => ({crypto:'Crypto',bonds:a?.asset_class==='cash'?'Cash-like fund':'Bond fund',gold:'Gold',funds:'Stock fund',ca:'Stock',us:'Stock'})[assetGroupKey(a)] || '';
+function pushRecent(ticker) {
+  if(!ticker) return;
+  state.recent=[ticker,...state.recent.filter(t=>t!==ticker)].slice(0,5);
+}
+function initials(name, ticker, a) {
+  if(a && !a.is_single_stock) return ticker.split(/[.-]/)[0].slice(0,3).toUpperCase(); // funds, crypto: XBB, GLD, BTC
+  const words=String(name||ticker).replace(/[^A-Za-z0-9 &]/g,' ').split(/\s+/).filter(w=>w&&!/^(the|of|and|&|inc|corp|etf|trust|index|class)$/i.test(w));
+  return ((words[0]?.[0]||ticker[0])+(words[1]?.[0]||ticker[1]||'')).toUpperCase();
+}
+function highlight(textValue, query) {
+  const span=node('span');
+  const i=query?textValue.toLowerCase().indexOf(query):-1;
+  if(i<0){span.textContent=textValue;return span;}
+  span.append(document.createTextNode(textValue.slice(0,i)),node('mark',textValue.slice(i,i+query.length)),document.createTextNode(textValue.slice(i+query.length)));
+  return span;
+}
+function sparkline(points) {
+  const values=(points||[]).map(p=>p.close_cad).filter(finite);
+  if(values.length<2) return null;
+  const w=72,h=24,min=Math.min(...values),max=Math.max(...values),span=max-min||1;
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox',`0 0 ${w} ${h}`);svg.setAttribute('width',w);svg.setAttribute('height',h);svg.setAttribute('class','spark');svg.setAttribute('aria-hidden','true');
+  const path=document.createElementNS(ns,'path');
+  path.setAttribute('d',values.map((v,i)=>`${i?'L':'M'}${(i/(values.length-1)*w).toFixed(1)} ${(h-2-(v-min)/span*(h-4)).toFixed(1)}`).join(' '));
+  path.setAttribute('class',values.at(-1)>=values[0]?'up':'down');
+  svg.append(path);return svg;
+}
+function assetHeadsUps(ticker, a) {
+  const ctx=state.context, esg=ctx.client.preferences?.esg||{}, limits=ctx.profile_limits||{}, tags=[];
+  if((esg.excluded_tickers||[]).includes(ticker)) tags.push(['On your avoid list','warn']);
+  else if(a.sector && (esg.excluded_sectors||[]).includes(a.sector)) tags.push(['Sector you asked to avoid','warn']);
+  if(a.instrument_type==='crypto' || a.is_crypto) {
+    if(finite(limits.crypto_max)) tags.push([limits.crypto_max===0?'Crypto · not part of your profile':`Crypto · max ${percent(limits.crypto_max)} of your portfolio`,'warn']);
+    else tags.push(['Crypto · has its own limit in your profile','info']);
+  }
+  return tags;
+}
+function worstDropText(a) {
+  const hz=a.horizon;
+  if(!hz || !finite(hz.max_drawdown) || hz.max_drawdown>-0.005) return '';
+  const drop=`Worst drop since Nov 2021: ${(hz.max_drawdown*100).toFixed(0)}%`;
+  if(hz.recovered && finite(hz.recovery_months)) return `${drop} · back to its high after ${Math.round(hz.recovery_months)} months`;
+  if(hz.recovered===false) return `${drop} · not yet back to its high`;
+  return drop;
+}
+function scoreAsset(ticker, a, query) {
+  if(!query) return 1;
+  const t=ticker.toLowerCase(), n=(a.name||'').toLowerCase(), s=(a.sector||'').toLowerCase(), m=(a.market||'').toLowerCase();
+  if(t===query || t.split(/[.-]/)[0]===query) return 100;
+  if(t.startsWith(query)) return 80;
+  if(n.startsWith(query)) return 70;
+  if(n.split(/\s+/).some(w=>w.startsWith(query))) return 60;
+  if(n.includes(query) || t.includes(query)) return 40;
+  if(s.includes(query) || assetTypeLabel(a).toLowerCase().includes(query) || m===query) return 20;
+  return 0;
+}
+function attachPicker(input, onPick) {
+  const listbox=node('div','','picker');listbox.id=input.id+'-listbox';listbox.setAttribute('role','listbox');listbox.setAttribute('aria-label','Assets');listbox.hidden=true;
+  const chips=node('div','','picker-chips');chips.setAttribute('role','group');chips.setAttribute('aria-label','Filter by type');
+  const results=node('div','','picker-results');
+  const close=node('button','Close','picker-close text-button');close.type='button';
+  const head=node('div','','picker-head');head.append(chips,close);
+  const foot=node('p','','picker-foot');
+  listbox.append(head,results,foot);
+  // Outside the search field's own styles; inside the dialog when the field is (top layer).
+  (input.closest('dialog')||document.body).append(listbox);
+  let filter='all', active=-1, options=[], typed=false;
+  const keep=event=>event.preventDefault(); // keep focus in the input while clicking inside the list
+  listbox.addEventListener('mousedown',keep);
+  close.addEventListener('click',()=>hide(true));
+  function place() {
+    const r=input.getBoundingClientRect(), narrow=innerWidth<700;
+    listbox.classList.toggle('sheet',narrow);
+    if(narrow){listbox.style.left='0px';listbox.style.right='0px';listbox.style.width='';listbox.style.top=Math.max(8,r.bottom+6)+'px';listbox.style.maxHeight='';return;}
+    const width=Math.min(Math.max(r.width,640),innerWidth-24), left=Math.min(Math.max(12,r.left),innerWidth-width-12);
+    listbox.style.left=left+'px';listbox.style.right='';listbox.style.width=width+'px';
+    const below=innerHeight-r.bottom-16;
+    listbox.style.top=(r.bottom+6)+'px';listbox.style.maxHeight=Math.max(240,Math.min(560,below))+'px';
+  }
+  function setActive(index, scroll=true) {
+    options.forEach(o=>o.setAttribute('aria-selected','false'));
+    active=options.length?Math.max(0,Math.min(index,options.length-1)):-1;
+    if(active>=0){options[active].setAttribute('aria-selected','true');input.setAttribute('aria-activedescendant',options[active].id);if(scroll)options[active].scrollIntoView({block:'nearest'});}
+    else input.removeAttribute('aria-activedescendant');
+  }
+  function row(ticker, query) {
+    const ctx=state.context, a=ctx.assets[ticker], q=ctx.quotes[ticker], held=ctx.holdings.find(h=>h.ticker===ticker);
+    const option=node('div','','picker-option');option.id=`${input.id}-opt-${ticker.replace(/[^A-Za-z0-9]/g,'_')}`;option.setAttribute('role','option');option.dataset.ticker=ticker;
+    const badge=node('span',initials(a.name,ticker,a),'asset-badge g-'+assetGroupKey(a));badge.setAttribute('aria-hidden','true');
+    const main=node('div','','picker-main');
+    const title=node('div','','picker-title');title.append(highlight(a.name||ticker,query));
+    const meta=node('div','','picker-meta');
+    const tick=node('strong');tick.append(highlight(ticker,query));meta.append(tick);
+    if(a.market)meta.append(node('span',a.market,'market-chip'));
+    meta.append(node('span',[a.sector,assetTypeLabel(a)].filter(Boolean).join(' · ')));
+    main.append(title,meta);
+    const tags=node('div','','picker-tags');
+    if(held)tags.append(node('span','You own · '+money(held.value_cad),'tag own'));
+    assetHeadsUps(ticker,a).forEach(([label,kind])=>tags.append(node('span',label,'tag '+kind)));
+    const drop=worstDropText(a);if(drop)tags.append(node('span',drop,'tag history'));
+    if(tags.children.length)main.append(tags);
+    const price=node('div','','picker-price');
+    if(q){
+      price.append(node('strong',decimal(q.close_native)+' '+q.currency));
+      if(finite(q.change_fraction)){const up=q.change_fraction>=0;price.append(node('span',`${up?'▲ +':'▼ '}${percent(q.change_fraction)}`,'pill '+(up?'up':'down')));}
+    } else price.append(node('span','No usable quote','muted'));
+    const spark=sparkline(ctx.price_history?.[ticker]);
+    const label=[a.name,ticker,a.market,a.sector,q?`last close ${decimal(q.close_native)} ${q.currency}`:'no usable quote',finite(q?.change_fraction)?`change ${percent(q.change_fraction)}`:'',held?'you own '+money(held.value_cad):'',...assetHeadsUps(ticker,a).map(t=>t[0]),drop].filter(Boolean).join(', ');
+    option.setAttribute('aria-label',label);
+    option.append(badge,main,spark||node('span','','spark'),price);
+    option.addEventListener('click',()=>pick(ticker));
+    option.addEventListener('mousemove',()=>{const i=options.indexOf(option);if(i!==active)setActive(i,false);});
+    return option;
+  }
+  function render() {
+    const ctx=state.context;if(!ctx)return;
+    const query=typed?input.value.trim().toLowerCase():'';
+    const counts={all:ctx.tickers.length};ctx.tickers.forEach(t=>{const k=assetGroupKey(ctx.assets[t]);counts[k]=(counts[k]||0)+1;});
+    chips.replaceChildren(...PICKER_GROUPS.filter(([k])=>counts[k]).map(([k,label])=>{const b=node('button',`${label} ${counts[k]}`,'chip');b.type='button';b.setAttribute('aria-pressed',String(filter===k));b.addEventListener('click',()=>{filter=k;render();});return b;}));
+    let pool=ctx.tickers.filter(t=>filter==='all'||assetGroupKey(ctx.assets[t])===filter);
+    const sections=[];
+    if(query){
+      const hits=pool.map(t=>[t,scoreAsset(t,ctx.assets[t],query)]).filter(([,s])=>s>0).sort((x,y)=>y[1]-x[1]||ctx.assets[x[0]].name.localeCompare(ctx.assets[y[0]].name)).map(([t])=>t);
+      sections.push([`${hits.length} result${hits.length===1?'':'s'}`,hits]);
+    } else {
+      const owned=ctx.holdings.map(h=>h.ticker).filter(t=>pool.includes(t));
+      const recent=state.recent.filter(t=>pool.includes(t)&&!owned.includes(t));
+      const rest=pool.filter(t=>!owned.includes(t)&&!recent.includes(t)).sort((x,y)=>ctx.assets[x].name.localeCompare(ctx.assets[y].name));
+      if(owned.length)sections.push(['You own',owned]);
+      if(recent.length)sections.push(['Recently viewed',recent]);
+      sections.push([filter==='all'?'All assets':PICKER_GROUPS.find(g=>g[0]===filter)[1],rest]);
+    }
+    results.replaceChildren();options=[];
+    sections.forEach(([title,tickers])=>{
+      if(!tickers.length)return;
+      const group=node('div','','picker-group');group.setAttribute('role','group');
+      const heading=node('p',title,'picker-section');heading.id=`${input.id}-sec-${title.replace(/\W+/g,'_')}`;group.setAttribute('aria-labelledby',heading.id);
+      group.append(heading);
+      tickers.forEach(t=>{const o=row(t,query);options.push(o);group.append(o);});
+      results.append(group);
+    });
+    if(!options.length){
+      const empty=node('div','','picker-empty');
+      empty.append(node('strong',query?`No match for “${input.value.trim()}”.`:'No assets in this group.'),node('span',`This demo covers the ${ctx.tickers.length} assets in the provided data. Try a ticker (NVDA), a company (Royal Bank) or a sector (Energy).`));
+      results.append(empty);
+    }
+    foot.textContent='Historical closes · '+dateLabel(Object.values(ctx.quotes)[0]?.price_source_date)+' · not real-time quotes. The check, not this list, decides green/yellow/red.';
+    setActive(query?0:-1,false);
+    announce(options.length?`${options.length} assets listed.`:'No matching assets.');
+  }
+  function show() {
+    if(!state.context||input.disabled)return;
+    listbox.hidden=false;input.setAttribute('aria-expanded','true');place();render();
+    if(listbox.classList.contains('sheet'))input.scrollIntoView({block:'start'});
+  }
+  function hide(refocus=false) {
+    if(listbox.hidden)return;
+    listbox.hidden=true;input.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');typed=false;
+    if(refocus)input.focus();
+  }
+  function pick(ticker) {
+    input.value=ticker;hide();pushRecent(ticker);onPick(ticker);
+  }
+  input.addEventListener('focus',()=>{typed=false;show();input.select?.();});
+  input.addEventListener('click',()=>{if(listbox.hidden)show();});
+  input.addEventListener('input',()=>{typed=true;if(listbox.hidden)show();else render();});
+  input.addEventListener('keydown',event=>{
+    if(event.key==='ArrowDown'){event.preventDefault();if(listbox.hidden)show();setActive(active+1);}
+    else if(event.key==='ArrowUp'){event.preventDefault();setActive(active<=0?options.length-1:active-1);}
+    else if(event.key==='Home'&&!listbox.hidden&&event.ctrlKey){event.preventDefault();setActive(0);}
+    else if(event.key==='End'&&!listbox.hidden&&event.ctrlKey){event.preventDefault();setActive(options.length-1);}
+    else if(event.key==='Enter'){
+      if(!listbox.hidden&&active>=0){event.preventDefault();pick(options[active].dataset.ticker);}
+      else{const t=resolveAsset(input.value);if(t){event.preventDefault();pick(t);}}
+    }
+    else if(event.key==='Escape'&&!listbox.hidden){event.preventDefault();event.stopPropagation();hide();}
+    else if(event.key==='Tab')hide();
+  });
+  input.addEventListener('blur',()=>setTimeout(()=>{if(document.activeElement!==input&&!listbox.contains(document.activeElement))hide();},120));
+  addEventListener('resize',()=>{if(!listbox.hidden)place();});
+  addEventListener('scroll',()=>{if(!listbox.hidden)place();},true);
+  return {hide};
+}
+function renderScenarioCards() {
+  const ctx=state.context,box=$('scenario-cards');
+  const demos=(DEMOS[ctx.client.client_id]||[]).filter(([t])=>ctx.assets[t]);
+  box.replaceChildren(...demos.map(([ticker,amount])=>{
+    const a=ctx.assets[ticker],button=node('button','','scenario-card');button.type='button';
+    button.append(node('span',initials(a.name,ticker,a),'asset-badge small g-'+assetGroupKey(a)),node('span','',''));
+    button.lastChild.append(node('strong',`Buy ${ticker}`),node('small',money(amount)));
+    button.setAttribute('aria-label',`Demo: buy ${a.name} (${ticker}) for ${money(amount)}. Opens a filled trade ticket.`);
+    button.addEventListener('click',()=>{state.selectedAsset=ticker;pushRecent(ticker);renderQuote();openTicket('buy',ticker,amount);});
+    return button;
+  }));
+}
+const marketPicker=attachPicker($('market-search'),ticker=>{$('market-search').dispatchEvent(new Event('change',{bubbles:true}));});
+const ticketPicker=attachPicker($('ticket-asset'),ticker=>{$('ticket-asset').dispatchEvent(new Event('input',{bubbles:true}));$('amount').focus();});
 
 // Functional navigation and keyboard behavior; no decorative product controls.
 $('nav-markets').addEventListener('click',()=>showPage('markets'));

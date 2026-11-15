@@ -45,11 +45,16 @@ def build_context(store, client_id, clients=()):
                          'units': units, 'currency': assets[ticker]['currency'],
                          'value_cad': values[ticker], 'weight': values[ticker]/total,
                          'close_cad': used[ticker]['close_cad']})
-    info = {t: {k: a.get(k) for k in ('name', 'asset_class', 'instrument_type', 'currency', 'sector', 'market')}
+    # Read-only display fields. `horizon` is the stored historical drawdown/recovery
+    # (illustrates the past; never a forecast) shown in the asset picker.
+    info = {t: {k: a.get(k) for k in ('name', 'asset_class', 'instrument_type', 'currency', 'sector', 'market',
+                                      'is_single_stock', 'is_crypto', 'horizon')}
             for t, a in assets.items()}
+    limits = policy.get('profiles', {}).get(client.get('profile'), {})
+    profile_limits = {k: limits.get(k) for k in ('single_stock_max', 'crypto_max', 'sector_max')}
     name = client.get('first_name') or client.get('name', '').split(' ')[0] or None
     return {'client': client, 'first_name': name, 'clients': sorted(set(clients) | {client_id}),
-            'assets': info, 'tickers': sorted(assets), 'quotes': quotes,
+            'assets': info, 'tickers': sorted(assets), 'quotes': quotes, 'profile_limits': profile_limits,
             'holdings': sorted(holdings, key=lambda h: -h['value_cad']),
             'account': {'total_cad': total, 'invested_cad': total-client['cash_cad'],
                         'cash_cad': client['cash_cad'], 'snapshot_at': snapshot['snapshot_at']},
