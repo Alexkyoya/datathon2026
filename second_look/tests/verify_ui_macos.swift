@@ -201,7 +201,7 @@ struct QAError: Error, CustomStringConvertible { let description:String }
             try await wait("document.querySelector('#ticket-status').classList.contains('yellow')")
             try await check("document.querySelector('#agent-invite').hidden && document.querySelector('#review-panel').hidden", "yellow has no character or agent invitation")
             try await act("document.querySelector('#confirm-yellow').click()")
-            try await wait("document.querySelector('#ticket-status').textContent.includes('Simulation continued')")
+            try await wait("document.querySelector('#ticket-status').textContent.includes('Order submitted')")
             try await act("document.querySelector('#close-ticket').click();document.querySelector('#client-select').value='robert';document.querySelector('#client-select').dispatchEvent(new Event('change',{bubbles:true}))")
             try await wait("document.querySelector('#account-name').textContent==='Robert'")
             try await scenario(1)

@@ -249,9 +249,9 @@ function updateTicketQuote() {
 function syncButtons() {
   const record=state.record,busy=state.evaluating||state.deciding;
   $('submit-trade').disabled=busy||!!record;
-  $('submit-trade').textContent=state.evaluating?'Evaluating…':record?(record.result.verdict==='red'?'Trade paused':isTerminal(record)?'Simulation finished':'Review required'):'Check simulated trade';
+  $('submit-trade').textContent=state.evaluating?'Evaluating…':record?(record.result.verdict==='red'?'Trade paused':isTerminal(record)?'Order complete':'Review required'):'Submit';
   $('submit-trade').className='button '+(state.side==='sell'?'red':'blue');
-  $('cancel-trade').disabled=state.deciding;
+  $('cancel-trade').disabled=state.deciding;$('cancel-trade').textContent=isTerminal(state.record)?'Close':'Cancel';
   ['amount','ticket-asset','side-buy','side-sell'].forEach(id=>$(id).disabled=state.deciding);
   $('send-reason').disabled=state.reviewing||state.deciding||!record||isTerminal(record)||!!state.pendingMessage||state.chat?.messages.filter(m=>m.role==='user').at(-1)?.status==='failed';
   $('send-reason').textContent=state.reviewing?'Replying…':'Send';
@@ -301,12 +301,12 @@ async function evaluateTrade() {
 function renderResult() {
   const record=state.record;if(!record)return;
   const r=record.result;
-  if(record.stage==='cancelled')showTicketStatus('Simulation cancelled','No order was placed.','');
-  else if(record.stage==='simulation_continued')showTicketStatus(r.verdict==='red'?'Risk acknowledged · simulation continued':'Simulation continued',r.verdict==='red'?'The numerical verdict remains red. No real order was placed.':'This is an independent simulated trade. Your stored holdings have not changed.',r.verdict||'');
+  if(record.stage==='cancelled')showTicketStatus('Order cancelled','No order was placed.','');
+  else if(record.stage==='simulation_continued')showTicketStatus(r.verdict==='red'?'Order submitted · risk acknowledged':'✓ Order submitted',r.verdict==='red'?'The check result stays red. Demo only: no real order was placed.':(r.verdict==='yellow'?'You reviewed the heads-up and confirmed.':'Second Look checked this trade against your profile and found nothing to flag.')+' Demo only: no real order was placed and your holdings stay the same.',r.verdict||'');
   else if(r.verdict==='red')showTicketStatus('Red · trade paused','Review the flagged risks before deciding how to continue.','red');
   else if(r.verdict==='yellow'){
     showTicketStatus('Yellow · confirmation required',r.reasons.join(' '),'yellow');
-    const confirm=node('button',state.deciding?'Confirming…':'Confirm simulation','button blue compact');confirm.type='button';confirm.id='confirm-yellow';confirm.disabled=state.deciding;confirm.addEventListener('click',()=>decision('confirm'));
+    const confirm=node('button',state.deciding?'Confirming…':'Confirm order','button blue compact');confirm.type='button';confirm.id='confirm-yellow';confirm.disabled=state.deciding;confirm.addEventListener('click',()=>decision('confirm'));
     $('ticket-status').append(node('div','','confirmation-action'));$('ticket-status').lastChild.append(confirm);
     setInvitation(false);$('review-panel').hidden=true;
   }else{showTicketStatus('Manual review required',r.reasons.join(' '),'');setInvitation(false);$('review-panel').hidden=true;}
@@ -341,7 +341,7 @@ function renderReview() {
   const terminal=isTerminal(record);
   document.querySelector('.review-kicker').textContent=terminal?'SECOND LOOK · '+(record.stage==='cancelled'?'SIMULATION CANCELLED':'RISK ACKNOWLEDGED'):'SECOND LOOK · TRADE PAUSED';
   $('risk-actions').hidden=terminal;$('review-terminal').hidden=!terminal;
-  $('review-terminal').textContent=record.stage==='cancelled'?'Simulation cancelled. Your stored holdings are unchanged.':'You explicitly acknowledged the risks and continued the simulation. The rule engine verdict remains red. No real order was placed.';
+  $('review-terminal').textContent=record.stage==='cancelled'?'Order cancelled. Your holdings are unchanged.':'You acknowledged the risks and submitted the order. The check result stays red. Demo only: no real order was placed.';
   syncButtons();
 }
 function renderSpectrum(c) {
@@ -555,7 +555,7 @@ async function decision(action) {
     const record=await api(`/api/simulations/${id}/decision`,{decision:action,...(action==='proceed'?{risk_acknowledged:true}:{})});
     if(token!==state.evaluation||state.record?.simulation_id!==id)return;
     state.record=record;setInvitation(false);renderResult();
-    announce(record.stage==='cancelled'?'Simulation cancelled.':'Simulation continued. No real order was placed.');
+    announce(record.stage==='cancelled'?'Order cancelled.':'Order submitted. Demo only: no real order was placed.');
     if(action==='cancel')closeTicket();
   }catch(error){inlineError($('review-panel').hidden?'ticket-error':'review-error',error.message);}
   finally{state.deciding=false;syncButtons();if($('confirm-yellow'))$('confirm-yellow').disabled=false;}
@@ -572,7 +572,7 @@ function reviseTrade() {
 // One accessible combobox for the market search and the ticket's asset field.
 // Shows only data the context already returns: names, markets, sectors, historical
 // closes, 90-day history, stored drawdown history and stored preferences. It never
-// predicts a verdict; the rule engine decides after "Check simulated trade".
+// predicts a verdict; the rule engine decides after "Submit".
 const PICKER_GROUPS = [
   ['all','All'],['ca','Canadian stocks'],['us','U.S. stocks'],['funds','Funds (ETFs)'],
   ['bonds','Bonds'],['gold','Gold'],['crypto','Crypto']
