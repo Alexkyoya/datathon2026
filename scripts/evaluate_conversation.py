@@ -65,6 +65,7 @@ def main():
                 state['initial_analysis'] = {'specialist_reports': {'note': 'Cached fictional development context; specialists not called during this evaluation.'}, 'explanation': {}}
                 state['messages'] = [{'id': case['id'], 'role': 'user', 'text': case['user_message'], 'status': 'pending'}]
                 state['evaluation_context'] = case['context']
+                state['language'] = case['context'].get('preferred_language', 'en')  # as the interface would send it
                 fixture_id = case['context'].get('tool_fixture_id')
                 if fixture_id:
                     fixture = fixtures[fixture_id]
@@ -85,7 +86,7 @@ def main():
                 try:
                     answer = coordinator.respond(record, inputs, state, tools)
                     report['live_model_verified'] = True
-                    text, refs = render_answer(answer, state['evidence'])
+                    text, refs = render_answer(answer, state['evidence'], state['language'])
                     outcome.update(response=text, evidence_refs=refs, tool_trace=state['tool_trace'],
                                    backend_unchanged=record == original, contract_validation='passed')
                 except Exception as exc:
