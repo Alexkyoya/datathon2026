@@ -157,6 +157,36 @@ def _context(params):
     return market.build_context(STORE, cid, clients)
 
 
+def _backtest(params):
+    """Historical comparison of the mix without / with the trade (second_look.backtest). Needs the
+    starter price CSVs: next to this file under data/, or in DATA_BUCKET under DATA_PREFIX."""
+    try:
+        backtest = importlib.import_module('sl_engine.backtest')
+        sid = re.fullmatch(r'[A-Za-z0-9_-]{1,128}', params.get('simulation_id', '')).group(0)
+        record = STORE.load(f'results/{sid}.json')
+        if record['request']['client_id'] != params.get('client_id'):
+            raise ValueError('This trade belongs to another client')
+        raw = Path(config.DATA_DIR) if (Path(config.DATA_DIR) / 'prices_daily.csv').is_file() else _s3_prices_dir()
+        r = record['result']
+        return _resp(200, backtest.compare(r['position_weights_before'], r['position_weights_after'],
+                                           record['request']['amount_cad'], r['portfolio_value_cad'],
+                                           record['request']['decision_date'], raw))
+    except Exception as exc:  # the card is optional; the verdict never depends on it
+        return _resp(503, {"error": f"Historical comparison unavailable: {exc}"})
+
+
+def _s3_prices_dir():
+    """Copy the two starter CSVs from S3 into /tmp once per Lambda container."""
+    target = Path('/tmp/second_look_prices')
+    target.mkdir(parents=True, exist_ok=True)
+    import boto3
+    s3 = boto3.client('s3')
+    for name in ('prices_daily.csv', 'fx_usdcad_daily.csv'):
+        if not (target / name).is_file():
+            s3.download_file(config.DATA_BUCKET, f"{config.DATA_PREFIX}{name}", str(target / name))
+    return target
+
+
 def _conversations():
     _engine()
     module = importlib.import_module('sl_engine.conversation')
@@ -231,6 +261,8 @@ def handler(event, context=None):
                 return _resp(200, USAGE)
             if path == "/api/context":
                 return _resp(200, _context(event.get("queryStringParameters")))
+            if path == "/api/backtest":
+                return _backtest(event.get("queryStringParameters") or {})
             match = re.fullmatch(r'/api/simulations/([A-Za-z0-9_-]{1,128})/conversation', path)
             if match:
                 params = event.get('queryStringParameters') or {}

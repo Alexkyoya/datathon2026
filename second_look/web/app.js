@@ -13,7 +13,7 @@ const state = {
   context: null, selectedAsset: 'CNR.TO', side: 'buy', record: null,
   evaluation: 0, accountLoad: 0, evaluating: false, deciding: false, reviewing: false,
   evaluationController: null, reviewController: null, timer: null, autoEvaluate: false,
-  returnFocus: null, tab: 'overview', chat: null, pendingMessage: null, evidence: []
+  returnFocus: null, tab: 'overview', chat: null, pendingMessage: null, evidence: [], backtest: null
 };
 const DEMOS = {
   robert: [['SPY',30000],['NVDA',360000],['XBB.TO',340000]],
@@ -605,6 +605,62 @@ function renderVisuals(r,request) {
   const rank=card=>card.classList.contains('red')?0:card.classList.contains('yellow')?1:2;
   cards.sort((a,b)=>rank(a)-rank(b));
   root.append(...cards);
+  loadHistoryCard(root);
+}
+
+// Card: the two mixes (without / with the trade) through the provided history. Fetched after the
+// deterministic cards so a slow or unavailable comparison never delays the verdict.
+async function loadHistoryCard(root) {
+  const record=state.record;if(!record)return;
+  const token=state.evaluation,holder=node('section','','viz-card wide history-card');
+  root.append(holder);
+  if(state.backtest?.simulation_id===record.simulation_id){renderHistoryCard(holder,state.backtest.data,record.request);return;}
+  holder.append(node('span','What the two mixes did in the past','small-label'),node('p','Loading the five-year comparison…','viz-note'));
+  try{
+    const data=await api(`/api/backtest?simulation_id=${encodeURIComponent(record.simulation_id)}&client_id=${encodeURIComponent(record.request.client_id)}`,null,null,30000);
+    if(token!==state.evaluation||!holder.isConnected)return;
+    state.backtest={simulation_id:record.simulation_id,data};
+    holder.replaceChildren();renderHistoryCard(holder,data,record.request);
+  }catch(error){holder.replaceChildren(node('span','What the two mixes did in the past','small-label'),node('p','Historical comparison unavailable right now. The verdict above does not depend on it.','viz-note'));}
+}
+function renderHistoryCard(card,data,request) {
+  const t=request.ticker,endB=data.end_value_cad.before,endA=data.end_value_cad.after,dd=data.max_drawdown;
+  const worse=dd.after<dd.before-0.002;
+  card.classList.toggle('red',worse);
+  card.append(node('span','What the two mixes did in the past','small-label'));
+  card.append(node('p',`${dateLabel(data.window.start)} to ${dateLabel(data.window.end)}: your current mix fell at most ${pct0(-dd.before)} from a peak; with ${t} at today's weight it would have fallen ${pct0(-dd.after)}.`,'viz-headline'));
+  // Two-line chart.
+  const W=360,H=150,L=58,R=8,T=10,B=24,pts=data.series;
+  const vals=pts.flatMap(p=>[p.before,p.after]),lo=Math.min(...vals)*0.97,hi=Math.max(...vals)*1.03;
+  const x=i=>L+(i/(pts.length-1))*(W-L-R),y=v=>T+(1-(v-lo)/(hi-lo))*(H-T-B);
+  const svg=svgEl('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':`Portfolio value through ${dateLabel(data.window.start)} to ${dateLabel(data.window.end)}, without and with ${t}`});
+  [lo,(lo+hi)/2,hi].forEach(v=>{svg.append(svgEl('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:'viz-axis'}));svg.append(svgEl('text',{x:L-4,y:y(v)+3,'text-anchor':'end',class:'viz-tick'},money(v).replace(/\.\d\d/,'')));});
+  const path=key=>pts.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(p[key]).toFixed(1)}`).join(' ');
+  svg.append(svgEl('path',{d:path('before'),class:'hist-before'}));
+  svg.append(svgEl('path',{d:path('after'),class:'hist-after'+(worse?' out':'')}));
+  const years=[];pts.forEach((p,i)=>{const yr=p.date.slice(0,4);if(!years.some(y=>y[0]===yr))years.push([yr,x(i)]);});
+  years.filter((y,i)=>!(years[i+1]&&years[i+1][1]-y[1]<36)).forEach(([yr,xx])=>svg.append(svgEl('text',{x:xx,y:H-8,class:'viz-tick'},yr)));
+  const gi=pts.reduce((best,p,i)=>p.after-p.before<pts[best].after-pts[best].before?i:best,0);
+  svg.append(svgEl('line',{x1:x(gi),x2:x(gi),y1:y(pts[gi].before),y2:y(pts[gi].after),class:'hist-gap'}));
+  card.append(svg,legend([['#20313d','your current mix'],[worse?'var(--red)':'#3a6ea5',`with ${t}`],['#815909',`largest gap: ${money(Math.abs(data.largest_gap_cad.after_minus_before))} on ${dateLabel(data.largest_gap_cad.date)}`]]));
+  // One-year outcomes strip for the trade amount.
+  const o=data.one_year_outcomes;
+  if(o?.before&&o?.after){
+    const amount=data.trade_amount_cad,all=[o.before.worst,o.before.best,o.after.worst,o.after.best,amount];
+    const mn=Math.min(...all)*0.95,mx=Math.max(...all)*1.05,sx=v=>L+((v-mn)/(mx-mn))*(W-L-R);
+    const strip=svgEl('svg',{viewBox:`0 0 ${W} 78`,role:'img','aria-label':`What ${money(amount)} became after one year in each mix, worst to best past window`});
+    [['Current mix',o.before,16,'hist-range-before'],[`With ${t}`,o.after,46,'hist-range-after'+(worse?' out':'')]].forEach(([label,r,yy,cls])=>{
+      strip.append(svgEl('text',{x:0,y:yy+4,class:'viz-label'},label));
+      strip.append(svgEl('rect',{x:sx(r.worst),y:yy-6,width:Math.max(2,sx(r.best)-sx(r.worst)),height:12,rx:6,class:cls}));
+      strip.append(svgEl('circle',{cx:sx(r.median),cy:yy,r:4,class:'hist-median'}));
+      strip.append(svgEl('text',{x:sx(r.worst)-3,y:yy+16,'text-anchor':'end',class:'viz-tick'},money(r.worst).replace(/\.\d\d/,'')));
+      strip.append(svgEl('text',{x:sx(r.best)+3,y:yy+16,class:'viz-tick'},money(r.best).replace(/\.\d\d/,'')));
+    });
+    strip.append(svgEl('line',{x1:sx(amount),x2:sx(amount),y1:4,y2:60,class:'viz-cap'}));
+    strip.append(svgEl('text',{x:sx(amount)+3,y:72,class:'viz-cap-label'},`you put in ${money(amount).replace(/\.\d\d/,'')}`));
+    card.append(node('p',`${money(amount)} after one year, in every past 12-month window (${o.after.windows} windows): with ${t} it ended between ${money(o.after.worst)} and ${money(o.after.best)}, below what you put in ${pct0(o.after.share_below_start)} of the time; the current mix between ${money(o.before.worst)} and ${money(o.before.best)}, below ${pct0(o.before.share_below_start)} of the time.`,'viz-headline'),strip);
+  }
+  card.append(node('p',`${data.method} ${data.limitations.join(' ')}`,'viz-note'));
 }
 
 function rememberTrade() {

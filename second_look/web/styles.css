@@ -531,3 +531,11 @@ body { border-top: 4px solid var(--blue); }
 .viz-goal-number {font-size:8px;fill:#fff;font-weight:700}
 .viz-needs {margin:6px 0 0;padding-left:18px;font-size:11px;color:var(--yellow);line-height:1.5}
 .viz-needs li::marker {font-weight:700}
+.hist-before {fill:none;stroke:#20313d;stroke-width:2}
+.hist-after {fill:none;stroke:#3a6ea5;stroke-width:2.5}
+.hist-after.out {stroke:var(--red)}
+.hist-gap {stroke:#815909;stroke-width:2;stroke-dasharray:3 2}
+.hist-range-before {fill:#c9d7e0}
+.hist-range-after {fill:#9fc0dd}
+.hist-range-after.out {fill:#e6a7ad}
+.hist-median {fill:#20313d}
