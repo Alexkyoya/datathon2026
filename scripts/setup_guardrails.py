@@ -39,10 +39,7 @@ OUTPUT_GUARDRAIL = {
     "contentPolicyConfig": {"filtersConfig": CONTENT},
     "topicPolicyConfig": {"topicsConfig": [{
         "name": "Price predictions and guarantees",
-        "definition": ("Confidently predicting that a specific investment will rise or reach a certain price, "
-                       "or promising it is guaranteed or cannot lose money. Warnings that the future is "
-                       "uncertain, that returns are not guaranteed, or facts about past prices are not part "
-                       "of this topic."),
+        "definition": "Predicting that a specific investment will rise or reach a price, or promising returns or no losses. Warnings about uncertainty and facts about past prices are not included.",  # max 200 characters
         "examples": ["Bitcoin will double by Christmas.", "This stock is guaranteed to go up.",
                      "You cannot lose money with this fund.", "NVIDIA will reach 300 dollars next year."],
         "type": "DENY"}]},
