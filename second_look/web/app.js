@@ -1112,9 +1112,9 @@ window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFr
 
 // Static page text is written in French; in English each known string is swapped in place.
 const EN_TEXT = {
- 'Courtage direct · Simulation':'Direct Brokerage · Simulation','Aller à l’information de marché':'Skip to market information',
+ 'Second Look · Simulation':'Second Look · Simulation','Aller à l’information de marché':'Skip to market information',
  'Second Look · accueil de la simulation':'Second Look · simulation home',
- 'COURTAGE DIRECT':'DIRECT BROKERAGE','Investisseur fictif':'Fictional investor','Chargement…':'Loading…',
+ 'PLACEMENT · SIMULATION':'INVESTING · SIMULATION','Investisseur fictif':'Fictional investor','Chargement…':'Loading…',
  'Navigation principale':'Main navigation','Marchés':'Markets','Mes avoirs':'My holdings','Achat':'Buy','Vente':'Sell','Cote':'Quote',
  'Chargement de l’instantané historique…':'Loading historical snapshot…','Données historiques · pas en temps réel':'Historical data · not real time',
  'Réessayer':'Try again','Cote du titre sélectionné':'Selected asset quote',
